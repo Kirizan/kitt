@@ -3,7 +3,7 @@ name = "kitt"
 version = "1.1.0"
 description = "KITT (Kirby's Inference Testing Tools) - End-to-end testing suite for LLM inference engines"
 authors = ["Kirby"]
-license = "MIT"
+license = "Apache-2.0"
 readme = "README.md"
 packages = [{include = "kitt", from = "src"}]
 
