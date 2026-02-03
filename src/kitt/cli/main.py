@@ -9,7 +9,7 @@ console = Console()
 @click.group()
 @click.version_option(version="1.1.0", prog_name="KITT")
 def cli():
-    """KITT - Kirby's Inference Testing Tools
+    """KITT - Kirizan's Inference Testing Tools
 
     End-to-end testing suite for LLM inference engines.
     """

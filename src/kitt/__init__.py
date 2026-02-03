@@ -1,4 +1,4 @@
-"""KITT - Kirby's Inference Testing Tools.
+"""KITT - Kirizan's Inference Testing Tools.
 
 End-to-end testing suite for LLM inference engines.
 """

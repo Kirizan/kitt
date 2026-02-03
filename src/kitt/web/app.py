@@ -101,7 +101,7 @@ INDEX_TEMPLATE = """
     <header>
         <div class="container">
             <h1><span>KITT</span> Benchmark Dashboard</h1>
-            <p>Kirby's Inference Testing Tools - Results Viewer</p>
+            <p>Kirizan's Inference Testing Tools - Results Viewer</p>
         </div>
     </header>
 

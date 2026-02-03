@@ -1,4 +1,4 @@
-# KITT - Kirby's Inference Testing Tools
+# KITT - Kirizan's Inference Testing Tools
 
 End-to-end testing suite for LLM inference engines. Measures quality consistency and performance across local inference engines (vLLM, TGI, llama.cpp, Ollama).
 
@@ -8,7 +8,7 @@ End-to-end testing suite for LLM inference engines. Measures quality consistency
 - **Quality benchmarks** - MMLU, GSM8K, TruthfulQA, and HellaSwag evaluations
 - **Performance benchmarks** - Throughput, latency, memory usage, and warmup analysis
 - **Hardware fingerprinting** - Automatic system identification for reproducible, hardware-aware result organization
-- **KARR integration** - Git-backed results repositories (Kirby's AI Results Repo) for tracking and comparing runs over time
+- **KARR integration** - Git-backed results repositories (Kirizan's AI Results Repo) for tracking and comparing runs over time
 - **Multiple output formats** - JSON metrics, Markdown summaries, interactive TUI, and a web dashboard
 - **Custom benchmarks** - Define your own evaluations with YAML configuration files
 
@@ -231,7 +231,7 @@ Manage benchmark results and KARR repositories.
 
 #### `kitt results init`
 
-Initialize a new KARR (Kirby's AI Results Repo) repository for storing benchmark results.
+Initialize a new KARR (Kirizan's AI Results Repo) repository for storing benchmark results.
 
 ```bash
 kitt results init [--path <path>]
@@ -396,7 +396,7 @@ KITT ships with three predefined test suites:
 
 ## Results Storage (KARR)
 
-Test results are stored in **KARR (Kirby's AI Results Repo)** repositories — Git-backed directories organized by hardware fingerprint, model, engine, and timestamp.
+Test results are stored in **KARR (Kirizan's AI Results Repo)** repositories — Git-backed directories organized by hardware fingerprint, model, engine, and timestamp.
 
 ```bash
 # Initialize a KARR repo
