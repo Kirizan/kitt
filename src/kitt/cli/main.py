@@ -40,7 +40,10 @@ def fingerprint(verbose):
         console.print(f"  OS: {info.os}")
         console.print(f"  Kernel: {info.kernel}")
         if info.gpu:
-            gpu_str = f"{info.gpu.model} ({info.gpu.vram_gb}GB)"
+            if info.gpu.vram_gb > 0:
+                gpu_str = f"{info.gpu.model} ({info.gpu.vram_gb}GB)"
+            else:
+                gpu_str = f"{info.gpu.model} (unified memory, {info.ram_gb}GB shared)"
             if info.gpu.count > 1:
                 gpu_str += f" x{info.gpu.count}"
             console.print(f"  GPU: {gpu_str}")

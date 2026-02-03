@@ -91,7 +91,10 @@ class HardwareFingerprint:
         # GPU
         if info.gpu:
             gpu_name = info.gpu.model.replace(" ", "-")
-            gpu_str = f"{gpu_name}-{info.gpu.vram_gb}GB"
+            # Unified memory architectures (e.g. GH200) report 0GB dedicated VRAM;
+            # use system RAM total instead since it is shared.
+            vram = info.gpu.vram_gb if info.gpu.vram_gb > 0 else info.ram_gb
+            gpu_str = f"{gpu_name}-{vram}GB"
             if info.gpu.count > 1:
                 gpu_str += f"-{info.gpu.count}x"
             parts.append(gpu_str)

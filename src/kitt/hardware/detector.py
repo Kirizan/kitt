@@ -109,12 +109,20 @@ def detect_gpu(environment_type: Optional[str] = None) -> Optional[GPUInfo]:
             name = pynvml.nvmlDeviceGetName(handle)
             if isinstance(name, bytes):
                 name = name.decode("utf-8")
-            mem = pynvml.nvmlDeviceGetMemoryInfo(handle)
+
+            # Memory query may fail on unified memory architectures (e.g. GH200)
+            vram_gb = 0
+            try:
+                mem = pynvml.nvmlDeviceGetMemoryInfo(handle)
+                vram_gb = int(mem.total / (1024**3))
+            except Exception as mem_err:
+                logger.debug(f"pynvml memory query failed (unified memory?): {mem_err}")
+
             pynvml.nvmlShutdown()
 
             return GPUInfo(
                 model=name,
-                vram_gb=int(mem.total / (1024**3)),
+                vram_gb=vram_gb,
                 count=device_count,
             )
     except Exception as e:
@@ -133,7 +141,13 @@ def detect_gpu(environment_type: Optional[str] = None) -> Optional[GPUInfo]:
             lines = result.stdout.strip().split("\n")
             if lines:
                 name, mem = lines[0].split(",")
-                vram_gb = int(mem.strip().split()[0]) // 1024
+                mem_str = mem.strip().split()[0]
+                # Memory may be '[N/A]' on unified memory architectures (e.g. GH200)
+                try:
+                    vram_gb = int(mem_str) // 1024
+                except ValueError:
+                    vram_gb = 0
+                    logger.debug(f"nvidia-smi reported memory as '{mem_str}' (unified memory?)")
                 return GPUInfo(
                     model=name.strip(),
                     vram_gb=vram_gb,
