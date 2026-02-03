@@ -2,6 +2,16 @@
 
 End-to-end testing suite for LLM inference engines. Measures quality consistency and performance across local inference engines (vLLM, TGI, llama.cpp, Ollama).
 
+## Features
+
+- **Multi-engine support** - Benchmark across vLLM, TGI, llama.cpp, and Ollama with a unified interface
+- **Quality benchmarks** - MMLU, GSM8K, TruthfulQA, and HellaSwag evaluations
+- **Performance benchmarks** - Throughput, latency, memory usage, and warmup analysis
+- **Hardware fingerprinting** - Automatic system identification for reproducible, hardware-aware result organization
+- **KARR integration** - Git-backed results repositories (Kirby's AI Results Repo) for tracking and comparing runs over time
+- **Multiple output formats** - JSON metrics, Markdown summaries, interactive TUI, and a web dashboard
+- **Custom benchmarks** - Define your own evaluations with YAML configuration files
+
 ## Prerequisites
 
 KITT requires Python 3.10+ and [Poetry](https://python-poetry.org/) for dependency management.
@@ -26,35 +36,398 @@ sudo pacman -S --needed base-devel
 xcode-select --install
 ```
 
-## Quick Start
+## Installation
 
 ```bash
-# Install dependencies
+# Install core dependencies
 poetry install
 
 # Activate the virtual environment
 eval $(poetry env activate)
 ```
 
-Poetry installs KITT into an isolated virtual environment. After activating it, the `kitt` command is available directly:
-
-```bash
-# Check hardware fingerprint
-kitt fingerprint
-
-# List available engines
-kitt engines list
-
-# Run a benchmark suite
-kitt run --model /path/to/model --engine vllm --suite standard
-```
-
-Alternatively, you can run commands without activating the shell by prefixing with `poetry run`:
+Poetry installs KITT into an isolated virtual environment. After activating it, the `kitt` command is available directly. Alternatively, prefix any command with `poetry run`:
 
 ```bash
 poetry run kitt fingerprint
 ```
 
-## Results
+### Optional Dependencies
 
-Test results are stored in **KARR (Kirby's AI Results Repo)** repositories, organized by hardware configuration.
+KITT supports optional extras for specific engines and features:
+
+```bash
+# Install with vLLM engine support
+poetry install -E vllm
+
+# Install with TGI engine support
+poetry install -E tgi
+
+# Install with HuggingFace datasets support
+poetry install -E datasets
+
+# Install the web dashboard
+poetry install -E web
+
+# Install the interactive TUI for result comparison
+poetry install -E cli_ui
+
+# Install everything
+poetry install -E all
+```
+
+## Quick Start
+
+```bash
+# Check your hardware fingerprint
+kitt fingerprint
+
+# List available inference engines
+kitt engines list
+
+# List available benchmarks
+kitt test list
+
+# Run benchmarks
+kitt run --model /path/to/model --engine vllm --suite standard
+```
+
+## Commands
+
+### `kitt run`
+
+Run benchmarks against a model using a specified inference engine.
+
+```bash
+kitt run --model <path> --engine <engine> [OPTIONS]
+```
+
+| Option | Short | Description |
+|---|---|---|
+| `--model` | `-m` | Path to model or model identifier (required) |
+| `--engine` | `-e` | Inference engine: `vllm`, `tgi`, `llama_cpp`, `ollama` (required) |
+| `--suite` | `-s` | Test suite to run: `quick`, `standard`, `performance` (default: `quick`) |
+| `--output` | `-o` | Output directory for results |
+| `--skip-warmup` | | Skip the warmup phase for all benchmarks |
+| `--runs` | | Override the number of runs per benchmark |
+| `--config` | | Path to a custom engine configuration YAML file |
+| `--store-karr` | | Store results in a KARR repository |
+
+**Examples:**
+
+```bash
+# Quick throughput test with Ollama
+kitt run -m llama3 -e ollama
+
+# Full standard suite with vLLM, saving to a specific directory
+kitt run -m /models/llama2-7b -e vllm -s standard -o ./my-results
+
+# Performance suite with custom engine config, stored in KARR
+kitt run -m /models/mistral-7b -e llama_cpp -s performance --config ./my-engine.yaml --store-karr
+```
+
+**Output artifacts** (written to the output directory):
+
+| File | Description |
+|---|---|
+| `metrics.json` | Full benchmark metrics in JSON format |
+| `hardware.json` | Detected hardware information |
+| `config.json` | Configuration used for the run |
+| `summary.md` | Human-readable Markdown summary |
+| `outputs/` | Compressed benchmark outputs (chunked) |
+
+### `kitt fingerprint`
+
+Display a unique hardware fingerprint for the current system. This fingerprint is used to organize results by hardware configuration.
+
+```bash
+kitt fingerprint [--verbose]
+```
+
+| Option | Description |
+|---|---|
+| `--verbose` | Show detailed hardware information (CPU, GPU, RAM, storage, OS, CUDA, driver) |
+
+**Example:**
+
+```bash
+$ kitt fingerprint --verbose
+
+System Information
+  Environment: bare-metal
+  OS: Linux 6.18.3-arch1-1
+  Kernel: 6.18.3-arch1-1
+  GPU: NVIDIA GH200 (96GB) x1
+  CPU: ARM Neoverse V2 (72c/72t)
+  RAM: 128GB DDR5
+  Storage: Samsung PM9A3 (NVMe)
+  CUDA: 12.8
+  Driver: 570.133.20
+
+Hardware Fingerprint: gh200-96gb_neoverse-v2-72c_128gb
+```
+
+### `kitt engines`
+
+Manage and inspect inference engines.
+
+#### `kitt engines list`
+
+List all registered inference engines and their availability status.
+
+```bash
+kitt engines list
+```
+
+Displays a table of engines with their status (Available / Not Available) and supported model formats.
+
+#### `kitt engines check`
+
+Check whether a specific engine is available and show its details.
+
+```bash
+kitt engines check <engine_name>
+```
+
+**Example:**
+
+```bash
+kitt engines check vllm
+```
+
+### `kitt test`
+
+Manage benchmark definitions.
+
+#### `kitt test list`
+
+List all available benchmarks, including both built-in and YAML-defined benchmarks.
+
+```bash
+kitt test list [--category <category>]
+```
+
+| Option | Short | Description |
+|---|---|---|
+| `--category` | `-c` | Filter benchmarks by category (e.g., `performance`, `quality`) |
+
+#### `kitt test new`
+
+Create a new custom benchmark definition from a template.
+
+```bash
+kitt test new <name> [--category <category>]
+```
+
+| Option | Short | Description |
+|---|---|---|
+| `--category` | `-c` | Benchmark category (default: `quality_custom`) |
+
+Creates a YAML template at `configs/tests/quality/custom/<name>.yaml` that you can edit to define your benchmark's dataset, sampling parameters, and run configuration.
+
+### `kitt results`
+
+Manage benchmark results and KARR repositories.
+
+#### `kitt results init`
+
+Initialize a new KARR (Kirby's AI Results Repo) repository for storing benchmark results.
+
+```bash
+kitt results init [--path <path>]
+```
+
+| Option | Short | Description |
+|---|---|---|
+| `--path` | `-p` | Directory path for the KARR repo (default: `karr-<fingerprint>` in the current directory) |
+
+#### `kitt results list`
+
+List benchmark results from local directories and KARR repositories.
+
+```bash
+kitt results list [OPTIONS]
+```
+
+| Option | Description |
+|---|---|
+| `--model` | Filter results by model name |
+| `--engine` | Filter results by engine name |
+| `--karr` | Path to a specific KARR repo to search |
+
+Searches `kitt-results/` in the current directory and any `karr-*` repositories.
+
+#### `kitt results compare`
+
+Compare metrics across two or more benchmark runs. Shows min, max, average, standard deviation, and coefficient of variation for each metric.
+
+```bash
+kitt results compare <run1> <run2> [OPTIONS]
+```
+
+| Option | Description |
+|---|---|
+| `--additional` | Additional run paths to include (can be specified multiple times) |
+| `--format` | Output format: `table` (default) or `json` |
+
+**Examples:**
+
+```bash
+# Compare two runs as a table
+kitt results compare ./results/run1 ./results/run2
+
+# Compare three runs, output as JSON
+kitt results compare ./run1 ./run2 --additional ./run3 --format json
+```
+
+#### `kitt results import`
+
+Import a results directory into a KARR repository.
+
+```bash
+kitt results import <source> [--karr <path>]
+```
+
+| Option | Description |
+|---|---|
+| `--karr` | Target KARR repo path (default: auto-detect or create based on hardware fingerprint) |
+
+The source directory must contain a `metrics.json` file.
+
+#### `kitt results submit`
+
+Submit results via pull request. Requires Git to be configured with a user name and email.
+
+```bash
+kitt results submit [--repo <path>]
+```
+
+| Option | Description |
+|---|---|
+| `--repo` | Path to the results repository |
+
+#### `kitt results cleanup`
+
+Clean up old Git LFS objects to reduce KARR repository size.
+
+```bash
+kitt results cleanup [OPTIONS]
+```
+
+| Option | Description |
+|---|---|
+| `--repo` | Path to the results repository (default: current directory) |
+| `--days` | Keep objects from the last N days (default: 90) |
+| `--dry-run` | Show what would be deleted without making changes |
+
+### `kitt compare`
+
+Launch an interactive TUI (terminal user interface) for side-by-side comparison of benchmark results. Requires the `cli_ui` extra.
+
+```bash
+kitt compare <run_path> [<run_path> ...]
+```
+
+Pass paths to result directories or `metrics.json` files.
+
+```bash
+kitt compare ./results/run1 ./results/run2
+```
+
+### `kitt web`
+
+Launch a web dashboard for browsing and visualizing benchmark results. Requires the `web` extra.
+
+```bash
+kitt web [OPTIONS]
+```
+
+| Option | Description |
+|---|---|
+| `--port` | Port to serve on (default: 8080) |
+| `--host` | Host to bind to (default: 127.0.0.1) |
+| `--results-dir` | Path to results directory to display |
+| `--debug` | Enable Flask debug mode |
+
+**Example:**
+
+```bash
+kitt web --port 9090 --results-dir ./kitt-results
+```
+
+## Test Suites
+
+KITT ships with three predefined test suites:
+
+| Suite | Description | Benchmarks |
+|---|---|---|
+| `quick` | Smoke test | Throughput only (1 run) |
+| `standard` | Full evaluation | All quality + performance benchmarks |
+| `performance` | Performance-focused | Throughput, latency, memory, warmup analysis |
+
+## Benchmarks
+
+### Quality
+
+| Benchmark | Description |
+|---|---|
+| MMLU | Massive Multitask Language Understanding |
+| GSM8K | Grade school math reasoning |
+| TruthfulQA | Factual consistency evaluation |
+| HellaSwag | Commonsense reasoning |
+
+### Performance
+
+| Benchmark | Description |
+|---|---|
+| Throughput | Requests per second |
+| Latency | Response time measurement |
+| Memory | VRAM and CPU memory usage |
+| Warmup Analysis | Warm-up effect isolation |
+
+## Supported Engines
+
+| Engine | Key | Description |
+|---|---|---|
+| vLLM | `vllm` | High-performance Python LLM serving |
+| Text Generation Inference | `tgi` | Hugging Face optimized inference server |
+| llama.cpp | `llama_cpp` | CPU-optimized quantized inference |
+| Ollama | `ollama` | Local LLM runtime |
+
+## Results Storage (KARR)
+
+Test results are stored in **KARR (Kirby's AI Results Repo)** repositories — Git-backed directories organized by hardware fingerprint, model, engine, and timestamp.
+
+```bash
+# Initialize a KARR repo
+kitt results init --path ./my-results-repo
+
+# Run benchmarks and store directly in KARR
+kitt run -m /models/llama2-7b -e vllm --store-karr
+
+# Import existing results into KARR
+kitt results import ./kitt-results/llama2-7b/vllm/2025-01-15_120000
+
+# List all stored results
+kitt results list
+
+# Clean up old LFS objects
+kitt results cleanup --days 60 --dry-run
+```
+
+## Development
+
+```bash
+# Install with dev dependencies
+poetry install --with dev
+
+# Run tests
+poetry run pytest
+
+# Run tests with coverage
+poetry run pytest --cov
+```
+
+## License
+
+Apache 2.0
