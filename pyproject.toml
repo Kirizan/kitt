@@ -1,0 +1,50 @@
+[tool.poetry]
+name = "kitt"
+version = "1.1.0"
+description = "KITT (Kirby's Inference Testing Tools) - End-to-end testing suite for LLM inference engines"
+authors = ["Kirby"]
+license = "MIT"
+readme = "README.md"
+packages = [{include = "kitt", from = "src"}]
+
+[tool.poetry.scripts]
+kitt = "kitt.cli.main:cli"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+pyyaml = "^6.0"
+click = "^8.1"
+pydantic = "^2.0"
+py-cpuinfo = "^9.0"
+psutil = "^5.9"
+nvidia-ml-py = "^12.535"
+gitpython = "^3.1"
+rich = "^13.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.0"
+pytest-cov = "^6.0"
+pytest-mock = "^3.12"
+
+[tool.poetry.extras]
+vllm = ["vllm", "transformers"]
+tgi = ["transformers"]
+datasets = ["datasets"]
+web = ["flask"]
+cli_ui = ["textual"]
+all = ["vllm", "transformers", "datasets", "flask", "textual"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.coverage.run]
+source = ["kitt"]
+
+[tool.coverage.report]
+show_missing = true
+fail_under = 80
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
