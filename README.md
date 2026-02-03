@@ -33,10 +33,10 @@ xcode-select --install
 poetry install
 
 # Activate the virtual environment
-poetry shell
+eval $(poetry env activate)
 ```
 
-Poetry installs KITT into an isolated virtual environment. After running `poetry shell`, the `kitt` command is available directly:
+Poetry installs KITT into an isolated virtual environment. After activating it, the `kitt` command is available directly:
 
 ```bash
 # Check hardware fingerprint
