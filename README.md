@@ -54,23 +54,23 @@ poetry run kitt fingerprint
 
 ### Optional Dependencies
 
-KITT supports optional extras for specific engines and features:
+Running `poetry install` with no extras installs the core CLI, hardware fingerprinting, and all built-in benchmarks. Inference engines and some UI features require optional extras:
+
+| Extra | What it adds | Required for |
+|---|---|---|
+| `vllm` | vLLM + Transformers | `kitt run -e vllm` |
+| `tgi` | Transformers | `kitt run -e tgi` |
+| `datasets` | HuggingFace Datasets | Quality benchmarks using HuggingFace datasets |
+| `web` | Flask | `kitt web` |
+| `cli_ui` | Textual | `kitt compare` (interactive TUI) |
+| `all` | All of the above | Full feature set |
 
 ```bash
-# Install with vLLM engine support
+# Install a specific extra
 poetry install -E vllm
 
-# Install with TGI engine support
-poetry install -E tgi
-
-# Install with HuggingFace datasets support
-poetry install -E datasets
-
-# Install the web dashboard
-poetry install -E web
-
-# Install the interactive TUI for result comparison
-poetry install -E cli_ui
+# Install multiple extras
+poetry install -E vllm -E web
 
 # Install everything
 poetry install -E all
