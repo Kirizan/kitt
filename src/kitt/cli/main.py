@@ -44,6 +44,11 @@ def fingerprint(verbose):
             if info.gpu.count > 1:
                 gpu_str += f" x{info.gpu.count}"
             console.print(f"  GPU: {gpu_str}")
+        elif info.environment_type in ("dgx_spark", "dgx"):
+            console.print(
+                "  GPU: [red]Not detected[/red] "
+                "(expected on this system — check NVIDIA drivers and permissions)"
+            )
         else:
             console.print("  GPU: [yellow]None detected[/yellow]")
         console.print(f"  CPU: {info.cpu.model} ({info.cpu.cores}c/{info.cpu.threads}t)")

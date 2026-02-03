@@ -71,7 +71,7 @@ class HardwareFingerprint:
             )
 
         return SystemInfo(
-            gpu=detect_gpu(),
+            gpu=detect_gpu(environment_type=env_type),
             cpu=detect_cpu(),
             ram_gb=detect_ram_gb(),
             ram_type=detect_ram_type(),

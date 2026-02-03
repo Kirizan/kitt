@@ -85,12 +85,19 @@ def detect_environment_type() -> str:
     return "unknown"
 
 
-def detect_gpu() -> Optional[GPUInfo]:
+def detect_gpu(environment_type: Optional[str] = None) -> Optional[GPUInfo]:
     """Detect GPU with multiple fallback methods.
 
     Method 1: pynvml (most reliable)
     Method 2: nvidia-smi CLI
+
+    Args:
+        environment_type: Detected environment type, used to provide
+            better diagnostics on systems known to have GPUs.
     """
+    pynvml_error = None
+    smi_error = None
+
     # Method 1: pynvml
     try:
         import pynvml
@@ -111,6 +118,7 @@ def detect_gpu() -> Optional[GPUInfo]:
                 count=device_count,
             )
     except Exception as e:
+        pynvml_error = e
         logger.debug(f"pynvml detection failed: {e}")
 
     # Method 2: nvidia-smi
@@ -131,10 +139,23 @@ def detect_gpu() -> Optional[GPUInfo]:
                     vram_gb=vram_gb,
                     count=len(lines),
                 )
+        else:
+            smi_error = result.stderr.strip() if result.stderr else f"exit code {result.returncode}"
     except Exception as e:
+        smi_error = e
         logger.debug(f"nvidia-smi detection failed: {e}")
 
-    logger.warning("No NVIDIA GPU detected")
+    # Provide environment-aware diagnostics
+    if environment_type in ("dgx_spark", "dgx"):
+        logger.warning(
+            f"GPU detection failed on {environment_type} environment. "
+            f"This system should have an NVIDIA GPU. "
+            f"Check that NVIDIA drivers are loaded and accessible. "
+            f"pynvml error: {pynvml_error}; nvidia-smi error: {smi_error}"
+        )
+    else:
+        logger.warning("No NVIDIA GPU detected")
+
     return None
 
 
