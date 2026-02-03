@@ -56,6 +56,13 @@ class BenchmarkRegistry:
     def auto_discover(cls) -> None:
         """Import built-in benchmark modules to trigger registration."""
         from .performance import throughput  # noqa: F401
+        from .performance import latency  # noqa: F401
+        from .performance import memory  # noqa: F401
+        from .performance import warmup_analysis  # noqa: F401
+        from .quality.standard import mmlu  # noqa: F401
+        from .quality.standard import gsm8k  # noqa: F401
+        from .quality.standard import truthfulqa  # noqa: F401
+        from .quality.standard import hellaswag  # noqa: F401
 
 
 def register_benchmark(benchmark_class: Type[LLMBenchmark]) -> Type[LLMBenchmark]:

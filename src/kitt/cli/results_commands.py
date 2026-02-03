@@ -1,5 +1,6 @@
 """kitt results - Results management commands."""
 
+import json
 import subprocess
 
 import click
@@ -33,7 +34,7 @@ def init_results(path):
         return
 
     console.print(f"[cyan]Creating KARR repository at {repo_path}...[/cyan]")
-    repo = KARRRepoManager.create_results_repo(repo_path, fingerprint)
+    KARRRepoManager.create_results_repo(repo_path, fingerprint)
     console.print(f"[green]KARR repository created![/green]")
     console.print(f"  Path: {repo_path}")
     console.print(f"  Fingerprint: {fingerprint}")
@@ -60,17 +61,9 @@ def submit_results(repo):
 @results.command("list")
 @click.option("--model", help="Filter by model")
 @click.option("--engine", help="Filter by engine")
-def list_results(model, engine):
+@click.option("--karr", type=click.Path(), help="Path to KARR repo")
+def list_results(model, engine, karr):
     """List local benchmark results."""
-    import json
-
-    results_dirs = list(Path(".").glob("kitt-results/**/**/metrics.json"))
-    results_dirs += list(Path(".").glob("karr-*/**/metrics.json"))
-
-    if not results_dirs:
-        console.print("[yellow]No results found in current directory[/yellow]")
-        return
-
     from rich.table import Table
 
     table = Table(title="Local Results")
@@ -78,25 +71,51 @@ def list_results(model, engine):
     table.add_column("Engine")
     table.add_column("Timestamp")
     table.add_column("Status")
+    table.add_column("Source")
 
+    found = 0
+
+    # Search kitt-results/ directory
+    results_dirs = list(Path(".").glob("kitt-results/**/metrics.json"))
     for metrics_path in sorted(results_dirs):
-        try:
-            with open(metrics_path) as f:
-                data = json.load(f)
-            m = data.get("model", "unknown")
-            e = data.get("engine", "unknown")
-            ts = data.get("timestamp", "unknown")
+        row = _parse_metrics(metrics_path, model, engine)
+        if row:
+            table.add_row(*row, "local")
+            found += 1
 
-            if model and model not in m:
-                continue
-            if engine and engine != e:
-                continue
-
-            passed = data.get("passed", False)
-            status = "[green]PASS[/green]" if passed else "[red]FAIL[/red]"
-            table.add_row(m, e, ts[:19], status)
-        except Exception:
+    # Search KARR repos
+    karr_paths = [Path(karr)] if karr else list(Path(".").glob("karr-*"))
+    for karr_path in karr_paths:
+        if not karr_path.is_dir():
             continue
+        from kitt.git_ops.repo_manager import KARRRepoManager
+        for entry in KARRRepoManager.list_results(karr_path):
+            if model and model not in entry["model"]:
+                continue
+            if engine and engine != entry["engine"]:
+                continue
+
+            status = "[dim]no metrics[/dim]"
+            if entry["has_metrics"]:
+                try:
+                    with open(entry["path"] / "metrics.json") as f:
+                        data = json.load(f)
+                    passed = data.get("passed", False)
+                    status = "[green]PASS[/green]" if passed else "[red]FAIL[/red]"
+                except Exception:
+                    status = "[yellow]?[/yellow]"
+
+            table.add_row(
+                entry["model"], entry["engine"],
+                entry["timestamp"], status,
+                f"karr:{karr_path.name}",
+            )
+            found += 1
+
+    if found == 0:
+        console.print("[yellow]No results found in current directory[/yellow]")
+        console.print("Hint: Run benchmarks with 'kitt run' or look in a KARR repo.")
+        return
 
     console.print(table)
 
@@ -105,14 +124,14 @@ def list_results(model, engine):
 @click.argument("run1")
 @click.argument("run2")
 @click.option("--additional", multiple=True, help="Additional runs to compare")
-def compare_results(run1, run2, additional):
+@click.option("--format", "fmt", type=click.Choice(["table", "json"]), default="table")
+def compare_results(run1, run2, additional, fmt):
     """Compare benchmark results from different runs."""
-    import json
-
     runs = [run1, run2] + list(additional)
     console.print(f"[cyan]Comparing {len(runs)} result set(s)...[/cyan]")
 
     result_data = []
+    run_labels = []
     for run_path in runs:
         path = Path(run_path)
         metrics_file = path / "metrics.json" if path.is_dir() else path
@@ -120,7 +139,9 @@ def compare_results(run1, run2, additional):
             console.print(f"[red]Not found: {metrics_file}[/red]")
             continue
         with open(metrics_file) as f:
-            result_data.append(json.load(f))
+            data = json.load(f)
+        result_data.append(data)
+        run_labels.append(path.name if path.is_dir() else path.stem)
 
     if len(result_data) < 2:
         console.print("[red]Need at least 2 valid result sets to compare[/red]")
@@ -129,6 +150,10 @@ def compare_results(run1, run2, additional):
     from kitt.reporters.comparison import compare_metrics
 
     comparison = compare_metrics(result_data)
+
+    if fmt == "json":
+        console.print_json(json.dumps(comparison, indent=2))
+        return
 
     from rich.table import Table
 
@@ -153,6 +178,53 @@ def compare_results(run1, run2, additional):
         )
 
     console.print(table)
+
+
+@results.command("import")
+@click.argument("source", type=click.Path(exists=True))
+@click.option("--karr", type=click.Path(), help="KARR repo to import into")
+def import_results(source, karr):
+    """Import results from a directory into a KARR repo."""
+    from kitt.git_ops.repo_manager import KARRRepoManager
+    from kitt.hardware.fingerprint import HardwareFingerprint
+
+    source_path = Path(source)
+    metrics_file = source_path / "metrics.json"
+    if not metrics_file.exists():
+        console.print(f"[red]No metrics.json found in {source_path}[/red]")
+        raise SystemExit(1)
+
+    with open(metrics_file) as f:
+        data = json.load(f)
+
+    model_name = data.get("model", "unknown")
+    engine_name = data.get("engine", "unknown")
+    timestamp = data.get("timestamp", "unknown")[:19].replace(":", "")
+
+    # Find or create KARR repo
+    if karr:
+        karr_path = Path(karr)
+    else:
+        fingerprint = HardwareFingerprint.generate()
+        karr_path = KARRRepoManager.find_results_repo(fingerprint)
+        if not karr_path:
+            karr_path = Path.cwd() / f"karr-{fingerprint[:40]}"
+            KARRRepoManager.create_results_repo(karr_path, fingerprint)
+
+    # Collect files
+    files = {}
+    for file_path in source_path.rglob("*"):
+        if file_path.is_file():
+            rel_path = str(file_path.relative_to(source_path))
+            if file_path.suffix in (".gz", ".bin"):
+                files[rel_path] = file_path.read_bytes()
+            else:
+                files[rel_path] = file_path.read_text()
+
+    KARRRepoManager.store_results(
+        karr_path, model_name, engine_name, timestamp, files
+    )
+    console.print(f"[green]Results imported into {karr_path}[/green]")
 
 
 @results.command("cleanup")
@@ -197,3 +269,24 @@ def cleanup_lfs(repo, days, dry_run):
         console.print(f"[red]Error during cleanup: {e}[/red]")
     except FileNotFoundError:
         console.print("[red]Git LFS not found. Install from: https://git-lfs.github.com[/red]")
+
+
+def _parse_metrics(metrics_path, model_filter, engine_filter):
+    """Parse a metrics.json and return a table row or None."""
+    try:
+        with open(metrics_path) as f:
+            data = json.load(f)
+        m = data.get("model", "unknown")
+        e = data.get("engine", "unknown")
+        ts = data.get("timestamp", "unknown")
+
+        if model_filter and model_filter not in m:
+            return None
+        if engine_filter and engine_filter != e:
+            return None
+
+        passed = data.get("passed", False)
+        status = "[green]PASS[/green]" if passed else "[red]FAIL[/red]"
+        return (m, e, ts[:19], status)
+    except Exception:
+        return None

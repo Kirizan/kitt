@@ -152,20 +152,42 @@ See `hardware_fingerprint.txt` for the full system specification.
         (repo_path / "README.md").write_text(content)
 
     @staticmethod
-    def find_results_repo(fingerprint: str) -> Optional[Path]:
+    def find_results_repo(
+        fingerprint: str, search_dir: Optional[Path] = None,
+    ) -> Optional[Path]:
         """Find existing KARR repo for given fingerprint.
 
-        Searches current directory and parent directories.
+        Searches current directory and parent directories. Handles
+        truncated fingerprints by matching prefixes.
         """
-        current = Path.cwd()
-        repo_name = f"karr-{fingerprint}"
+        search_dir = search_dir or Path.cwd()
 
-        if (current / repo_name).exists():
-            return current / repo_name
+        # Exact match first
+        full_name = f"karr-{fingerprint}"
+        if (search_dir / full_name).exists():
+            return search_dir / full_name
 
-        for parent in current.parents:
-            if (parent / repo_name).exists():
-                return parent / repo_name
+        # Truncated match (karr-{fingerprint[:40]})
+        truncated_name = f"karr-{fingerprint[:40]}"
+        if (search_dir / truncated_name).exists():
+            return search_dir / truncated_name
+
+        # Search for any karr-* directory matching prefix
+        for path in search_dir.iterdir():
+            if path.is_dir() and path.name.startswith("karr-"):
+                fp_file = path / "hardware_fingerprint.txt"
+                if fp_file.exists():
+                    stored_fp = fp_file.read_text().strip()
+                    if stored_fp == fingerprint or fingerprint.startswith(stored_fp) or stored_fp.startswith(fingerprint):
+                        return path
+
+        # Search parent directories
+        for parent in search_dir.parents:
+            for name in [full_name, truncated_name]:
+                if (parent / name).exists():
+                    return parent / name
+            if parent == parent.parent:
+                break
 
         return None
 
@@ -177,7 +199,7 @@ See `hardware_fingerprint.txt` for the full system specification.
         timestamp: str,
         files: dict,
     ) -> None:
-        """Store result files in the KARR repo structure.
+        """Store result files in the KARR repo structure and commit.
 
         Args:
             repo_path: Path to KARR repository.
@@ -197,4 +219,50 @@ See `hardware_fingerprint.txt` for the full system specification.
             else:
                 filepath.write_text(str(content))
 
+        # Use subprocess for git add/commit to preserve LFS filters
+        rel_dir = str(result_dir.relative_to(repo_path))
+        try:
+            subprocess.run(
+                ["git", "add", rel_dir],
+                cwd=repo_path, check=True, capture_output=True,
+            )
+            subprocess.run(
+                ["git", "commit", "-m",
+                 f"Add results: {model_name}/{engine_name}/{timestamp}"],
+                cwd=repo_path, check=True, capture_output=True,
+            )
+            logger.info(f"Results committed in {result_dir}")
+        except subprocess.CalledProcessError as e:
+            logger.warning(f"Git commit failed: {e}")
+
         logger.info(f"Results stored in {result_dir}")
+
+    @staticmethod
+    def list_results(repo_path: Path) -> list:
+        """List all result sets in a KARR repository.
+
+        Returns:
+            List of dicts with model, engine, timestamp, and path.
+        """
+        results = []
+        if not repo_path.exists():
+            return results
+
+        for model_dir in sorted(repo_path.iterdir()):
+            if not model_dir.is_dir() or model_dir.name.startswith("."):
+                continue
+            for engine_dir in sorted(model_dir.iterdir()):
+                if not engine_dir.is_dir():
+                    continue
+                for ts_dir in sorted(engine_dir.iterdir()):
+                    if not ts_dir.is_dir():
+                        continue
+                    metrics_file = ts_dir / "metrics.json"
+                    results.append({
+                        "model": model_dir.name,
+                        "engine": engine_dir.name,
+                        "timestamp": ts_dir.name,
+                        "path": ts_dir,
+                        "has_metrics": metrics_file.exists(),
+                    })
+        return results

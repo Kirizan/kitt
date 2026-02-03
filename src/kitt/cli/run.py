@@ -2,6 +2,7 @@
 
 import json
 import logging
+from dataclasses import asdict
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
@@ -51,9 +52,13 @@ logger = logging.getLogger(__name__)
     type=click.Path(exists=True),
     help="Path to custom configuration file",
 )
-def run(model, engine, suite, output, skip_warmup, runs, config):
+@click.option(
+    "--store-karr",
+    is_flag=True,
+    help="Store results in KARR repository",
+)
+def run(model, engine, suite, output, skip_warmup, runs, config, store_karr):
     """Run benchmarks against a model using a specified engine."""
-    from kitt.benchmarks.loader import BenchmarkLoader
     from kitt.benchmarks.registry import BenchmarkRegistry
     from kitt.config.loader import load_suite_config
     from kitt.engines.registry import EngineRegistry
@@ -61,6 +66,7 @@ def run(model, engine, suite, output, skip_warmup, runs, config):
     from kitt.reporters.json_reporter import save_json_report
     from kitt.reporters.markdown import generate_summary
     from kitt.runners.suite import SuiteRunner
+    from kitt.utils.compression import ResultCompression
 
     # Discover engines
     EngineRegistry.auto_discover()
@@ -89,6 +95,7 @@ def run(model, engine, suite, output, skip_warmup, runs, config):
 
     # Load suite config
     suite_config_path = _find_suite_config(suite)
+    suite_cfg = None
     if suite_config_path:
         suite_cfg = load_suite_config(suite_config_path)
         console.print(f"  Loaded suite: {suite_cfg.suite_name} v{suite_cfg.version}")
@@ -102,6 +109,7 @@ def run(model, engine, suite, output, skip_warmup, runs, config):
     ) as progress:
         task = progress.add_task("Detecting hardware...", total=None)
         system_info = HardwareFingerprint.detect_system()
+        fingerprint = HardwareFingerprint._format_fingerprint(system_info)
         progress.update(task, description="Hardware detected")
 
     # Initialize engine
@@ -161,18 +169,40 @@ def run(model, engine, suite, output, skip_warmup, runs, config):
     # Cleanup engine
     engine_instance.cleanup()
 
-    # Generate reports
+    # Generate output directory
     timestamp = datetime.now().strftime("%Y-%m-%d_%H%M%S")
-    output_dir = Path(output) if output else Path(f"kitt-results/{model}/{engine}/{timestamp}")
+    model_name_clean = Path(model).name if "/" in model or "\\" in model else model
+    output_dir = (
+        Path(output) if output
+        else Path(f"kitt-results/{model_name_clean}/{engine}/{timestamp}")
+    )
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Save JSON report
-    json_path = save_json_report(
+    # Save JSON metrics report
+    save_json_report(
         suite_result, output_dir / "metrics.json",
         system_info=system_info,
         engine_name=engine,
         model_name=model,
     )
+
+    # Save hardware info separately
+    hardware_data = asdict(system_info)
+    with open(output_dir / "hardware.json", "w") as f:
+        json.dump(hardware_data, f, indent=2)
+
+    # Save configuration used
+    run_config = {
+        "model": model,
+        "engine": engine,
+        "suite": suite,
+        "skip_warmup": skip_warmup,
+        "runs_override": runs,
+        "timestamp": timestamp,
+        "kitt_version": "1.1.0",
+    }
+    with open(output_dir / "config.json", "w") as f:
+        json.dump(run_config, f, indent=2)
 
     # Save markdown summary
     summary = generate_summary(
@@ -183,6 +213,30 @@ def run(model, engine, suite, output, skip_warmup, runs, config):
     )
     (output_dir / "summary.md").write_text(summary)
 
+    # Compress and save outputs
+    all_outputs = []
+    for result in suite_result.results:
+        for output_item in result.outputs:
+            all_outputs.append({
+                "benchmark": result.test_name,
+                "run_number": result.run_number,
+                **output_item,
+            })
+
+    if all_outputs:
+        outputs_dir = output_dir / "outputs"
+        outputs_dir.mkdir(exist_ok=True)
+        chunk_files = ResultCompression.save_outputs(
+            all_outputs, outputs_dir / "results"
+        )
+        console.print(f"  Outputs compressed: {len(chunk_files)} chunk(s)")
+
+    # Store in KARR repo if requested
+    if store_karr:
+        _store_in_karr(
+            output_dir, fingerprint, model_name_clean, engine, timestamp
+        )
+
     # Print summary
     console.print(f"\n{'=' * 60}")
     status = "[bold green]PASSED[/bold green]" if suite_result.passed else "[bold red]FAILED[/bold red]"
@@ -192,6 +246,38 @@ def run(model, engine, suite, output, skip_warmup, runs, config):
     )
     console.print(f"Time: {suite_result.total_time_seconds:.1f}s")
     console.print(f"Output: {output_dir}")
+
+
+def _store_in_karr(
+    output_dir: Path,
+    fingerprint: str,
+    model_name: str,
+    engine_name: str,
+    timestamp: str,
+) -> None:
+    """Store results in a KARR repository."""
+    from kitt.git_ops.repo_manager import KARRRepoManager
+
+    karr_path = KARRRepoManager.find_results_repo(fingerprint)
+    if not karr_path:
+        karr_path = Path.cwd() / f"karr-{fingerprint[:40]}"
+        console.print(f"[cyan]Creating KARR repository at {karr_path}...[/cyan]")
+        KARRRepoManager.create_results_repo(karr_path, fingerprint)
+
+    # Read all files from output_dir
+    files = {}
+    for file_path in output_dir.rglob("*"):
+        if file_path.is_file():
+            rel_path = str(file_path.relative_to(output_dir))
+            if file_path.suffix in (".gz", ".bin"):
+                files[rel_path] = file_path.read_bytes()
+            else:
+                files[rel_path] = file_path.read_text()
+
+    KARRRepoManager.store_results(
+        karr_path, model_name, engine_name, timestamp, files
+    )
+    console.print(f"[green]Results stored in KARR: {karr_path}[/green]")
 
 
 def _find_suite_config(suite_name: str) -> Optional[Path]:

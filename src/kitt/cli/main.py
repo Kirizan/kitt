@@ -59,11 +59,45 @@ def fingerprint(verbose):
 
 
 @cli.command()
+@click.argument("runs", nargs=-1, required=True)
+def compare(runs):
+    """Launch TUI for comparing benchmark results.
+
+    Pass paths to result directories or metrics.json files.
+
+    Example: kitt compare ./result-1 ./result-2
+    """
+    from kitt.cli.compare_tui import check_textual_available, launch_comparison_tui
+
+    if not check_textual_available():
+        console.print("[red]Textual is not installed.[/red]")
+        console.print("Install with: pip install kitt[cli_ui]")
+        raise SystemExit(1)
+
+    launch_comparison_tui(list(runs))
+
+
+@cli.command()
 @click.option("--port", default=8080, help="Port for web UI")
-def web(port):
-    """Launch web UI for result comparison."""
-    console.print(f"[yellow]Starting web UI on port {port}...[/yellow]")
-    console.print("[red]Web UI not yet implemented (planned for Phase 4)[/red]")
+@click.option("--host", default="127.0.0.1", help="Host to bind to")
+@click.option("--results-dir", type=click.Path(exists=True), help="Results directory")
+@click.option("--debug", is_flag=True, help="Enable debug mode")
+def web(port, host, results_dir, debug):
+    """Launch web dashboard for viewing results."""
+    try:
+        from kitt.web.app import create_app
+    except ImportError:
+        console.print("[red]Flask is not installed.[/red]")
+        console.print("Install with: pip install kitt[web]")
+        raise SystemExit(1)
+
+    console.print(f"[bold]KITT Web Dashboard[/bold]")
+    console.print(f"  URL: http://{host}:{port}")
+    console.print(f"  Results: {results_dir or 'current directory'}")
+    console.print()
+
+    app = create_app(results_dir)
+    app.run(host=host, port=port, debug=debug)
 
 
 if __name__ == "__main__":

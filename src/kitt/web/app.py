@@ -1,0 +1,283 @@
+"""Flask web application for KITT results dashboard."""
+
+import json
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+try:
+    from flask import Flask, jsonify, render_template_string, request
+
+    FLASK_AVAILABLE = True
+except ImportError:
+    FLASK_AVAILABLE = False
+
+
+INDEX_TEMPLATE = """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KITT - Benchmark Dashboard</title>
+    <style>
+        :root {
+            --bg: #1a1a2e;
+            --surface: #16213e;
+            --primary: #0f3460;
+            --accent: #e94560;
+            --text: #eee;
+            --text-dim: #aaa;
+            --success: #4caf50;
+            --fail: #f44336;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+        }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        header {
+            background: var(--surface);
+            padding: 20px;
+            border-bottom: 3px solid var(--accent);
+            margin-bottom: 30px;
+        }
+        header h1 { font-size: 1.8em; }
+        header h1 span { color: var(--accent); }
+        header p { color: var(--text-dim); margin-top: 5px; }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        .stat-card {
+            background: var(--surface);
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 4px solid var(--primary);
+        }
+        .stat-card .value { font-size: 2em; font-weight: bold; color: var(--accent); }
+        .stat-card .label { color: var(--text-dim); font-size: 0.9em; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--surface);
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 30px;
+        }
+        th, td { padding: 12px 16px; text-align: left; }
+        th { background: var(--primary); font-weight: 600; }
+        tr:nth-child(even) { background: rgba(255,255,255,0.03); }
+        tr:hover { background: rgba(255,255,255,0.06); }
+        .pass { color: var(--success); font-weight: bold; }
+        .fail { color: var(--fail); font-weight: bold; }
+        .section-title {
+            font-size: 1.4em;
+            margin: 30px 0 15px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid var(--primary);
+        }
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-dim);
+        }
+        .empty-state h2 { margin-bottom: 10px; }
+        .metric-badge {
+            background: var(--primary);
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 0.85em;
+        }
+        a { color: var(--accent); text-decoration: none; }
+        a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1><span>KITT</span> Benchmark Dashboard</h1>
+            <p>Kirby's Inference Testing Tools - Results Viewer</p>
+        </div>
+    </header>
+
+    <div class="container">
+        {% if results %}
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="value">{{ results | length }}</div>
+                <div class="label">Result Sets</div>
+            </div>
+            <div class="stat-card">
+                <div class="value">{{ engines | length }}</div>
+                <div class="label">Engines Tested</div>
+            </div>
+            <div class="stat-card">
+                <div class="value">{{ models | length }}</div>
+                <div class="label">Models Tested</div>
+            </div>
+            <div class="stat-card">
+                <div class="value">{{ pass_rate }}%</div>
+                <div class="label">Pass Rate</div>
+            </div>
+        </div>
+
+        <h2 class="section-title">Results</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Model</th>
+                    <th>Engine</th>
+                    <th>Suite</th>
+                    <th>Status</th>
+                    <th>Benchmarks</th>
+                    <th>Time</th>
+                    <th>Timestamp</th>
+                    <th>Details</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in results %}
+                <tr>
+                    <td>{{ r.model }}</td>
+                    <td>{{ r.engine }}</td>
+                    <td>{{ r.suite_name }}</td>
+                    <td class="{{ 'pass' if r.passed else 'fail' }}">
+                        {{ 'PASS' if r.passed else 'FAIL' }}
+                    </td>
+                    <td>{{ r.passed_count }}/{{ r.total_benchmarks }}</td>
+                    <td>{{ "%.1f" | format(r.total_time_seconds) }}s</td>
+                    <td>{{ r.timestamp[:19] }}</td>
+                    <td><a href="/api/results/{{ loop.index0 }}">JSON</a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        {% for r in results %}
+        <h2 class="section-title">{{ r.model }} ({{ r.engine }})</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Benchmark</th>
+                    <th>Run</th>
+                    <th>Status</th>
+                    <th>Key Metrics</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for bench in r.get('results', []) %}
+                <tr>
+                    <td>{{ bench.test_name }}</td>
+                    <td>{{ bench.run_number }}</td>
+                    <td class="{{ 'pass' if bench.passed else 'fail' }}">
+                        {{ 'PASS' if bench.passed else 'FAIL' }}
+                    </td>
+                    <td>
+                        {% for k, v in bench.get('metrics', {}).items() %}
+                            {% if v is number %}
+                            <span class="metric-badge">{{ k }}: {{ "%.2f" | format(v) }}</span>
+                            {% endif %}
+                        {% endfor %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% endfor %}
+
+        {% else %}
+        <div class="empty-state">
+            <h2>No Results Found</h2>
+            <p>Run benchmarks with <code>kitt run</code> to generate results.</p>
+            <p>Results are searched in <code>kitt-results/</code> and <code>karr-*/</code> directories.</p>
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html>
+"""
+
+
+def create_app(results_dir: Optional[str] = None) -> "Flask":
+    """Create the Flask application.
+
+    Args:
+        results_dir: Directory to search for results. Defaults to cwd.
+    """
+    if not FLASK_AVAILABLE:
+        raise ImportError(
+            "Flask is not installed. Install with: pip install kitt[web]"
+        )
+
+    app = Flask(__name__)
+    base_dir = Path(results_dir) if results_dir else Path.cwd()
+
+    @app.route("/")
+    def index():
+        results = _scan_results(base_dir)
+        engines = set(r.get("engine", "") for r in results)
+        models = set(r.get("model", "") for r in results)
+        total = len(results)
+        passed = sum(1 for r in results if r.get("passed", False))
+        pass_rate = round(passed / total * 100) if total > 0 else 0
+
+        return render_template_string(
+            INDEX_TEMPLATE,
+            results=results,
+            engines=engines,
+            models=models,
+            pass_rate=pass_rate,
+        )
+
+    @app.route("/api/results")
+    def api_results():
+        results = _scan_results(base_dir)
+        return jsonify(results)
+
+    @app.route("/api/results/<int:idx>")
+    def api_result_detail(idx):
+        results = _scan_results(base_dir)
+        if 0 <= idx < len(results):
+            return jsonify(results[idx])
+        return jsonify({"error": "Not found"}), 404
+
+    @app.route("/api/health")
+    def health():
+        return jsonify({"status": "ok", "version": "1.1.0"})
+
+    return app
+
+
+def _scan_results(base_dir: Path) -> List[Dict[str, Any]]:
+    """Scan for result files in kitt-results/ and karr-* directories."""
+    results = []
+
+    # kitt-results/
+    for metrics_file in sorted(base_dir.glob("kitt-results/**/metrics.json")):
+        data = _load_json(metrics_file)
+        if data:
+            results.append(data)
+
+    # karr-*/
+    for karr_dir in sorted(base_dir.glob("karr-*")):
+        if karr_dir.is_dir():
+            for metrics_file in sorted(karr_dir.glob("**/metrics.json")):
+                data = _load_json(metrics_file)
+                if data:
+                    results.append(data)
+
+    return results
+
+
+def _load_json(path: Path) -> Optional[Dict[str, Any]]:
+    """Load a JSON file, returning None on error."""
+    try:
+        with open(path) as f:
+            return json.load(f)
+    except Exception:
+        return None
