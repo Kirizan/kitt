@@ -9056,4 +9056,4 @@ web = ["flask"]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.10"
-content-hash = "476246affd1e221bcb7b121d717106987cc1a39792b7a859dbbcac3979f1bf44"
+content-hash = "d90d4d0b99a0206e8868425734ffacd8ee09d77aefa25e1fc9b2f35122f4e86f"

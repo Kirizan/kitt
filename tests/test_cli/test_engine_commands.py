@@ -32,6 +32,7 @@ class TestSetupEngine:
         assert "torch" in result.output
         assert "vllm" in result.output
         assert "--force-reinstall" in result.output
+        assert "--no-deps" in result.output
         assert "Dry run" in result.output
 
     @patch("kitt.hardware.detector.detect_cuda_version", return_value="12.6")

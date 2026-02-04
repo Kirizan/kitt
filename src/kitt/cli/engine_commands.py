@@ -137,20 +137,50 @@ def setup_engine(engine_name, dry_run):
     cu_tag = f"cu{cuda_major}0"
     torch_index = f"https://download.pytorch.org/whl/{cu_tag}"
 
+    # Use --force-reinstall so pip replaces existing wheels even if the
+    # version number matches, and --no-deps so transitive dependencies
+    # aren't forcefully reinstalled (which would pull versions that
+    # conflict with KITT's own constraints).
     commands = [
         [
             sys.executable, "-m", "pip", "install", "torch",
-            "--force-reinstall", "--index-url", torch_index,
+            "--force-reinstall", "--no-deps", "--index-url", torch_index,
         ],
         [
             sys.executable, "-m", "pip", "install", "vllm",
-            "--force-reinstall", "--extra-index-url", torch_index,
+            "--force-reinstall", "--no-deps", "--extra-index-url", torch_index,
+        ],
+    ]
+
+    # After replacing torch/vllm wheels, reinstall their missing
+    # dependencies (without --force-reinstall) so pip only fetches
+    # what is actually needed.
+    dep_commands = [
+        [sys.executable, "-m", "pip", "install", "torch", "--index-url", torch_index],
+        [
+            sys.executable, "-m", "pip", "install", "vllm",
+            "--extra-index-url", torch_index,
         ],
     ]
 
     console.print(f"[bold]Setting up {engine_name} for CUDA {system_cuda} ({cu_tag})[/bold]")
 
     for cmd in commands:
+        cmd_str = " ".join(cmd)
+        if dry_run:
+            console.print(f"  [dim]would run:[/dim] {cmd_str}")
+        else:
+            console.print(f"  [cyan]running:[/cyan] {cmd_str}")
+            result = subprocess.run(cmd)
+            if result.returncode != 0:
+                console.print(f"  [red]Command failed with exit code {result.returncode}[/red]")
+                raise SystemExit(result.returncode)
+
+    console.print()
+    if not dry_run:
+        console.print("[bold]Installing dependencies...[/bold]")
+
+    for cmd in dep_commands:
         cmd_str = " ".join(cmd)
         if dry_run:
             console.print(f"  [dim]would run:[/dim] {cmd_str}")
