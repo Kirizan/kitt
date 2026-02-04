@@ -8,7 +8,7 @@ import urllib.error
 from datetime import datetime
 from typing import Any, Dict, List
 
-from .base import GenerationMetrics, GenerationResult, InferenceEngine
+from .base import EngineDiagnostics, GenerationMetrics, GenerationResult, InferenceEngine
 from .registry import register_engine
 
 logger = logging.getLogger(__name__)
@@ -32,6 +32,44 @@ class TGIEngine(InferenceEngine):
     @classmethod
     def supported_formats(cls) -> List[str]:
         return ["safetensors", "pytorch"]
+
+    @classmethod
+    def diagnose(cls) -> EngineDiagnostics:
+        """Check TGI server connectivity with detailed error info."""
+        try:
+            req = urllib.request.Request("http://localhost:8080/info")
+            with urllib.request.urlopen(req, timeout=2) as response:
+                info = json.loads(response.read())
+                model_id = info.get("model_id", "unknown")
+                return EngineDiagnostics(
+                    available=True,
+                    engine_type="http_server",
+                    guidance=f"Serving model: {model_id}",
+                )
+        except urllib.error.URLError:
+            return EngineDiagnostics(
+                available=False,
+                engine_type="http_server",
+                error="Cannot connect to TGI server at localhost:8080",
+                guidance=(
+                    "Start a TGI server with:\n"
+                    "  docker run --gpus all -p 8080:80 "
+                    "ghcr.io/huggingface/text-generation-inference:latest "
+                    "--model-id <model>"
+                ),
+            )
+        except (TimeoutError, OSError) as e:
+            return EngineDiagnostics(
+                available=False,
+                engine_type="http_server",
+                error=f"Connection error: {e}",
+                guidance=(
+                    "Start a TGI server with:\n"
+                    "  docker run --gpus all -p 8080:80 "
+                    "ghcr.io/huggingface/text-generation-inference:latest "
+                    "--model-id <model>"
+                ),
+            )
 
     @classmethod
     def _check_dependencies(cls) -> bool:

@@ -59,15 +59,26 @@ def check_engine(engine_name):
         console.print(f"[red]{e}[/red]")
         raise SystemExit(1)
 
+    diag = engine_cls.diagnose()
+
     console.print(f"[bold]Engine: {engine_name}[/bold]")
     console.print(f"  Formats: {', '.join(engine_cls.supported_formats())}")
 
-    available = engine_cls.is_available()
-    if available:
+    check_label = "Server check" if diag.engine_type == "http_server" else "Import check"
+    console.print(f"  Check: {check_label}")
+
+    if diag.available:
         console.print("  Status: [green]Available[/green]")
+        if diag.guidance:
+            console.print(f"  [dim]{diag.guidance}[/dim]")
     else:
         console.print("  Status: [red]Not Available[/red]")
-        console.print("  [yellow]Dependencies may be missing. Check installation.[/yellow]")
+        if diag.error:
+            console.print(f"  [yellow]Error: {diag.error}[/yellow]")
+        if diag.guidance:
+            console.print("  [bold]Suggested fix:[/bold]")
+            for line in diag.guidance.splitlines():
+                console.print(f"    {line}")
 
     # Show CUDA details for GPU-based engines
     if engine_name in GPU_ENGINES:

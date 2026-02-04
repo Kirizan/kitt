@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from kitt.engines.base import GenerationMetrics, GenerationResult, InferenceEngine
+from kitt.engines.base import EngineDiagnostics, GenerationMetrics, GenerationResult, InferenceEngine
 
 
 class TestGenerationMetrics:
@@ -39,6 +39,27 @@ class TestGenerationResult:
         assert result.output == "Hello world"
         assert result.prompt_tokens == 10
         assert result.completion_tokens == 5
+
+
+class TestEngineDiagnostics:
+    def test_creation_defaults(self):
+        diag = EngineDiagnostics(available=True, engine_type="python_import")
+        assert diag.available is True
+        assert diag.engine_type == "python_import"
+        assert diag.error is None
+        assert diag.guidance is None
+
+    def test_creation_full(self):
+        diag = EngineDiagnostics(
+            available=False,
+            engine_type="http_server",
+            error="Connection refused",
+            guidance="Start the server",
+        )
+        assert diag.available is False
+        assert diag.engine_type == "http_server"
+        assert diag.error == "Connection refused"
+        assert diag.guidance == "Start the server"
 
 
 class TestInferenceEngineABC:
@@ -78,3 +99,91 @@ class TestInferenceEngineABC:
         engine = DummyEngine()
         params = {"temperature": 0.5, "max_tokens": 100}
         assert engine.translate_params(params) == params
+
+    def test_diagnose_available(self):
+        """Base diagnose returns available when _check_dependencies returns True."""
+
+        class AvailableEngine(InferenceEngine):
+            @classmethod
+            def name(cls):
+                return "available"
+
+            @classmethod
+            def supported_formats(cls):
+                return ["test"]
+
+            @classmethod
+            def _check_dependencies(cls):
+                return True
+
+            def initialize(self, model_path, config):
+                pass
+
+            def generate(self, prompt, **kwargs):
+                pass
+
+            def cleanup(self):
+                pass
+
+        diag = AvailableEngine.diagnose()
+        assert diag.available is True
+        assert diag.engine_type == "python_import"
+        assert diag.error is None
+
+    def test_diagnose_unavailable(self):
+        """Base diagnose returns unavailable when _check_dependencies returns False."""
+
+        class UnavailableEngine(InferenceEngine):
+            @classmethod
+            def name(cls):
+                return "unavailable"
+
+            @classmethod
+            def supported_formats(cls):
+                return ["test"]
+
+            @classmethod
+            def _check_dependencies(cls):
+                return False
+
+            def initialize(self, model_path, config):
+                pass
+
+            def generate(self, prompt, **kwargs):
+                pass
+
+            def cleanup(self):
+                pass
+
+        diag = UnavailableEngine.diagnose()
+        assert diag.available is False
+        assert diag.error == "Dependency check failed"
+
+    def test_diagnose_exception(self):
+        """Base diagnose captures exceptions from _check_dependencies."""
+
+        class BrokenEngine(InferenceEngine):
+            @classmethod
+            def name(cls):
+                return "broken"
+
+            @classmethod
+            def supported_formats(cls):
+                return ["test"]
+
+            @classmethod
+            def _check_dependencies(cls):
+                raise RuntimeError("something went wrong")
+
+            def initialize(self, model_path, config):
+                pass
+
+            def generate(self, prompt, **kwargs):
+                pass
+
+            def cleanup(self):
+                pass
+
+        diag = BrokenEngine.diagnose()
+        assert diag.available is False
+        assert "something went wrong" in diag.error

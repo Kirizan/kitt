@@ -1,10 +1,11 @@
-"""Tests for engine CLI commands (setup and enhanced check)."""
+"""Tests for engine CLI commands (setup, enhanced check, and diagnostics)."""
 
 from unittest.mock import MagicMock, patch
 
 from click.testing import CliRunner
 
 from kitt.cli.engine_commands import engines
+from kitt.engines.base import EngineDiagnostics
 from kitt.hardware.detector import CudaMismatchInfo
 
 
@@ -108,3 +109,61 @@ class TestCheckEngineEnhanced:
         result = runner.invoke(engines, ["check", "vllm"])
         assert "not detected" in result.output
         assert "not installed or CPU-only" in result.output
+
+
+class TestCheckEngineDiagnose:
+    def test_check_shows_import_error_and_guidance(self):
+        """check command displays diagnose error and guidance for import-based engines."""
+        diag = EngineDiagnostics(
+            available=False,
+            engine_type="python_import",
+            error="vllm is not installed",
+            guidance="pip install vllm\nOr: poetry install -E vllm",
+        )
+
+        with patch(
+            "kitt.engines.vllm_engine.VLLMEngine.diagnose", return_value=diag
+        ):
+            runner = CliRunner()
+            result = runner.invoke(engines, ["check", "vllm"])
+        assert "Import check" in result.output
+        assert "Not Available" in result.output
+        assert "vllm is not installed" in result.output
+        assert "Suggested fix:" in result.output
+        assert "pip install vllm" in result.output
+
+    def test_check_shows_server_error(self):
+        """check command displays diagnose error and guidance for server-based engines."""
+        diag = EngineDiagnostics(
+            available=False,
+            engine_type="http_server",
+            error="Cannot connect to Ollama server at localhost:11434",
+            guidance="Start the server with: ollama serve",
+        )
+
+        with patch(
+            "kitt.engines.ollama_engine.OllamaEngine.diagnose", return_value=diag
+        ):
+            runner = CliRunner()
+            result = runner.invoke(engines, ["check", "ollama"])
+        assert "Server check" in result.output
+        assert "Not Available" in result.output
+        assert "Cannot connect" in result.output
+        assert "ollama serve" in result.output
+
+    def test_check_shows_available_with_info(self):
+        """check command displays available status with optional info."""
+        diag = EngineDiagnostics(
+            available=True,
+            engine_type="http_server",
+            guidance="2 model(s) available",
+        )
+
+        with patch(
+            "kitt.engines.ollama_engine.OllamaEngine.diagnose", return_value=diag
+        ):
+            runner = CliRunner()
+            result = runner.invoke(engines, ["check", "ollama"])
+        assert "Server check" in result.output
+        assert "Available" in result.output
+        assert "2 model(s) available" in result.output

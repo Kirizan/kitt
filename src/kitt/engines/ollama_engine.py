@@ -8,7 +8,7 @@ import urllib.error
 from datetime import datetime
 from typing import Any, Dict, List
 
-from .base import GenerationMetrics, GenerationResult, InferenceEngine
+from .base import EngineDiagnostics, GenerationMetrics, GenerationResult, InferenceEngine
 from .registry import register_engine
 
 logger = logging.getLogger(__name__)
@@ -33,6 +33,34 @@ class OllamaEngine(InferenceEngine):
     @classmethod
     def supported_formats(cls) -> List[str]:
         return ["gguf"]
+
+    @classmethod
+    def diagnose(cls) -> EngineDiagnostics:
+        """Check Ollama server connectivity with detailed error info."""
+        try:
+            req = urllib.request.Request("http://localhost:11434/api/tags")
+            with urllib.request.urlopen(req, timeout=2) as response:
+                data = json.loads(response.read())
+                model_count = len(data.get("models", []))
+                return EngineDiagnostics(
+                    available=True,
+                    engine_type="http_server",
+                    guidance=f"{model_count} model(s) available" if model_count else None,
+                )
+        except urllib.error.URLError:
+            return EngineDiagnostics(
+                available=False,
+                engine_type="http_server",
+                error="Cannot connect to Ollama server at localhost:11434",
+                guidance="Start the server with: ollama serve",
+            )
+        except (TimeoutError, OSError) as e:
+            return EngineDiagnostics(
+                available=False,
+                engine_type="http_server",
+                error=f"Connection error: {e}",
+                guidance="Start the server with: ollama serve",
+            )
 
     @classmethod
     def _check_dependencies(cls) -> bool:

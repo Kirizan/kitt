@@ -1,5 +1,6 @@
-"""Tests for vLLM engine CUDA mismatch handling."""
+"""Tests for vLLM engine CUDA mismatch handling and diagnostics."""
 
+import types
 from unittest.mock import patch
 
 from kitt.hardware.detector import CudaMismatchInfo
@@ -89,3 +90,62 @@ class TestVLLMCheckDependencies:
 
         assert result is False
         mock_guidance.assert_called()
+
+
+class TestVLLMDiagnose:
+    def _get_engine_cls(self):
+        from kitt.engines.vllm_engine import VLLMEngine
+
+        return VLLMEngine
+
+    def test_diagnose_available(self):
+        cls = self._get_engine_cls()
+        fake_vllm = types.ModuleType("vllm")
+        with patch.dict("sys.modules", {"vllm": fake_vllm}):
+            diag = cls.diagnose()
+        assert diag.available is True
+        assert diag.engine_type == "python_import"
+        assert diag.error is None
+
+    def test_diagnose_not_installed(self):
+        cls = self._get_engine_cls()
+        with patch.dict("sys.modules", {"vllm": None}):
+            diag = cls.diagnose()
+        assert diag.available is False
+        assert "not installed" in diag.error
+        assert "pip install vllm" in diag.guidance
+
+    def test_diagnose_cuda_error(self):
+        cls = self._get_engine_cls()
+        with patch.dict("sys.modules", {"vllm": None}):
+            import sys
+
+            del sys.modules["vllm"]
+            with patch(
+                "builtins.__import__",
+                side_effect=ImportError(
+                    "libcudart.so.12: cannot open shared object file"
+                ),
+            ):
+                with patch.object(
+                    cls, "_cuda_guidance", return_value="Fix CUDA mismatch"
+                ):
+                    diag = cls.diagnose()
+        assert diag.available is False
+        assert "libcudart" in diag.error
+        assert diag.guidance == "Fix CUDA mismatch"
+
+    def test_diagnose_non_cuda_import_error(self):
+        cls = self._get_engine_cls()
+        with patch.dict("sys.modules", {"vllm": None}):
+            import sys
+
+            del sys.modules["vllm"]
+            with patch(
+                "builtins.__import__",
+                side_effect=ImportError("some other import issue"),
+            ):
+                diag = cls.diagnose()
+        assert diag.available is False
+        assert "some other import issue" in diag.error
+        assert diag.guidance is None

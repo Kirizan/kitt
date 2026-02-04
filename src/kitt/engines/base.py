@@ -3,7 +3,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 
 @dataclass
@@ -28,6 +28,16 @@ class GenerationResult:
     completion_tokens: int
 
 
+@dataclass
+class EngineDiagnostics:
+    """Structured diagnostics from an engine availability check."""
+
+    available: bool
+    engine_type: str  # "python_import" or "http_server"
+    error: Optional[str] = None
+    guidance: Optional[str] = None
+
+
 class InferenceEngine(ABC):
     """Abstract base class for inference engines."""
 
@@ -48,6 +58,33 @@ class InferenceEngine(ABC):
             return cls._check_dependencies()
         except Exception:
             return False
+
+    @classmethod
+    def diagnose(cls) -> EngineDiagnostics:
+        """Perform a detailed availability check with error info and guidance.
+
+        Returns structured diagnostics including the exact error message
+        and actionable fix suggestions. Unlike is_available(), this method
+        is intended for CLI output where users need to know *why* an engine
+        is unavailable and *how* to fix it.
+        """
+        try:
+            available = cls._check_dependencies()
+            if available:
+                return EngineDiagnostics(
+                    available=True, engine_type="python_import"
+                )
+            return EngineDiagnostics(
+                available=False,
+                engine_type="python_import",
+                error="Dependency check failed",
+            )
+        except Exception as e:
+            return EngineDiagnostics(
+                available=False,
+                engine_type="python_import",
+                error=str(e),
+            )
 
     @classmethod
     @abstractmethod

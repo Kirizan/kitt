@@ -6,7 +6,7 @@ import time
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from .base import GenerationMetrics, GenerationResult, InferenceEngine
+from .base import EngineDiagnostics, GenerationMetrics, GenerationResult, InferenceEngine
 from .registry import register_engine
 
 logger = logging.getLogger(__name__)
@@ -83,6 +83,36 @@ class VLLMEngine(InferenceEngine):
                     )
 
         return None
+
+    @classmethod
+    def diagnose(cls) -> EngineDiagnostics:
+        """Check vLLM availability with detailed error info."""
+        try:
+            import vllm  # noqa: F401
+
+            return EngineDiagnostics(available=True, engine_type="python_import")
+        except ModuleNotFoundError:
+            return EngineDiagnostics(
+                available=False,
+                engine_type="python_import",
+                error="vllm is not installed",
+                guidance="pip install vllm\nOr: poetry install -E vllm",
+            )
+        except ImportError as e:
+            error_msg = str(e)
+            if "libcudart" in error_msg or "libcuda" in error_msg:
+                guidance = cls._cuda_guidance(error_msg)
+                return EngineDiagnostics(
+                    available=False,
+                    engine_type="python_import",
+                    error=error_msg,
+                    guidance=guidance,
+                )
+            return EngineDiagnostics(
+                available=False,
+                engine_type="python_import",
+                error=error_msg,
+            )
 
     @classmethod
     def _check_dependencies(cls) -> bool:

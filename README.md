@@ -183,7 +183,9 @@ Displays a table of engines with their status (Available / Not Available) and su
 
 #### `kitt engines check`
 
-Check whether a specific engine is available and show its details. For GPU-based engines (`vllm`, `llama_cpp`), also displays the system CUDA version, the PyTorch CUDA version, and flags any mismatch between them.
+Check whether a specific engine is available and show detailed diagnostics. The check performs a functional test — importing the Python package for local engines or connecting to the server for HTTP-based engines. When an engine is unavailable, the output shows the exact error and a suggested fix.
+
+For GPU-based engines (`vllm`, `llama_cpp`), also displays the system CUDA version, the PyTorch CUDA version, and flags any mismatch between them.
 
 ```bash
 kitt engines check <engine_name>
@@ -192,11 +194,16 @@ kitt engines check <engine_name>
 **Examples:**
 
 ```bash
+# Import-based engine with missing dependency
 $ kitt engines check vllm
 Engine: vllm
   Formats: safetensors, pytorch
+  Check: Import check
   Status: Not Available
-  Dependencies may be missing. Check installation.
+  Error: vllm is not installed
+  Suggested fix:
+    pip install vllm
+    Or: poetry install -E vllm
   System CUDA: 13.0
   PyTorch CUDA: 12.4
   CUDA mismatch: system CUDA 13.0 vs PyTorch CUDA 12.4
@@ -204,6 +211,25 @@ Engine: vllm
     pip install torch --force-reinstall --index-url https://download.pytorch.org/whl/cu130
     pip install vllm --force-reinstall --extra-index-url https://download.pytorch.org/whl/cu130
   Or run: kitt engines setup vllm
+
+# Server-based engine that is running
+$ kitt engines check ollama
+Engine: ollama
+  Formats: gguf
+  Check: Server check
+  Status: Available
+  2 model(s) available
+
+# Server-based engine that is not running
+$ kitt engines check tgi
+Engine: tgi
+  Formats: safetensors, pytorch
+  Check: Server check
+  Status: Not Available
+  Error: Cannot connect to TGI server at localhost:8080
+  Suggested fix:
+    Start a TGI server with:
+      docker run --gpus all -p 8080:80 ghcr.io/huggingface/text-generation-inference:latest --model-id <model>
 ```
 
 #### `kitt engines setup`

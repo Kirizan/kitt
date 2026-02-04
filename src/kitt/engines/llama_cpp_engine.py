@@ -5,7 +5,7 @@ import time
 from datetime import datetime
 from typing import Any, Dict, List
 
-from .base import GenerationMetrics, GenerationResult, InferenceEngine
+from .base import EngineDiagnostics, GenerationMetrics, GenerationResult, InferenceEngine
 from .registry import register_engine
 
 logger = logging.getLogger(__name__)
@@ -25,6 +25,38 @@ class LlamaCppEngine(InferenceEngine):
     @classmethod
     def supported_formats(cls) -> List[str]:
         return ["gguf"]
+
+    @classmethod
+    def diagnose(cls) -> EngineDiagnostics:
+        """Check llama-cpp-python availability with detailed error info."""
+        try:
+            import llama_cpp  # noqa: F401
+
+            return EngineDiagnostics(available=True, engine_type="python_import")
+        except ModuleNotFoundError:
+            return EngineDiagnostics(
+                available=False,
+                engine_type="python_import",
+                error="llama-cpp-python is not installed",
+                guidance="pip install llama-cpp-python",
+            )
+        except ImportError as e:
+            error_msg = str(e)
+            if "libcudart" in error_msg or "libcuda" in error_msg:
+                return EngineDiagnostics(
+                    available=False,
+                    engine_type="python_import",
+                    error=error_msg,
+                    guidance=(
+                        "Rebuild llama-cpp-python with CUDA support:\n"
+                        '  CMAKE_ARGS="-DGGML_CUDA=on" pip install llama-cpp-python --force-reinstall --no-cache-dir'
+                    ),
+                )
+            return EngineDiagnostics(
+                available=False,
+                engine_type="python_import",
+                error=error_msg,
+            )
 
     @classmethod
     def _check_dependencies(cls) -> bool:
