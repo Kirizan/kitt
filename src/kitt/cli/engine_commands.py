@@ -93,10 +93,10 @@ def check_engine(engine_name):
             )
             console.print(f"  Fix with:")
             console.print(
-                f"    pip install torch --index-url https://download.pytorch.org/whl/{cu_tag}"
+                f"    pip install torch --force-reinstall --index-url https://download.pytorch.org/whl/{cu_tag}"
             )
             console.print(
-                f"    pip install vllm --extra-index-url https://download.pytorch.org/whl/{cu_tag}"
+                f"    pip install vllm --force-reinstall --extra-index-url https://download.pytorch.org/whl/{cu_tag}"
             )
             console.print(f"  Or run: kitt engines setup {engine_name}")
 
@@ -138,10 +138,13 @@ def setup_engine(engine_name, dry_run):
     torch_index = f"https://download.pytorch.org/whl/{cu_tag}"
 
     commands = [
-        [sys.executable, "-m", "pip", "install", "torch", "--index-url", torch_index],
+        [
+            sys.executable, "-m", "pip", "install", "torch",
+            "--force-reinstall", "--index-url", torch_index,
+        ],
         [
             sys.executable, "-m", "pip", "install", "vllm",
-            "--extra-index-url", torch_index,
+            "--force-reinstall", "--extra-index-url", torch_index,
         ],
     ]
 

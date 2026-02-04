@@ -40,8 +40,8 @@ class VLLMEngine(InferenceEngine):
             f"CUDA version mismatch: system has CUDA {mismatch.system_cuda} "
             f"but PyTorch was built for CUDA {mismatch.torch_cuda}.\n"
             f"Fix by reinstalling with the correct CUDA wheels:\n"
-            f"  pip install torch --index-url https://download.pytorch.org/whl/{cu_tag}\n"
-            f"  pip install vllm --extra-index-url https://download.pytorch.org/whl/{cu_tag}\n"
+            f"  pip install torch --force-reinstall --index-url https://download.pytorch.org/whl/{cu_tag}\n"
+            f"  pip install vllm --force-reinstall --extra-index-url https://download.pytorch.org/whl/{cu_tag}\n"
             f"Or run: kitt engines setup vllm"
         )
 

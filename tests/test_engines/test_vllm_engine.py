@@ -26,6 +26,7 @@ class TestVLLMCudaMismatchGuidance:
         assert guidance is not None
         assert "CUDA version mismatch" in guidance
         assert "cu130" in guidance
+        assert "--force-reinstall" in guidance
         assert "kitt engines setup vllm" in guidance
 
     @patch("kitt.hardware.detector.check_cuda_compatibility", return_value=None)
