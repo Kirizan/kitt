@@ -9,6 +9,11 @@ from kitt.engines.base import EngineDiagnostics
 from kitt.hardware.detector import CudaMismatchInfo
 
 
+def _torch_ver_result(version="2.9.1"):
+    """Mock result for the torch version detection subprocess call."""
+    return MagicMock(returncode=0, stdout=f"{version}\n", stderr="")
+
+
 class TestSetupEngine:
     def test_unsupported_engine_exits(self):
         runner = CliRunner()
@@ -66,6 +71,7 @@ class TestSetupEngine:
             side_effect=[
                 install_result, install_result,  # force-reinstall --no-deps
                 install_result, install_result,  # dep installs
+                _torch_ver_result(),             # version detection
                 install_result,                  # torch fixup
                 verify_result,                   # verification
             ]
@@ -93,6 +99,7 @@ class TestSetupEngine:
             side_effect=[
                 install_result, install_result,  # force-reinstall --no-deps
                 install_result, install_result,  # dep installs
+                _torch_ver_result(),             # version detection
                 install_result,                  # torch fixup
                 verify_result,                   # verification
             ]
@@ -118,6 +125,7 @@ class TestSetupEngine:
             side_effect=[
                 install_result, install_result,  # force-reinstall --no-deps
                 install_result, install_result,  # dep installs
+                _torch_ver_result(),             # version detection
                 install_result,                  # torch fixup
                 verify_result,                   # verification
             ]
@@ -132,8 +140,8 @@ class TestSetupEngine:
 
     @patch("kitt.hardware.detector.detect_cuda_version", return_value="13.0")
     @patch("kitt.cli.engine_commands.subprocess")
-    def test_torch_fixup_runs_after_deps(self, mock_subprocess, mock_cuda):
-        """The 5th subprocess call is torch --force-reinstall --no-deps with correct index."""
+    def test_torch_fixup_pins_resolved_version(self, mock_subprocess, mock_cuda):
+        """Torch fixup re-installs the version chosen by dep resolution, not latest."""
         install_result = MagicMock(returncode=0)
         verify_result = MagicMock(
             returncode=0,
@@ -142,10 +150,11 @@ class TestSetupEngine:
         )
         mock_subprocess.run = MagicMock(
             side_effect=[
-                install_result, install_result,  # force-reinstall --no-deps
-                install_result, install_result,  # dep installs
-                install_result,                  # torch fixup
-                verify_result,                   # verification
+                install_result, install_result,       # force-reinstall --no-deps
+                install_result, install_result,       # dep installs
+                _torch_ver_result("2.9.1"),           # version detection → 2.9.1
+                install_result,                       # torch fixup
+                verify_result,                        # verification
             ]
         )
 
@@ -153,10 +162,10 @@ class TestSetupEngine:
         result = runner.invoke(engines, ["setup", "vllm"])
         assert result.exit_code == 0
 
-        # The 5th call (index 4) should be the torch fixup
-        fixup_call = mock_subprocess.run.call_args_list[4]
-        fixup_cmd = fixup_call[0][0]  # positional arg
-        assert "torch" in fixup_cmd
+        # Call index: 0-1 initial, 2-3 deps, 4 version detect, 5 fixup, 6 verify
+        fixup_call = mock_subprocess.run.call_args_list[5]
+        fixup_cmd = fixup_call[0][0]
+        assert "torch==2.9.1" in fixup_cmd
         assert "--force-reinstall" in fixup_cmd
         assert "--no-deps" in fixup_cmd
         assert any("cu130" in arg for arg in fixup_cmd)
@@ -175,6 +184,7 @@ class TestSetupEngine:
             side_effect=[
                 install_result, install_result,
                 install_result, install_result,
+                _torch_ver_result(),
                 install_result,
                 verify_result,
             ]
@@ -184,8 +194,9 @@ class TestSetupEngine:
         result = runner.invoke(engines, ["setup", "vllm"])
         assert result.exit_code == 0
 
-        # All pip install calls (indices 0-4) should use capture_output
-        for i in range(5):
+        # Pip install calls (indices 0-3, 5) should use capture_output.
+        # Index 4 is version detection (always captured), 6 is verification.
+        for i in [0, 1, 2, 3, 5]:
             call_kwargs = mock_subprocess.run.call_args_list[i][1]
             assert call_kwargs.get("capture_output") is True
             assert call_kwargs.get("text") is True
@@ -204,6 +215,7 @@ class TestSetupEngine:
             side_effect=[
                 install_result, install_result,
                 install_result, install_result,
+                _torch_ver_result(),
                 install_result,
                 verify_result,
             ]
@@ -213,8 +225,8 @@ class TestSetupEngine:
         result = runner.invoke(engines, ["setup", "--verbose", "vllm"])
         assert result.exit_code == 0
 
-        # All pip install calls (indices 0-4) should NOT use capture_output
-        for i in range(5):
+        # Pip install calls (indices 0-3, 5) should NOT use capture_output
+        for i in [0, 1, 2, 3, 5]:
             call_kwargs = mock_subprocess.run.call_args_list[i][1]
             assert "capture_output" not in call_kwargs
 
@@ -222,7 +234,6 @@ class TestSetupEngine:
     @patch("kitt.cli.engine_commands.subprocess")
     def test_pip_failure_shows_stderr_when_quiet(self, mock_subprocess, mock_cuda):
         """When pip fails in quiet mode, captured stderr is displayed."""
-        ok_result = MagicMock(returncode=0)
         fail_result = MagicMock(
             returncode=1,
             stdout="",
@@ -252,6 +263,7 @@ class TestSetupEngine:
             side_effect=[
                 install_result, install_result,
                 install_result, install_result,
+                _torch_ver_result(),
                 install_result,
                 verify_result,
             ]
@@ -262,6 +274,36 @@ class TestSetupEngine:
         assert result.exit_code != 0
         assert "import failed" in result.output
         assert "ModuleNotFoundError" in result.output
+
+    @patch("kitt.hardware.detector.detect_cuda_version", return_value="13.0")
+    @patch("kitt.cli.engine_commands.subprocess")
+    def test_torch_version_detection_failure_falls_back(self, mock_subprocess, mock_cuda):
+        """If torch version detection fails, fixup uses unpinned 'torch'."""
+        install_result = MagicMock(returncode=0)
+        ver_fail = MagicMock(returncode=1, stdout="", stderr="error")
+        verify_result = MagicMock(
+            returncode=0,
+            stdout="torch_cuda=13.0\nok\n",
+            stderr="",
+        )
+        mock_subprocess.run = MagicMock(
+            side_effect=[
+                install_result, install_result,
+                install_result, install_result,
+                ver_fail,                        # version detection fails
+                install_result,                  # torch fixup (unpinned)
+                verify_result,
+            ]
+        )
+
+        runner = CliRunner()
+        result = runner.invoke(engines, ["setup", "vllm"])
+        assert result.exit_code == 0
+
+        # Fixup command (index 5) should use bare "torch" without version pin
+        fixup_cmd = mock_subprocess.run.call_args_list[5][0][0]
+        assert "torch" in fixup_cmd
+        assert not any("torch==" in arg for arg in fixup_cmd)
 
 
 class TestCheckEngineEnhanced:

@@ -216,18 +216,36 @@ def setup_engine(engine_name, dry_run, verbose):
 
     # Re-pin torch after dependency resolution.  Step 4 (pip install vllm
     # --extra-index-url) may silently replace the cu{N}0 torch with a cu12
-    # build from PyPI.  Force-reinstalling torch with --no-deps undoes that.
-    torch_fixup_cmd = [
-        sys.executable, "-m", "pip", "install", "torch",
-        "--force-reinstall", "--no-deps", "--index-url", torch_index,
-    ]
-    fixup_str = " ".join(torch_fixup_cmd)
+    # build from PyPI.  Force-reinstalling torch with --no-deps from the CUDA
+    # index undoes that.  We pin to the SAME version that dep resolution chose
+    # so we don't upgrade torch beyond what vllm expects (which would cause
+    # ABI mismatches with NVIDIA libs like NCCL).
     if dry_run:
-        console.print(f"  [dim]would run:[/dim] {fixup_str}")
+        # Can't detect version in dry-run since deps weren't installed.
+        fixup_template = [
+            sys.executable, "-m", "pip", "install", "torch",
+            "--force-reinstall", "--no-deps", "--index-url", torch_index,
+        ]
+        console.print(f"  [dim]would run:[/dim] {' '.join(fixup_template)}")
     else:
         console.print()
         console.print("[bold]Re-pinning torch to correct CUDA index...[/bold]")
-        console.print(f"  [cyan]running:[/cyan] {fixup_str}")
+
+        # Detect the torch version that dep resolution settled on.
+        torch_ver_result = subprocess.run(
+            [sys.executable, "-c",
+             "from importlib.metadata import version; "
+             "print(version('torch').split('+')[0])"],
+            capture_output=True, text=True,
+        )
+        torch_ver = torch_ver_result.stdout.strip() if torch_ver_result.returncode == 0 else ""
+        torch_pkg = f"torch=={torch_ver}" if torch_ver else "torch"
+
+        torch_fixup_cmd = [
+            sys.executable, "-m", "pip", "install", torch_pkg,
+            "--force-reinstall", "--no-deps", "--index-url", torch_index,
+        ]
+        console.print(f"  [cyan]running:[/cyan] {' '.join(torch_fixup_cmd)}")
         result = subprocess.run(torch_fixup_cmd, **pip_kwargs)
         if result.returncode != 0:
             console.print(f"  [red]Command failed with exit code {result.returncode}[/red]")
@@ -329,5 +347,5 @@ def setup_engine(engine_name, dry_run, verbose):
             else:
                 console.print(f"\n  Error: {stderr[:2000]}")
         else:
-            console.print(f"\n  Error: {stderr[:500]}")
+            console.print(f"\n  Error: {stderr[:2000]}")
         raise SystemExit(1)
