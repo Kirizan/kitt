@@ -252,8 +252,11 @@ Currently supported engines: `vllm`.
 # Preview the install commands
 $ kitt engines setup --dry-run vllm
 Setting up vllm for CUDA 13.0 (cu130)
-  would run: /path/to/python -m pip install torch --force-reinstall --index-url https://download.pytorch.org/whl/cu130
-  would run: /path/to/python -m pip install vllm --force-reinstall --extra-index-url https://download.pytorch.org/whl/cu130
+  would run: /path/to/python -m pip install torch --force-reinstall --no-deps --index-url https://download.pytorch.org/whl/cu130
+  would run: /path/to/python -m pip install vllm --force-reinstall --no-deps --extra-index-url https://download.pytorch.org/whl/cu130
+  would run: /path/to/python -m pip install torch --index-url https://download.pytorch.org/whl/cu130
+  would run: /path/to/python -m pip install vllm --extra-index-url https://download.pytorch.org/whl/cu130
+  would run: /path/to/python -m pip install torch --force-reinstall --no-deps --index-url https://download.pytorch.org/whl/cu130
 
 Dry run — no commands were executed.
 
