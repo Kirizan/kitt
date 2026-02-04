@@ -151,9 +151,10 @@ def setup_engine(engine_name, dry_run, verbose):
     cu_tag = f"cu{cuda_major}0"
     torch_index = f"https://download.pytorch.org/whl/{cu_tag}"
 
-    # Suppress pip stdout unless --verbose is passed.  Stderr still flows
-    # through so error messages are always visible.
-    pip_stdout = None if verbose else subprocess.DEVNULL
+    # Suppress pip output unless --verbose is passed.  When quiet, capture
+    # both stdout and stderr so notices / dep-resolver warnings don't clutter
+    # the screen.  Captured stderr is shown if the command fails.
+    pip_kwargs: dict = {} if verbose else {"capture_output": True, "text": True}
 
     # Use --force-reinstall so pip replaces existing wheels even if the
     # version number matches, and --no-deps so transitive dependencies
@@ -189,9 +190,11 @@ def setup_engine(engine_name, dry_run, verbose):
             console.print(f"  [dim]would run:[/dim] {cmd_str}")
         else:
             console.print(f"  [cyan]running:[/cyan] {cmd_str}")
-            result = subprocess.run(cmd, stdout=pip_stdout)
+            result = subprocess.run(cmd, **pip_kwargs)
             if result.returncode != 0:
                 console.print(f"  [red]Command failed with exit code {result.returncode}[/red]")
+                if not verbose and result.stderr:
+                    console.print(f"  {result.stderr.strip()}")
                 raise SystemExit(result.returncode)
 
     console.print()
@@ -204,9 +207,11 @@ def setup_engine(engine_name, dry_run, verbose):
             console.print(f"  [dim]would run:[/dim] {cmd_str}")
         else:
             console.print(f"  [cyan]running:[/cyan] {cmd_str}")
-            result = subprocess.run(cmd, stdout=pip_stdout)
+            result = subprocess.run(cmd, **pip_kwargs)
             if result.returncode != 0:
                 console.print(f"  [red]Command failed with exit code {result.returncode}[/red]")
+                if not verbose and result.stderr:
+                    console.print(f"  {result.stderr.strip()}")
                 raise SystemExit(result.returncode)
 
     # Re-pin torch after dependency resolution.  Step 4 (pip install vllm
@@ -223,9 +228,11 @@ def setup_engine(engine_name, dry_run, verbose):
         console.print()
         console.print("[bold]Re-pinning torch to correct CUDA index...[/bold]")
         console.print(f"  [cyan]running:[/cyan] {fixup_str}")
-        result = subprocess.run(torch_fixup_cmd, stdout=pip_stdout)
+        result = subprocess.run(torch_fixup_cmd, **pip_kwargs)
         if result.returncode != 0:
             console.print(f"  [red]Command failed with exit code {result.returncode}[/red]")
+            if not verbose and result.stderr:
+                console.print(f"  {result.stderr.strip()}")
             raise SystemExit(result.returncode)
 
     if dry_run:
@@ -320,7 +327,7 @@ def setup_engine(engine_name, dry_run, verbose):
                     f"https://download.pytorch.org/whl/nightly/{cu_tag}"
                 )
             else:
-                console.print(f"\n  Error: {stderr[:500]}")
+                console.print(f"\n  Error: {stderr[:2000]}")
         else:
             console.print(f"\n  Error: {stderr[:500]}")
         raise SystemExit(1)

@@ -163,8 +163,8 @@ class TestSetupEngine:
 
     @patch("kitt.hardware.detector.detect_cuda_version", return_value="13.0")
     @patch("kitt.cli.engine_commands.subprocess")
-    def test_pip_stdout_suppressed_by_default(self, mock_subprocess, mock_cuda):
-        """Pip stdout is sent to DEVNULL when --verbose is not passed."""
+    def test_pip_output_captured_by_default(self, mock_subprocess, mock_cuda):
+        """Pip output is captured when --verbose is not passed."""
         install_result = MagicMock(returncode=0)
         verify_result = MagicMock(
             returncode=0,
@@ -184,15 +184,16 @@ class TestSetupEngine:
         result = runner.invoke(engines, ["setup", "vllm"])
         assert result.exit_code == 0
 
-        # All pip install calls (indices 0-4) should pass stdout=DEVNULL
+        # All pip install calls (indices 0-4) should use capture_output
         for i in range(5):
             call_kwargs = mock_subprocess.run.call_args_list[i][1]
-            assert call_kwargs.get("stdout") == mock_subprocess.DEVNULL
+            assert call_kwargs.get("capture_output") is True
+            assert call_kwargs.get("text") is True
 
     @patch("kitt.hardware.detector.detect_cuda_version", return_value="13.0")
     @patch("kitt.cli.engine_commands.subprocess")
-    def test_pip_stdout_shown_with_verbose(self, mock_subprocess, mock_cuda):
-        """Pip stdout is not suppressed when --verbose is passed."""
+    def test_pip_output_shown_with_verbose(self, mock_subprocess, mock_cuda):
+        """Pip output is not captured when --verbose is passed."""
         install_result = MagicMock(returncode=0)
         verify_result = MagicMock(
             returncode=0,
@@ -212,10 +213,30 @@ class TestSetupEngine:
         result = runner.invoke(engines, ["setup", "--verbose", "vllm"])
         assert result.exit_code == 0
 
-        # All pip install calls (indices 0-4) should pass stdout=None
+        # All pip install calls (indices 0-4) should NOT use capture_output
         for i in range(5):
             call_kwargs = mock_subprocess.run.call_args_list[i][1]
-            assert call_kwargs.get("stdout") is None
+            assert "capture_output" not in call_kwargs
+
+    @patch("kitt.hardware.detector.detect_cuda_version", return_value="13.0")
+    @patch("kitt.cli.engine_commands.subprocess")
+    def test_pip_failure_shows_stderr_when_quiet(self, mock_subprocess, mock_cuda):
+        """When pip fails in quiet mode, captured stderr is displayed."""
+        ok_result = MagicMock(returncode=0)
+        fail_result = MagicMock(
+            returncode=1,
+            stdout="",
+            stderr="ERROR: Could not find a version that satisfies the requirement torch",
+        )
+        mock_subprocess.run = MagicMock(
+            side_effect=[fail_result],
+        )
+
+        runner = CliRunner()
+        result = runner.invoke(engines, ["setup", "vllm"])
+        assert result.exit_code != 0
+        assert "Command failed with exit code 1" in result.output
+        assert "Could not find a version" in result.output
 
     @patch("kitt.hardware.detector.detect_cuda_version", return_value="13.0")
     @patch("kitt.cli.engine_commands.subprocess")
