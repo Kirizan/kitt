@@ -5,7 +5,7 @@ from unittest.mock import patch
 from kitt.hardware.detector import CudaMismatchInfo
 
 
-class TestVLLMCudaMismatchGuidance:
+class TestVLLMCudaGuidance:
     def _get_engine_cls(self):
         from kitt.engines.vllm_engine import VLLMEngine
 
@@ -20,9 +20,9 @@ class TestVLLMCudaMismatchGuidance:
             torch_major=12,
         ),
     )
-    def test_returns_guidance_on_mismatch(self, mock_check):
+    def test_returns_guidance_on_torch_mismatch(self, mock_check):
         cls = self._get_engine_cls()
-        guidance = cls._cuda_mismatch_guidance()
+        guidance = cls._cuda_guidance()
         assert guidance is not None
         assert "CUDA version mismatch" in guidance
         assert "cu130" in guidance
@@ -30,9 +30,32 @@ class TestVLLMCudaMismatchGuidance:
         assert "kitt engines setup vllm" in guidance
 
     @patch("kitt.hardware.detector.check_cuda_compatibility", return_value=None)
-    def test_returns_none_when_no_mismatch(self, mock_check):
+    @patch("kitt.hardware.detector.detect_cuda_version", return_value=None)
+    def test_returns_none_when_no_cuda(self, mock_sys, mock_check):
         cls = self._get_engine_cls()
-        guidance = cls._cuda_mismatch_guidance()
+        guidance = cls._cuda_guidance()
+        assert guidance is None
+
+    @patch("kitt.hardware.detector.check_cuda_compatibility", return_value=None)
+    @patch("kitt.hardware.detector.detect_cuda_version", return_value="13.0")
+    def test_returns_guidance_on_library_mismatch(self, mock_sys, mock_check):
+        """When torch matches system but vllm needs a different CUDA runtime."""
+        cls = self._get_engine_cls()
+        error = "libcudart.so.12: cannot open shared object file"
+        guidance = cls._cuda_guidance(error)
+        assert guidance is not None
+        assert "CUDA 12" in guidance
+        assert "CUDA 13" in guidance
+        assert "cuda-compat-12" in guidance
+        assert "--no-binary" in guidance
+
+    @patch("kitt.hardware.detector.check_cuda_compatibility", return_value=None)
+    @patch("kitt.hardware.detector.detect_cuda_version", return_value="12.4")
+    def test_returns_none_when_library_matches_system(self, mock_sys, mock_check):
+        """No guidance when the library version matches system CUDA."""
+        cls = self._get_engine_cls()
+        error = "libcudart.so.12: cannot open shared object file"
+        guidance = cls._cuda_guidance(error)
         assert guidance is None
 
 
@@ -48,17 +71,13 @@ class TestVLLMCheckDependencies:
         assert cls._check_dependencies() is False
 
     @patch(
-        "kitt.engines.vllm_engine.VLLMEngine._cuda_mismatch_guidance",
+        "kitt.engines.vllm_engine.VLLMEngine._cuda_guidance",
         return_value="mismatch guidance here",
     )
     def test_libcudart_import_error_triggers_guidance(self, mock_guidance):
         cls = self._get_engine_cls()
 
-        def raise_import_error():
-            raise ImportError("libcudart.so.12: cannot open shared object file")
-
         with patch.dict("sys.modules", {"vllm": None}):
-            # Remove the None entry so import triggers our side effect
             import sys
 
             del sys.modules["vllm"]

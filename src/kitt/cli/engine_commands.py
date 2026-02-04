@@ -193,5 +193,51 @@ def setup_engine(engine_name, dry_run):
 
     if dry_run:
         console.print("\n[yellow]Dry run — no commands were executed.[/yellow]")
+        return
+
+    # Verify the install actually worked by trying to import vllm
+    console.print()
+    console.print("[bold]Verifying installation...[/bold]")
+    verify = subprocess.run(
+        [sys.executable, "-c", "import vllm; print('ok')"],
+        capture_output=True,
+        text=True,
+    )
+    if verify.returncode == 0 and "ok" in verify.stdout:
+        console.print(f"[green]{engine_name} setup complete — import verified.[/green]")
     else:
-        console.print(f"\n[green]{engine_name} setup complete.[/green]")
+        stderr = verify.stderr.strip()
+        console.print(f"[red]{engine_name} installed but import failed.[/red]")
+        # Check if it's a CUDA library mismatch
+        if "libcudart" in stderr or "libcuda" in stderr:
+            import re
+
+            match = re.search(r"libcuda\w*\.so\.(\d+)", stderr)
+            lib_major = int(match.group(1)) if match else None
+            if lib_major and lib_major != cuda_major:
+                console.print(
+                    f"\n  The installed vLLM package requires CUDA {lib_major} "
+                    f"runtime libraries but this system has CUDA {system_cuda}."
+                )
+                console.print(
+                    f"  CUDA {cuda_major} wheels for vLLM may not be available yet.\n"
+                )
+                console.print("  Options:")
+                console.print(
+                    f"    1. Install the CUDA {lib_major} compatibility package:"
+                )
+                console.print(f"         sudo apt install cuda-compat-{lib_major}")
+                console.print(
+                    f"    2. Build vLLM from source against CUDA {cuda_major}:"
+                )
+                console.print("         pip install vllm --no-binary vllm")
+                console.print("    3. Check for a nightly/pre-release wheel:")
+                console.print(
+                    f"         pip install vllm --pre --extra-index-url "
+                    f"https://download.pytorch.org/whl/nightly/{cu_tag}"
+                )
+            else:
+                console.print(f"\n  Error: {stderr[:500]}")
+        else:
+            console.print(f"\n  Error: {stderr[:500]}")
+        raise SystemExit(1)

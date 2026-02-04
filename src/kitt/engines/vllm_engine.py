@@ -1,6 +1,7 @@
 """vLLM inference engine implementation."""
 
 import logging
+import re
 import time
 from datetime import datetime
 from typing import Any, Dict, List, Optional
@@ -27,23 +28,61 @@ class VLLMEngine(InferenceEngine):
         return ["safetensors", "pytorch"]
 
     @staticmethod
-    def _cuda_mismatch_guidance() -> Optional[str]:
-        """Check for CUDA version mismatch and return fix instructions."""
-        from kitt.hardware.detector import check_cuda_compatibility
+    def _cuda_guidance(error_msg: str = "") -> Optional[str]:
+        """Return CUDA fix instructions based on mismatch or error context.
 
-        mismatch = check_cuda_compatibility()
-        if mismatch is None:
-            return None
-
-        cu_tag = f"cu{mismatch.system_major}0"
-        return (
-            f"CUDA version mismatch: system has CUDA {mismatch.system_cuda} "
-            f"but PyTorch was built for CUDA {mismatch.torch_cuda}.\n"
-            f"Fix by reinstalling with the correct CUDA wheels:\n"
-            f"  pip install torch --force-reinstall --index-url https://download.pytorch.org/whl/{cu_tag}\n"
-            f"  pip install vllm --force-reinstall --extra-index-url https://download.pytorch.org/whl/{cu_tag}\n"
-            f"Or run: kitt engines setup vllm"
+        Checks for two situations:
+        1. PyTorch's CUDA version doesn't match the system (torch mismatch).
+        2. The error message references a specific CUDA library version
+           (e.g. libcudart.so.12) that differs from the system CUDA,
+           meaning the installed package was built for a different CUDA
+           even though torch may already be correct.
+        """
+        from kitt.hardware.detector import (
+            check_cuda_compatibility,
+            detect_cuda_version,
         )
+
+        # Case 1: torch vs system mismatch
+        mismatch = check_cuda_compatibility()
+        if mismatch is not None:
+            cu_tag = f"cu{mismatch.system_major}0"
+            return (
+                f"CUDA version mismatch: system has CUDA {mismatch.system_cuda} "
+                f"but PyTorch was built for CUDA {mismatch.torch_cuda}.\n"
+                f"Fix by reinstalling with the correct CUDA wheels:\n"
+                f"  pip install torch --force-reinstall --no-deps "
+                f"--index-url https://download.pytorch.org/whl/{cu_tag}\n"
+                f"  pip install vllm --force-reinstall --no-deps "
+                f"--extra-index-url https://download.pytorch.org/whl/{cu_tag}\n"
+                f"Or run: kitt engines setup vllm"
+            )
+
+        # Case 2: package references a CUDA library the system doesn't have
+        system_cuda = detect_cuda_version()
+        if system_cuda and error_msg:
+            match = re.search(r"libcuda\w*\.so\.(\d+)", error_msg)
+            if match:
+                lib_major = int(match.group(1))
+                system_major = int(system_cuda.split(".")[0])
+                if lib_major != system_major:
+                    return (
+                        f"The installed vLLM package requires CUDA {lib_major} "
+                        f"runtime libraries but this system has CUDA {system_cuda}.\n"
+                        f"CUDA {system_major} wheels for vLLM may not be "
+                        f"available yet. Options:\n"
+                        f"  1. Install the CUDA {lib_major} compatibility "
+                        f"package so both runtimes coexist:\n"
+                        f"       sudo apt install cuda-compat-{lib_major}\n"
+                        f"  2. Build vLLM from source against CUDA {system_major}:\n"
+                        f"       pip install vllm --no-binary vllm\n"
+                        f"  3. Check for a nightly/pre-release wheel:\n"
+                        f"       pip install vllm --pre --extra-index-url "
+                        f"https://download.pytorch.org/whl/nightly/"
+                        f"cu{system_major}0"
+                    )
+
+        return None
 
     @classmethod
     def _check_dependencies(cls) -> bool:
@@ -56,13 +95,13 @@ class VLLMEngine(InferenceEngine):
         except ImportError as e:
             error_msg = str(e)
             if "libcudart" in error_msg or "libcuda" in error_msg:
-                guidance = cls._cuda_mismatch_guidance()
+                guidance = cls._cuda_guidance(error_msg)
                 if guidance:
                     logger.warning(guidance)
                 else:
                     logger.warning(
                         f"vLLM failed to import due to a CUDA library error: {e}\n"
-                        "Check that your CUDA runtime matches the installed PyTorch version."
+                        "Check that your CUDA runtime matches the installed packages."
                     )
             else:
                 logger.warning(f"vLLM is installed but failed to import: {e}")
@@ -79,7 +118,7 @@ class VLLMEngine(InferenceEngine):
         except ImportError as e:
             error_msg = str(e)
             if "libcudart" in error_msg or "libcuda" in error_msg:
-                guidance = self._cuda_mismatch_guidance()
+                guidance = self._cuda_guidance(error_msg)
                 if guidance:
                     raise RuntimeError(
                         f"vLLM failed to load: {e}\n\n{guidance}"

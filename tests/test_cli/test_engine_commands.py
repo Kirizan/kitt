@@ -1,6 +1,6 @@
 """Tests for engine CLI commands (setup and enhanced check)."""
 
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from click.testing import CliRunner
 
@@ -41,6 +41,32 @@ class TestSetupEngine:
         result = runner.invoke(engines, ["setup", "--dry-run", "vllm"])
         assert result.exit_code == 0
         assert "cu120" in result.output
+
+    @patch("kitt.hardware.detector.detect_cuda_version", return_value="13.0")
+    @patch("kitt.cli.engine_commands.subprocess")
+    def test_verify_failure_shows_cuda_compat_guidance(self, mock_subprocess, mock_cuda):
+        """When install succeeds but import fails with libcudart, show compat guidance."""
+        install_result = MagicMock(returncode=0)
+        verify_result = MagicMock(
+            returncode=1,
+            stdout="",
+            stderr="libcudart.so.12: cannot open shared object file",
+        )
+        mock_subprocess.run = MagicMock(
+            side_effect=[
+                install_result, install_result,  # force-reinstall --no-deps
+                install_result, install_result,  # dep installs
+                verify_result,                   # verification
+            ]
+        )
+
+        runner = CliRunner()
+        result = runner.invoke(engines, ["setup", "vllm"])
+        assert result.exit_code != 0
+        assert "import failed" in result.output
+        assert "CUDA 12" in result.output
+        assert "cuda-compat-12" in result.output
+        assert "--no-binary" in result.output
 
 
 class TestCheckEngineEnhanced:
