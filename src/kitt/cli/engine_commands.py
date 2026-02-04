@@ -116,11 +116,13 @@ def check_engine(engine_name):
 @engines.command("setup")
 @click.argument("engine_name")
 @click.option("--dry-run", is_flag=True, help="Show commands without executing them")
-def setup_engine(engine_name, dry_run):
+@click.option("--verbose", is_flag=True, help="Show full pip output")
+def setup_engine(engine_name, dry_run, verbose):
     """Install an engine with the correct CUDA-matched wheels.
 
     Detects the system CUDA version and installs PyTorch and the engine
-    with matching CUDA wheel index URLs.
+    with matching CUDA wheel index URLs.  Pip output is suppressed by
+    default; use --verbose to see it.
     """
     from kitt.hardware.detector import detect_cuda_version
 
@@ -148,6 +150,10 @@ def setup_engine(engine_name, dry_run):
 
     cu_tag = f"cu{cuda_major}0"
     torch_index = f"https://download.pytorch.org/whl/{cu_tag}"
+
+    # Suppress pip stdout unless --verbose is passed.  Stderr still flows
+    # through so error messages are always visible.
+    pip_stdout = None if verbose else subprocess.DEVNULL
 
     # Use --force-reinstall so pip replaces existing wheels even if the
     # version number matches, and --no-deps so transitive dependencies
@@ -183,7 +189,7 @@ def setup_engine(engine_name, dry_run):
             console.print(f"  [dim]would run:[/dim] {cmd_str}")
         else:
             console.print(f"  [cyan]running:[/cyan] {cmd_str}")
-            result = subprocess.run(cmd)
+            result = subprocess.run(cmd, stdout=pip_stdout)
             if result.returncode != 0:
                 console.print(f"  [red]Command failed with exit code {result.returncode}[/red]")
                 raise SystemExit(result.returncode)
@@ -198,7 +204,7 @@ def setup_engine(engine_name, dry_run):
             console.print(f"  [dim]would run:[/dim] {cmd_str}")
         else:
             console.print(f"  [cyan]running:[/cyan] {cmd_str}")
-            result = subprocess.run(cmd)
+            result = subprocess.run(cmd, stdout=pip_stdout)
             if result.returncode != 0:
                 console.print(f"  [red]Command failed with exit code {result.returncode}[/red]")
                 raise SystemExit(result.returncode)
@@ -217,7 +223,7 @@ def setup_engine(engine_name, dry_run):
         console.print()
         console.print("[bold]Re-pinning torch to correct CUDA index...[/bold]")
         console.print(f"  [cyan]running:[/cyan] {fixup_str}")
-        result = subprocess.run(torch_fixup_cmd)
+        result = subprocess.run(torch_fixup_cmd, stdout=pip_stdout)
         if result.returncode != 0:
             console.print(f"  [red]Command failed with exit code {result.returncode}[/red]")
             raise SystemExit(result.returncode)

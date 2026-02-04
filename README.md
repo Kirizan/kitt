@@ -243,6 +243,7 @@ kitt engines setup <engine_name> [--dry-run]
 | Option | Description |
 |---|---|
 | `--dry-run` | Show the pip commands that would be run without executing them |
+| `--verbose` | Show full pip output (suppressed by default) |
 
 Currently supported engines: `vllm`.
 

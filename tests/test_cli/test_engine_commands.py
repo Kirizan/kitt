@@ -163,6 +163,62 @@ class TestSetupEngine:
 
     @patch("kitt.hardware.detector.detect_cuda_version", return_value="13.0")
     @patch("kitt.cli.engine_commands.subprocess")
+    def test_pip_stdout_suppressed_by_default(self, mock_subprocess, mock_cuda):
+        """Pip stdout is sent to DEVNULL when --verbose is not passed."""
+        install_result = MagicMock(returncode=0)
+        verify_result = MagicMock(
+            returncode=0,
+            stdout="torch_cuda=13.0\nok\n",
+            stderr="",
+        )
+        mock_subprocess.run = MagicMock(
+            side_effect=[
+                install_result, install_result,
+                install_result, install_result,
+                install_result,
+                verify_result,
+            ]
+        )
+
+        runner = CliRunner()
+        result = runner.invoke(engines, ["setup", "vllm"])
+        assert result.exit_code == 0
+
+        # All pip install calls (indices 0-4) should pass stdout=DEVNULL
+        for i in range(5):
+            call_kwargs = mock_subprocess.run.call_args_list[i][1]
+            assert call_kwargs.get("stdout") == mock_subprocess.DEVNULL
+
+    @patch("kitt.hardware.detector.detect_cuda_version", return_value="13.0")
+    @patch("kitt.cli.engine_commands.subprocess")
+    def test_pip_stdout_shown_with_verbose(self, mock_subprocess, mock_cuda):
+        """Pip stdout is not suppressed when --verbose is passed."""
+        install_result = MagicMock(returncode=0)
+        verify_result = MagicMock(
+            returncode=0,
+            stdout="torch_cuda=13.0\nok\n",
+            stderr="",
+        )
+        mock_subprocess.run = MagicMock(
+            side_effect=[
+                install_result, install_result,
+                install_result, install_result,
+                install_result,
+                verify_result,
+            ]
+        )
+
+        runner = CliRunner()
+        result = runner.invoke(engines, ["setup", "--verbose", "vllm"])
+        assert result.exit_code == 0
+
+        # All pip install calls (indices 0-4) should pass stdout=None
+        for i in range(5):
+            call_kwargs = mock_subprocess.run.call_args_list[i][1]
+            assert call_kwargs.get("stdout") is None
+
+    @patch("kitt.hardware.detector.detect_cuda_version", return_value="13.0")
+    @patch("kitt.cli.engine_commands.subprocess")
     def test_verify_non_cuda_failure(self, mock_subprocess, mock_cuda):
         """Exit code 1 with non-CUDA error shows raw error text."""
         install_result = MagicMock(returncode=0)
