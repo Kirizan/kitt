@@ -31,6 +31,14 @@ class StorageInfo:
     type: str  # 'nvme', 'ssd', 'hdd', 'unknown'
 
 
+@dataclass
+class CudaMismatchInfo:
+    system_cuda: str  # System CUDA version (e.g. "13.0")
+    torch_cuda: str  # PyTorch CUDA version (e.g. "12.4")
+    system_major: int
+    torch_major: int
+
+
 def detect_environment_type() -> str:
     """Detect if running in WSL2, Docker, DGX, or native.
 
@@ -380,4 +388,59 @@ def detect_driver_version() -> Optional[str]:
             return result.stdout.strip().split("\n")[0]
     except Exception:
         pass
+    return None
+
+
+def detect_torch_cuda_version() -> Optional[str]:
+    """Detect the CUDA version that PyTorch was built against.
+
+    Returns:
+        CUDA version string (e.g. "12.4") or None if torch is not
+        installed or was built without CUDA support.
+    """
+    try:
+        import torch
+
+        cuda_ver = getattr(torch.version, "cuda", None)
+        if cuda_ver:
+            return cuda_ver
+    except ImportError:
+        logger.debug("PyTorch is not installed")
+    except Exception as e:
+        logger.debug(f"Failed to detect torch CUDA version: {e}")
+    return None
+
+
+def check_cuda_compatibility() -> Optional[CudaMismatchInfo]:
+    """Compare system CUDA version against PyTorch's built-in CUDA version.
+
+    Returns:
+        CudaMismatchInfo if there is a major-version mismatch, None otherwise
+        (including when either version cannot be detected).
+    """
+    system_cuda = detect_cuda_version()
+    if not system_cuda:
+        return None
+
+    torch_cuda = detect_torch_cuda_version()
+    if not torch_cuda:
+        return None
+
+    try:
+        system_major = int(system_cuda.split(".")[0])
+        torch_major = int(torch_cuda.split(".")[0])
+    except (ValueError, IndexError):
+        logger.debug(
+            f"Could not parse CUDA versions: system={system_cuda}, torch={torch_cuda}"
+        )
+        return None
+
+    if system_major != torch_major:
+        return CudaMismatchInfo(
+            system_cuda=system_cuda,
+            torch_cuda=torch_cuda,
+            system_major=system_major,
+            torch_major=torch_major,
+        )
+
     return None

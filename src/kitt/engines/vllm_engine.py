@@ -3,7 +3,7 @@
 import logging
 import time
 from datetime import datetime
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from .base import GenerationMetrics, GenerationResult, InferenceEngine
 from .registry import register_engine
@@ -26,6 +26,25 @@ class VLLMEngine(InferenceEngine):
     def supported_formats(cls) -> List[str]:
         return ["safetensors", "pytorch"]
 
+    @staticmethod
+    def _cuda_mismatch_guidance() -> Optional[str]:
+        """Check for CUDA version mismatch and return fix instructions."""
+        from kitt.hardware.detector import check_cuda_compatibility
+
+        mismatch = check_cuda_compatibility()
+        if mismatch is None:
+            return None
+
+        cu_tag = f"cu{mismatch.system_major}0"
+        return (
+            f"CUDA version mismatch: system has CUDA {mismatch.system_cuda} "
+            f"but PyTorch was built for CUDA {mismatch.torch_cuda}.\n"
+            f"Fix by reinstalling with the correct CUDA wheels:\n"
+            f"  pip install torch --index-url https://download.pytorch.org/whl/{cu_tag}\n"
+            f"  pip install vllm --extra-index-url https://download.pytorch.org/whl/{cu_tag}\n"
+            f"Or run: kitt engines setup vllm"
+        )
+
     @classmethod
     def _check_dependencies(cls) -> bool:
         try:
@@ -35,7 +54,18 @@ class VLLMEngine(InferenceEngine):
         except ModuleNotFoundError:
             return False
         except ImportError as e:
-            logger.warning(f"vLLM is installed but failed to import: {e}")
+            error_msg = str(e)
+            if "libcudart" in error_msg or "libcuda" in error_msg:
+                guidance = cls._cuda_mismatch_guidance()
+                if guidance:
+                    logger.warning(guidance)
+                else:
+                    logger.warning(
+                        f"vLLM failed to import due to a CUDA library error: {e}\n"
+                        "Check that your CUDA runtime matches the installed PyTorch version."
+                    )
+            else:
+                logger.warning(f"vLLM is installed but failed to import: {e}")
             return False
 
     def initialize(self, model_path: str, config: Dict[str, Any]) -> None:
@@ -47,6 +77,13 @@ class VLLMEngine(InferenceEngine):
                 "vLLM not installed. Install with: poetry install -E vllm"
             )
         except ImportError as e:
+            error_msg = str(e)
+            if "libcudart" in error_msg or "libcuda" in error_msg:
+                guidance = self._cuda_mismatch_guidance()
+                if guidance:
+                    raise RuntimeError(
+                        f"vLLM failed to load: {e}\n\n{guidance}"
+                    )
             raise RuntimeError(
                 f"vLLM is installed but failed to load: {e}"
             )

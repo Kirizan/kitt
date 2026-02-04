@@ -48,14 +48,19 @@ class EngineRegistry:
 
     @classmethod
     def auto_discover(cls) -> None:
-        """Auto-discover and register all engine implementations."""
-        # Import all engine modules to trigger registration
-        from . import (  # noqa: F401
-            llama_cpp_engine,
-            ollama_engine,
-            tgi_engine,
-            vllm_engine,
-        )
+        """Auto-discover and register all engine implementations.
+
+        Explicitly registers each engine class so this works correctly
+        even if modules were already imported (import-time decorator
+        side effects only fire once per process).
+        """
+        from .llama_cpp_engine import LlamaCppEngine
+        from .ollama_engine import OllamaEngine
+        from .tgi_engine import TGIEngine
+        from .vllm_engine import VLLMEngine
+
+        for engine_cls in (LlamaCppEngine, OllamaEngine, TGIEngine, VLLMEngine):
+            cls.register(engine_cls)
 
     @classmethod
     def clear(cls) -> None:
