@@ -5,6 +5,7 @@ End-to-end testing suite for LLM inference engines. Measures quality consistency
 ## Features
 
 - **Multi-engine support** - Benchmark across vLLM, TGI, llama.cpp, and Ollama with a unified interface
+- **Docker-only engines** - All engines run in Docker containers, eliminating CUDA/pip compatibility issues
 - **Quality benchmarks** - MMLU, GSM8K, TruthfulQA, and HellaSwag evaluations
 - **Performance benchmarks** - Throughput, latency, memory usage, and warmup analysis
 - **Hardware fingerprinting** - Automatic system identification for reproducible, hardware-aware result organization
@@ -14,9 +15,14 @@ End-to-end testing suite for LLM inference engines. Measures quality consistency
 
 ## Prerequisites
 
-KITT requires Python 3.10+ and [Poetry](https://python-poetry.org/) for dependency management.
+KITT requires:
 
-Some dependencies (e.g., `psutil`) include C extensions that must be compiled during install. Ensure your system has the required build tools and Python development headers:
+- **Python 3.10+** and [Poetry](https://python-poetry.org/) for dependency management
+- **Docker** for running inference engines — all engines run inside Docker containers
+
+### System Build Tools
+
+Some dependencies (e.g., `psutil`) include C extensions that must be compiled during install:
 
 **Ubuntu / Debian (including DGX Spark OS):**
 
@@ -34,6 +40,22 @@ sudo pacman -S --needed base-devel
 
 ```bash
 xcode-select --install
+```
+
+### Docker
+
+Install Docker from [docs.docker.com/get-docker](https://docs.docker.com/get-docker/). Verify it's running:
+
+```bash
+docker info
+```
+
+For GPU support, install the [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html):
+
+```bash
+# Ubuntu/Debian
+sudo apt-get install -y nvidia-container-toolkit
+sudo systemctl restart docker
 ```
 
 ## Installation
@@ -54,12 +76,10 @@ poetry run kitt fingerprint
 
 ### Optional Dependencies
 
-Running `poetry install` with no extras installs the core CLI, hardware fingerprinting, and all built-in benchmarks. Inference engines and some UI features require optional extras:
+Running `poetry install` with no extras installs the core CLI, hardware fingerprinting, and all built-in benchmarks:
 
 | Extra | What it adds | Required for |
 |---|---|---|
-| `vllm` | vLLM + Transformers | `kitt run -e vllm` |
-| `tgi` | Transformers | `kitt run -e tgi` |
 | `datasets` | HuggingFace Datasets | Quality benchmarks using HuggingFace datasets |
 | `web` | Flask | `kitt web` |
 | `cli_ui` | Textual | `kitt compare` (interactive TUI) |
@@ -67,10 +87,7 @@ Running `poetry install` with no extras installs the core CLI, hardware fingerpr
 
 ```bash
 # Install a specific extra
-poetry install -E vllm
-
-# Install multiple extras
-poetry install -E vllm -E web
+poetry install -E web
 
 # Install everything
 poetry install -E all
@@ -81,6 +98,10 @@ poetry install -E all
 ```bash
 # Check your hardware fingerprint
 kitt fingerprint
+
+# Pull Docker images for the engines you want to use
+kitt engines setup vllm
+kitt engines setup ollama
 
 # List available inference engines
 kitt engines list
@@ -125,6 +146,14 @@ kitt run -m /models/llama2-7b -e vllm -s standard -o ./my-results
 # Performance suite with custom engine config, stored in KARR
 kitt run -m /models/mistral-7b -e llama_cpp -s performance --config ./my-engine.yaml --store-karr
 ```
+
+When you run `kitt run`, KITT automatically:
+
+1. Starts a Docker container for the chosen engine
+2. Mounts the model directory into the container
+3. Waits for the engine to become healthy
+4. Runs the benchmarks via HTTP API
+5. Stops and removes the container
 
 **Output artifacts** (written to the output directory):
 
@@ -173,19 +202,17 @@ Manage and inspect inference engines.
 
 #### `kitt engines list`
 
-List all registered inference engines and their availability status.
+List all registered inference engines, their Docker images, and availability status.
 
 ```bash
 kitt engines list
 ```
 
-Displays a table of engines with their status (Available / Not Available) and supported model formats.
+Displays a table of engines with their Docker image, status (Ready / Not Pulled), and supported model formats.
 
 #### `kitt engines check`
 
-Check whether a specific engine is available and show detailed diagnostics. The check performs a functional test — importing the Python package for local engines or connecting to the server for HTTP-based engines. When an engine is unavailable, the output shows the exact error and a suggested fix.
-
-For GPU-based engines (`vllm`, `llama_cpp`), also displays the system CUDA version, the PyTorch CUDA version, and flags any mismatch between them.
+Check whether a specific engine is available and show detailed diagnostics.
 
 ```bash
 kitt engines check <engine_name>
@@ -194,47 +221,35 @@ kitt engines check <engine_name>
 **Examples:**
 
 ```bash
-# Import-based engine with missing dependency
+# Engine with image pulled
 $ kitt engines check vllm
 Engine: vllm
+  Image: vllm/vllm-openai:latest
   Formats: safetensors, pytorch
-  Check: Import check
-  Status: Not Available
-  Error: vllm is not installed
-  Suggested fix:
-    pip install vllm
-    Or: poetry install -E vllm
-  System CUDA: 13.0
-  PyTorch CUDA: 12.4
-  CUDA mismatch: system CUDA 13.0 vs PyTorch CUDA 12.4
-  Fix with:
-    pip install torch --force-reinstall --index-url https://download.pytorch.org/whl/cu130
-    pip install vllm --force-reinstall --extra-index-url https://download.pytorch.org/whl/cu130
-  Or run: kitt engines setup vllm
+  Status: Available
 
-# Server-based engine that is running
+# Engine without image pulled
 $ kitt engines check ollama
 Engine: ollama
+  Image: ollama/ollama:latest
   Formats: gguf
-  Check: Server check
-  Status: Available
-  2 model(s) available
+  Status: Not Available
+  Error: Docker image not pulled: ollama/ollama:latest
+  Fix: Pull with: kitt engines setup ollama
 
-# Server-based engine that is not running
+# Docker not running
 $ kitt engines check tgi
 Engine: tgi
+  Image: ghcr.io/huggingface/text-generation-inference:latest
   Formats: safetensors, pytorch
-  Check: Server check
   Status: Not Available
-  Error: Cannot connect to TGI server at localhost:8080
-  Suggested fix:
-    Start a TGI server with:
-      docker run --gpus all -p 8080:80 ghcr.io/huggingface/text-generation-inference:latest --model-id <model>
+  Error: Docker is not installed or not running
+  Fix: Install Docker: https://docs.docker.com/get-docker/
 ```
 
 #### `kitt engines setup`
 
-Install an engine with CUDA-matched wheels. Detects the system CUDA version and runs `pip install` with the correct `--index-url` so PyTorch and the engine are built for the right CUDA runtime.
+Pull the Docker image for an engine.
 
 ```bash
 kitt engines setup <engine_name> [--dry-run]
@@ -242,27 +257,18 @@ kitt engines setup <engine_name> [--dry-run]
 
 | Option | Description |
 |---|---|
-| `--dry-run` | Show the pip commands that would be run without executing them |
-| `--verbose` | Show full pip output (suppressed by default) |
+| `--dry-run` | Show the docker pull command without executing it |
 
-Currently supported engines: `vllm`.
+All engines are supported: `vllm`, `tgi`, `llama_cpp`, `ollama`.
 
 **Examples:**
 
 ```bash
-# Preview the install commands
-$ kitt engines setup --dry-run vllm
-Setting up vllm for CUDA 13.0 (cu130)
-  would run: /path/to/python -m pip install torch --force-reinstall --no-deps --index-url https://download.pytorch.org/whl/cu130
-  would run: /path/to/python -m pip install vllm --force-reinstall --no-deps --extra-index-url https://download.pytorch.org/whl/cu130
-  would run: /path/to/python -m pip install torch --index-url https://download.pytorch.org/whl/cu130
-  would run: /path/to/python -m pip install vllm --extra-index-url https://download.pytorch.org/whl/cu130
-  would run: /path/to/python -m pip install torch --force-reinstall --no-deps --index-url https://download.pytorch.org/whl/cu130
-
-Dry run — no commands were executed.
-
-# Actually install
+# Pull the vLLM image
 kitt engines setup vllm
+
+# Preview without pulling
+kitt engines setup --dry-run ollama
 ```
 
 ### `kitt test`
@@ -425,6 +431,49 @@ kitt web [OPTIONS]
 kitt web --port 9090 --results-dir ./kitt-results
 ```
 
+## Engine Architecture
+
+All engines run inside Docker containers. KITT manages the full container lifecycle automatically:
+
+```
+Host (KITT CLI)                         Docker Container
++-------------------+                  +------------------+
+| kitt run           |   HTTP/JSON      | Engine Server    |
+|   engine.generate()| <==============> |   API endpoint   |
+|   GPUMemoryTracker |  localhost:PORT  |   /health        |
++-------------------+                  |   --gpus all     |
+                                       |   /models (mount)|
+                                       +------------------+
+```
+
+### Engine Docker Images
+
+| Engine | Docker Image | API Format | Health Endpoint | Default Port |
+|---|---|---|---|---|
+| vLLM | `vllm/vllm-openai:latest` | OpenAI `/v1/completions` | `/health` | 8000 |
+| TGI | `ghcr.io/huggingface/text-generation-inference:latest` | HuggingFace `/generate` | `/info` | 8080 |
+| Ollama | `ollama/ollama:latest` | Ollama `/api/generate` | `/api/tags` | 11434 |
+| llama.cpp | `ghcr.io/ggerganov/llama.cpp:server` | OpenAI `/v1/completions` | `/health` | 8081 |
+
+### Running KITT from Docker
+
+KITT itself can also run inside a container, managing engine containers as siblings via the Docker socket:
+
+```bash
+# Build KITT image
+docker build -t kitt .
+
+# Run from container
+docker run --rm --network host \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  -v /path/to/models:/models:ro \
+  -v ./kitt-results:/app/kitt-results \
+  kitt run -m /models/llama-7b -e vllm
+
+# Or via docker-compose
+MODEL_PATH=/path/to/models docker compose run kitt run -m /models/llama-7b -e vllm
+```
+
 ## Test Suites
 
 KITT ships with three predefined test suites:
@@ -457,12 +506,12 @@ KITT ships with three predefined test suites:
 
 ## Supported Engines
 
-| Engine | Key | Description |
-|---|---|---|
-| vLLM | `vllm` | High-performance Python LLM serving |
-| Text Generation Inference | `tgi` | Hugging Face optimized inference server |
-| llama.cpp | `llama_cpp` | CPU-optimized quantized inference |
-| Ollama | `ollama` | Local LLM runtime |
+| Engine | Key | Docker Image | Formats |
+|---|---|---|---|
+| vLLM | `vllm` | `vllm/vllm-openai:latest` | safetensors, pytorch |
+| Text Generation Inference | `tgi` | `ghcr.io/huggingface/text-generation-inference:latest` | safetensors, pytorch |
+| llama.cpp | `llama_cpp` | `ghcr.io/ggerganov/llama.cpp:server` | gguf |
+| Ollama | `ollama` | `ollama/ollama:latest` | gguf |
 
 ## Results Storage (KARR)
 

@@ -12,7 +12,6 @@ kitt = "kitt.cli.main:cli"
 
 [tool.poetry.dependencies]
 python = "^3.10"
-pip = ">=26.0"
 pyyaml = "^6.0"
 click = "^8.1"
 pydantic = "^2.0"
@@ -21,8 +20,6 @@ psutil = ">=5.9"
 nvidia-ml-py = ">=12.535"
 gitpython = "^3.1"
 rich = ">=13.0"
-vllm = {version = ">=0.4", optional = true}
-transformers = {version = ">=4.40", optional = true}
 datasets = {version = ">=2.19", optional = true}
 flask = {version = "^3.1", optional = true}
 textual = {version = "^7.5", optional = true}
@@ -31,18 +28,18 @@ textual = {version = "^7.5", optional = true}
 pytest = "^8.0"
 pytest-cov = "^6.0"
 pytest-mock = "^3.12"
+pytest-timeout = "^2.4.0"
 
 [tool.poetry.extras]
-vllm = ["vllm", "transformers"]
-tgi = ["transformers"]
 datasets = ["datasets"]
 web = ["flask"]
 cli_ui = ["textual"]
-all = ["vllm", "transformers", "datasets", "flask", "textual"]
+all = ["datasets", "flask", "textual"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
+timeout = 30
 
 [tool.coverage.run]
 source = ["kitt"]

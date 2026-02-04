@@ -1,4 +1,4 @@
-"""Tests for engine CLI commands (setup, enhanced check, and diagnostics)."""
+"""Tests for engine CLI commands (setup, check, list) — Docker-only."""
 
 from unittest.mock import MagicMock, patch
 
@@ -6,400 +6,154 @@ from click.testing import CliRunner
 
 from kitt.cli.engine_commands import engines
 from kitt.engines.base import EngineDiagnostics
-from kitt.hardware.detector import CudaMismatchInfo
-
-
-def _torch_ver_result(version="2.9.1"):
-    """Mock result for the torch version detection subprocess call."""
-    return MagicMock(returncode=0, stdout=f"{version}\n", stderr="")
 
 
 class TestSetupEngine:
-    def test_unsupported_engine_exits(self):
+    @patch("kitt.engines.docker_manager.DockerManager.pull_image")
+    @patch("kitt.engines.docker_manager.DockerManager.is_docker_available", return_value=True)
+    def test_setup_pulls_image(self, mock_avail, mock_pull):
+        runner = CliRunner()
+        result = runner.invoke(engines, ["setup", "vllm"])
+        assert result.exit_code == 0
+        assert "ready" in result.output
+        mock_pull.assert_called_once_with("vllm/vllm-openai:latest")
+
+    @patch("kitt.engines.docker_manager.DockerManager.is_docker_available", return_value=True)
+    def test_setup_dry_run(self, mock_avail):
+        runner = CliRunner()
+        result = runner.invoke(engines, ["setup", "--dry-run", "vllm"])
+        assert result.exit_code == 0
+        assert "would run" in result.output
+        assert "docker pull" in result.output
+        assert "vllm/vllm-openai" in result.output
+        assert "Dry run" in result.output
+
+    @patch("kitt.engines.docker_manager.DockerManager.is_docker_available", return_value=False)
+    def test_setup_no_docker(self, mock_avail):
+        runner = CliRunner()
+        result = runner.invoke(engines, ["setup", "vllm"])
+        assert result.exit_code != 0
+        assert "Docker is not installed" in result.output
+
+    @patch("kitt.engines.docker_manager.DockerManager.pull_image", side_effect=RuntimeError("network error"))
+    @patch("kitt.engines.docker_manager.DockerManager.is_docker_available", return_value=True)
+    def test_setup_pull_failure(self, mock_avail, mock_pull):
+        runner = CliRunner()
+        result = runner.invoke(engines, ["setup", "vllm"])
+        assert result.exit_code != 0
+        assert "network error" in result.output
+
+    def test_setup_unknown_engine(self):
+        runner = CliRunner()
+        result = runner.invoke(engines, ["setup", "nonexistent"])
+        assert result.exit_code != 0
+        assert "not found" in result.output
+
+    @patch("kitt.engines.docker_manager.DockerManager.pull_image")
+    @patch("kitt.engines.docker_manager.DockerManager.is_docker_available", return_value=True)
+    def test_setup_ollama(self, mock_avail, mock_pull):
+        """All engines are now supported by setup (not just vllm)."""
         runner = CliRunner()
         result = runner.invoke(engines, ["setup", "ollama"])
-        assert result.exit_code != 0
-        assert "not supported by setup" in result.output
-
-    @patch("kitt.hardware.detector.detect_cuda_version", return_value=None)
-    def test_no_cuda_exits(self, mock_cuda):
-        runner = CliRunner()
-        result = runner.invoke(engines, ["setup", "vllm"])
-        assert result.exit_code != 0
-        assert "No system CUDA detected" in result.output
-
-    @patch("kitt.hardware.detector.detect_cuda_version", return_value="13.0")
-    def test_dry_run_shows_commands(self, mock_cuda):
-        runner = CliRunner()
-        result = runner.invoke(engines, ["setup", "--dry-run", "vllm"])
         assert result.exit_code == 0
-        assert "cu130" in result.output
-        assert "would run:" in result.output
-        assert "torch" in result.output
-        assert "vllm" in result.output
-        assert "--force-reinstall" in result.output
-        assert "--no-deps" in result.output
-        assert "Dry run" in result.output
-        # Torch fixup: --force-reinstall --no-deps should appear at least
-        # twice (initial install + fixup after dep resolution)
-        force_lines = [
-            line for line in result.output.splitlines()
-            if "--force-reinstall" in line and "--no-deps" in line and "torch" in line
-        ]
-        assert len(force_lines) >= 2, (
-            f"Expected at least 2 torch --force-reinstall --no-deps lines, got {len(force_lines)}"
-        )
+        assert "ready" in result.output
+        mock_pull.assert_called_once_with("ollama/ollama:latest")
 
-    @patch("kitt.hardware.detector.detect_cuda_version", return_value="12.6")
-    def test_dry_run_cuda12(self, mock_cuda):
+    @patch("kitt.engines.docker_manager.DockerManager.pull_image")
+    @patch("kitt.engines.docker_manager.DockerManager.is_docker_available", return_value=True)
+    def test_setup_tgi(self, mock_avail, mock_pull):
         runner = CliRunner()
-        result = runner.invoke(engines, ["setup", "--dry-run", "vllm"])
+        result = runner.invoke(engines, ["setup", "tgi"])
         assert result.exit_code == 0
-        assert "cu120" in result.output
+        mock_pull.assert_called_once()
+        image_arg = mock_pull.call_args[0][0]
+        assert "text-generation-inference" in image_arg
 
-    @patch("kitt.hardware.detector.detect_cuda_version", return_value="13.0")
-    @patch("kitt.cli.engine_commands.subprocess")
-    def test_verify_failure_shows_cuda_compat_guidance(self, mock_subprocess, mock_cuda):
-        """When install succeeds but import fails with libcudart, show compat guidance."""
-        install_result = MagicMock(returncode=0)
-        verify_result = MagicMock(
-            returncode=1,
-            stdout="",
-            stderr="libcudart.so.12: cannot open shared object file",
-        )
-        mock_subprocess.run = MagicMock(
-            side_effect=[
-                install_result, install_result,  # force-reinstall --no-deps
-                install_result, install_result,  # dep installs
-                _torch_ver_result(),             # version detection
-                install_result,                  # torch fixup
-                verify_result,                   # verification
-            ]
-        )
-
+    @patch("kitt.engines.docker_manager.DockerManager.pull_image")
+    @patch("kitt.engines.docker_manager.DockerManager.is_docker_available", return_value=True)
+    def test_setup_llama_cpp(self, mock_avail, mock_pull):
         runner = CliRunner()
-        result = runner.invoke(engines, ["setup", "vllm"])
-        assert result.exit_code != 0
-        assert "import failed" in result.output
-        assert "CUDA 12" in result.output
-        assert "cuda-compat-12" in result.output
-        assert "--no-binary" in result.output
-
-    @patch("kitt.hardware.detector.detect_cuda_version", return_value="13.0")
-    @patch("kitt.cli.engine_commands.subprocess")
-    def test_verify_cuda_init_failure(self, mock_subprocess, mock_cuda):
-        """Exit code 2 from verification means CUDA init failed."""
-        install_result = MagicMock(returncode=0)
-        verify_result = MagicMock(
-            returncode=2,
-            stdout="torch_cuda=13.0\n",
-            stderr="libcudart.so.12: cannot open shared object file",
-        )
-        mock_subprocess.run = MagicMock(
-            side_effect=[
-                install_result, install_result,  # force-reinstall --no-deps
-                install_result, install_result,  # dep installs
-                _torch_ver_result(),             # version detection
-                install_result,                  # torch fixup
-                verify_result,                   # verification
-            ]
-        )
-
-        runner = CliRunner()
-        result = runner.invoke(engines, ["setup", "vllm"])
-        assert result.exit_code != 0
-        assert "CUDA initialization failed" in result.output
-        assert "PyTorch CUDA: 13.0" in result.output
-
-    @patch("kitt.hardware.detector.detect_cuda_version", return_value="13.0")
-    @patch("kitt.cli.engine_commands.subprocess")
-    def test_verify_success_shows_details(self, mock_subprocess, mock_cuda):
-        """Successful verification shows torch CUDA version and GPU name."""
-        install_result = MagicMock(returncode=0)
-        verify_result = MagicMock(
-            returncode=0,
-            stdout="torch_cuda=13.0\ndevice=NVIDIA GH200\nok\n",
-            stderr="",
-        )
-        mock_subprocess.run = MagicMock(
-            side_effect=[
-                install_result, install_result,  # force-reinstall --no-deps
-                install_result, install_result,  # dep installs
-                _torch_ver_result(),             # version detection
-                install_result,                  # torch fixup
-                verify_result,                   # verification
-            ]
-        )
-
-        runner = CliRunner()
-        result = runner.invoke(engines, ["setup", "vllm"])
+        result = runner.invoke(engines, ["setup", "llama_cpp"])
         assert result.exit_code == 0
-        assert "setup complete" in result.output
-        assert "PyTorch CUDA: 13.0" in result.output
-        assert "GPU: NVIDIA GH200" in result.output
-
-    @patch("kitt.hardware.detector.detect_cuda_version", return_value="13.0")
-    @patch("kitt.cli.engine_commands.subprocess")
-    def test_torch_fixup_pins_resolved_version(self, mock_subprocess, mock_cuda):
-        """Torch fixup re-installs the version chosen by dep resolution, not latest."""
-        install_result = MagicMock(returncode=0)
-        verify_result = MagicMock(
-            returncode=0,
-            stdout="torch_cuda=13.0\nok\n",
-            stderr="",
-        )
-        mock_subprocess.run = MagicMock(
-            side_effect=[
-                install_result, install_result,       # force-reinstall --no-deps
-                install_result, install_result,       # dep installs
-                _torch_ver_result("2.9.1"),           # version detection → 2.9.1
-                install_result,                       # torch fixup
-                verify_result,                        # verification
-            ]
+        mock_pull.assert_called_once_with(
+            "ghcr.io/ggerganov/llama.cpp:server"
         )
 
-        runner = CliRunner()
-        result = runner.invoke(engines, ["setup", "vllm"])
-        assert result.exit_code == 0
 
-        # Call index: 0-1 initial, 2-3 deps, 4 version detect, 5 fixup, 6 verify
-        fixup_call = mock_subprocess.run.call_args_list[5]
-        fixup_cmd = fixup_call[0][0]
-        assert "torch==2.9.1" in fixup_cmd
-        assert "--force-reinstall" in fixup_cmd
-        assert "--no-deps" in fixup_cmd
-        assert any("cu130" in arg for arg in fixup_cmd)
-
-    @patch("kitt.hardware.detector.detect_cuda_version", return_value="13.0")
-    @patch("kitt.cli.engine_commands.subprocess")
-    def test_pip_output_captured_by_default(self, mock_subprocess, mock_cuda):
-        """Pip output is captured when --verbose is not passed."""
-        install_result = MagicMock(returncode=0)
-        verify_result = MagicMock(
-            returncode=0,
-            stdout="torch_cuda=13.0\nok\n",
-            stderr="",
-        )
-        mock_subprocess.run = MagicMock(
-            side_effect=[
-                install_result, install_result,
-                install_result, install_result,
-                _torch_ver_result(),
-                install_result,
-                verify_result,
-            ]
-        )
-
-        runner = CliRunner()
-        result = runner.invoke(engines, ["setup", "vllm"])
-        assert result.exit_code == 0
-
-        # Pip install calls (indices 0-3, 5) should use capture_output.
-        # Index 4 is version detection (always captured), 6 is verification.
-        for i in [0, 1, 2, 3, 5]:
-            call_kwargs = mock_subprocess.run.call_args_list[i][1]
-            assert call_kwargs.get("capture_output") is True
-            assert call_kwargs.get("text") is True
-
-    @patch("kitt.hardware.detector.detect_cuda_version", return_value="13.0")
-    @patch("kitt.cli.engine_commands.subprocess")
-    def test_pip_output_shown_with_verbose(self, mock_subprocess, mock_cuda):
-        """Pip output is not captured when --verbose is passed."""
-        install_result = MagicMock(returncode=0)
-        verify_result = MagicMock(
-            returncode=0,
-            stdout="torch_cuda=13.0\nok\n",
-            stderr="",
-        )
-        mock_subprocess.run = MagicMock(
-            side_effect=[
-                install_result, install_result,
-                install_result, install_result,
-                _torch_ver_result(),
-                install_result,
-                verify_result,
-            ]
-        )
-
-        runner = CliRunner()
-        result = runner.invoke(engines, ["setup", "--verbose", "vllm"])
-        assert result.exit_code == 0
-
-        # Pip install calls (indices 0-3, 5) should NOT use capture_output
-        for i in [0, 1, 2, 3, 5]:
-            call_kwargs = mock_subprocess.run.call_args_list[i][1]
-            assert "capture_output" not in call_kwargs
-
-    @patch("kitt.hardware.detector.detect_cuda_version", return_value="13.0")
-    @patch("kitt.cli.engine_commands.subprocess")
-    def test_pip_failure_shows_stderr_when_quiet(self, mock_subprocess, mock_cuda):
-        """When pip fails in quiet mode, captured stderr is displayed."""
-        fail_result = MagicMock(
-            returncode=1,
-            stdout="",
-            stderr="ERROR: Could not find a version that satisfies the requirement torch",
-        )
-        mock_subprocess.run = MagicMock(
-            side_effect=[fail_result],
-        )
-
-        runner = CliRunner()
-        result = runner.invoke(engines, ["setup", "vllm"])
-        assert result.exit_code != 0
-        assert "Command failed with exit code 1" in result.output
-        assert "Could not find a version" in result.output
-
-    @patch("kitt.hardware.detector.detect_cuda_version", return_value="13.0")
-    @patch("kitt.cli.engine_commands.subprocess")
-    def test_verify_non_cuda_failure(self, mock_subprocess, mock_cuda):
-        """Exit code 1 with non-CUDA error shows raw error text."""
-        install_result = MagicMock(returncode=0)
-        verify_result = MagicMock(
-            returncode=1,
-            stdout="",
-            stderr="ModuleNotFoundError: No module named 'vllm'",
-        )
-        mock_subprocess.run = MagicMock(
-            side_effect=[
-                install_result, install_result,
-                install_result, install_result,
-                _torch_ver_result(),
-                install_result,
-                verify_result,
-            ]
-        )
-
-        runner = CliRunner()
-        result = runner.invoke(engines, ["setup", "vllm"])
-        assert result.exit_code != 0
-        assert "import failed" in result.output
-        assert "ModuleNotFoundError" in result.output
-
-    @patch("kitt.hardware.detector.detect_cuda_version", return_value="13.0")
-    @patch("kitt.cli.engine_commands.subprocess")
-    def test_torch_version_detection_failure_falls_back(self, mock_subprocess, mock_cuda):
-        """If torch version detection fails, fixup uses unpinned 'torch'."""
-        install_result = MagicMock(returncode=0)
-        ver_fail = MagicMock(returncode=1, stdout="", stderr="error")
-        verify_result = MagicMock(
-            returncode=0,
-            stdout="torch_cuda=13.0\nok\n",
-            stderr="",
-        )
-        mock_subprocess.run = MagicMock(
-            side_effect=[
-                install_result, install_result,
-                install_result, install_result,
-                ver_fail,                        # version detection fails
-                install_result,                  # torch fixup (unpinned)
-                verify_result,
-            ]
-        )
-
-        runner = CliRunner()
-        result = runner.invoke(engines, ["setup", "vllm"])
-        assert result.exit_code == 0
-
-        # Fixup command (index 5) should use bare "torch" without version pin
-        fixup_cmd = mock_subprocess.run.call_args_list[5][0][0]
-        assert "torch" in fixup_cmd
-        assert not any("torch==" in arg for arg in fixup_cmd)
-
-
-class TestCheckEngineEnhanced:
-    @patch(
-        "kitt.hardware.detector.check_cuda_compatibility",
-        return_value=CudaMismatchInfo(
-            system_cuda="13.0",
-            torch_cuda="12.4",
-            system_major=13,
-            torch_major=12,
-        ),
-    )
-    @patch("kitt.hardware.detector.detect_torch_cuda_version", return_value="12.4")
-    @patch("kitt.hardware.detector.detect_cuda_version", return_value="13.0")
-    def test_check_shows_mismatch(self, mock_sys, mock_torch, mock_compat):
-        runner = CliRunner()
-        result = runner.invoke(engines, ["check", "vllm"])
-        assert "System CUDA: 13.0" in result.output
-        assert "PyTorch CUDA: 12.4" in result.output
-        assert "CUDA mismatch" in result.output
-        assert "cu130" in result.output
-        assert "kitt engines setup vllm" in result.output
-
-    @patch("kitt.hardware.detector.check_cuda_compatibility", return_value=None)
-    @patch("kitt.hardware.detector.detect_torch_cuda_version", return_value="13.0")
-    @patch("kitt.hardware.detector.detect_cuda_version", return_value="13.0")
-    def test_check_no_mismatch(self, mock_sys, mock_torch, mock_compat):
-        runner = CliRunner()
-        result = runner.invoke(engines, ["check", "vllm"])
-        assert "System CUDA: 13.0" in result.output
-        assert "PyTorch CUDA: 13.0" in result.output
-        assert "CUDA mismatch" not in result.output
-
-    @patch("kitt.hardware.detector.check_cuda_compatibility", return_value=None)
-    @patch("kitt.hardware.detector.detect_torch_cuda_version", return_value=None)
-    @patch("kitt.hardware.detector.detect_cuda_version", return_value=None)
-    def test_check_no_cuda(self, mock_sys, mock_torch, mock_compat):
-        runner = CliRunner()
-        result = runner.invoke(engines, ["check", "vllm"])
-        assert "not detected" in result.output
-        assert "not installed or CPU-only" in result.output
-
-
-class TestCheckEngineDiagnose:
-    def test_check_shows_import_error_and_guidance(self):
-        """check command displays diagnose error and guidance for import-based engines."""
+class TestCheckEngine:
+    def test_check_available(self):
         diag = EngineDiagnostics(
-            available=False,
-            engine_type="python_import",
-            error="vllm is not installed",
-            guidance="pip install vllm\nOr: poetry install -E vllm",
+            available=True,
+            image="vllm/vllm-openai:latest",
         )
-
         with patch(
             "kitt.engines.vllm_engine.VLLMEngine.diagnose", return_value=diag
         ):
             runner = CliRunner()
             result = runner.invoke(engines, ["check", "vllm"])
-        assert "Import check" in result.output
-        assert "Not Available" in result.output
-        assert "vllm is not installed" in result.output
-        assert "Suggested fix:" in result.output
-        assert "pip install vllm" in result.output
+        assert "Available" in result.output
+        assert "vllm/vllm-openai:latest" in result.output
 
-    def test_check_shows_server_error(self):
-        """check command displays diagnose error and guidance for server-based engines."""
+    def test_check_not_available(self):
         diag = EngineDiagnostics(
             available=False,
-            engine_type="http_server",
-            error="Cannot connect to Ollama server at localhost:11434",
-            guidance="Start the server with: ollama serve",
+            image="vllm/vllm-openai:latest",
+            error="Docker image not pulled: vllm/vllm-openai:latest",
+            guidance="Pull with: kitt engines setup vllm",
         )
-
         with patch(
-            "kitt.engines.ollama_engine.OllamaEngine.diagnose", return_value=diag
+            "kitt.engines.vllm_engine.VLLMEngine.diagnose", return_value=diag
         ):
             runner = CliRunner()
-            result = runner.invoke(engines, ["check", "ollama"])
-        assert "Server check" in result.output
+            result = runner.invoke(engines, ["check", "vllm"])
         assert "Not Available" in result.output
-        assert "Cannot connect" in result.output
-        assert "ollama serve" in result.output
+        assert "not pulled" in result.output
+        assert "kitt engines setup vllm" in result.output
 
-    def test_check_shows_available_with_info(self):
-        """check command displays available status with optional info."""
+    def test_check_no_docker(self):
         diag = EngineDiagnostics(
-            available=True,
-            engine_type="http_server",
-            guidance="2 model(s) available",
+            available=False,
+            image="vllm/vllm-openai:latest",
+            error="Docker is not installed or not running",
+            guidance="Install Docker: https://docs.docker.com/get-docker/",
         )
-
         with patch(
-            "kitt.engines.ollama_engine.OllamaEngine.diagnose", return_value=diag
+            "kitt.engines.vllm_engine.VLLMEngine.diagnose", return_value=diag
         ):
             runner = CliRunner()
-            result = runner.invoke(engines, ["check", "ollama"])
-        assert "Server check" in result.output
-        assert "Available" in result.output
-        assert "2 model(s) available" in result.output
+            result = runner.invoke(engines, ["check", "vllm"])
+        assert "Docker is not installed" in result.output
+
+    def test_check_unknown_engine(self):
+        runner = CliRunner()
+        result = runner.invoke(engines, ["check", "nonexistent"])
+        assert result.exit_code != 0
+        assert "not found" in result.output
+
+
+class TestListEngines:
+    @patch("kitt.engines.docker_manager.DockerManager.image_exists", return_value=True)
+    @patch("kitt.engines.docker_manager.DockerManager.is_docker_available", return_value=True)
+    def test_list_shows_all_engines(self, mock_avail, mock_exists):
+        runner = CliRunner()
+        result = runner.invoke(engines, ["list"])
+        assert result.exit_code == 0
+        assert "vllm" in result.output
+        assert "tgi" in result.output
+        assert "llama_cpp" in result.output
+        assert "ollama" in result.output
+
+    @patch("kitt.engines.docker_manager.DockerManager.image_exists", return_value=False)
+    @patch("kitt.engines.docker_manager.DockerManager.is_docker_available", return_value=True)
+    def test_list_shows_image_column(self, mock_avail, mock_exists):
+        runner = CliRunner()
+        result = runner.invoke(engines, ["list"])
+        assert "vllm/vllm-openai" in result.output
+        assert "ollama/ollama" in result.output
+
+    @patch("kitt.engines.docker_manager.DockerManager.image_exists", return_value=False)
+    @patch("kitt.engines.docker_manager.DockerManager.is_docker_available", return_value=True)
+    def test_list_shows_status(self, mock_avail, mock_exists):
+        runner = CliRunner()
+        result = runner.invoke(engines, ["list"])
+        assert "Not Pulled" in result.output

@@ -1,14 +1,15 @@
-"""Text Generation Inference (HuggingFace TGI) engine implementation."""
+"""Text Generation Inference (HuggingFace TGI) engine implementation — Docker container."""
 
 import json
 import logging
 import time
-import urllib.request
 import urllib.error
+import urllib.request
 from datetime import datetime
-from typing import Any, Dict, List
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 
-from .base import EngineDiagnostics, GenerationMetrics, GenerationResult, InferenceEngine
+from .base import GenerationMetrics, GenerationResult, InferenceEngine
 from .registry import register_engine
 
 logger = logging.getLogger(__name__)
@@ -16,14 +17,15 @@ logger = logging.getLogger(__name__)
 
 @register_engine
 class TGIEngine(InferenceEngine):
-    """HuggingFace Text Generation Inference engine.
+    """HuggingFace Text Generation Inference engine running in a Docker container.
 
-    Communicates with a running TGI server via HTTP API.
+    Communicates via the HuggingFace /generate API.
     """
 
     def __init__(self) -> None:
-        self.base_url: str = ""
-        self.model_id: str = ""
+        self._container_id: Optional[str] = None
+        self._base_url: str = ""
+        self._model_id: str = ""
 
     @classmethod
     def name(cls) -> str:
@@ -34,69 +36,57 @@ class TGIEngine(InferenceEngine):
         return ["safetensors", "pytorch"]
 
     @classmethod
-    def diagnose(cls) -> EngineDiagnostics:
-        """Check TGI server connectivity with detailed error info."""
-        try:
-            req = urllib.request.Request("http://localhost:8080/info")
-            with urllib.request.urlopen(req, timeout=2) as response:
-                info = json.loads(response.read())
-                model_id = info.get("model_id", "unknown")
-                return EngineDiagnostics(
-                    available=True,
-                    engine_type="http_server",
-                    guidance=f"Serving model: {model_id}",
-                )
-        except urllib.error.URLError:
-            return EngineDiagnostics(
-                available=False,
-                engine_type="http_server",
-                error="Cannot connect to TGI server at localhost:8080",
-                guidance=(
-                    "Start a TGI server with:\n"
-                    "  docker run --gpus all -p 8080:80 "
-                    "ghcr.io/huggingface/text-generation-inference:latest "
-                    "--model-id <model>"
-                ),
-            )
-        except (TimeoutError, OSError) as e:
-            return EngineDiagnostics(
-                available=False,
-                engine_type="http_server",
-                error=f"Connection error: {e}",
-                guidance=(
-                    "Start a TGI server with:\n"
-                    "  docker run --gpus all -p 8080:80 "
-                    "ghcr.io/huggingface/text-generation-inference:latest "
-                    "--model-id <model>"
-                ),
-            )
+    def default_image(cls) -> str:
+        return "ghcr.io/huggingface/text-generation-inference:latest"
 
     @classmethod
-    def _check_dependencies(cls) -> bool:
-        # TGI is a server - check if it's reachable
-        # For registration purposes, always return True since it's HTTP-based
-        return True
+    def default_port(cls) -> int:
+        return 8080
+
+    @classmethod
+    def container_port(cls) -> int:
+        return 80
+
+    @classmethod
+    def health_endpoint(cls) -> str:
+        return "/info"
 
     def initialize(self, model_path: str, config: Dict[str, Any]) -> None:
-        """Initialize TGI engine connection.
+        """Start TGI container and wait for healthy."""
+        from .docker_manager import ContainerConfig, DockerManager
 
-        Args:
-            model_path: Model identifier (for reference only; model is loaded by TGI server).
-            config: Must contain 'base_url' for TGI server (default: http://localhost:8080).
-        """
-        self.base_url = config.get("base_url", "http://localhost:8080").rstrip("/")
-        self.model_id = model_path
+        self._model_id = model_path
+        port = config.get("port", self.default_port())
 
-        # Verify server is reachable
-        try:
-            req = urllib.request.Request(f"{self.base_url}/info")
-            with urllib.request.urlopen(req, timeout=5) as response:
-                info = json.loads(response.read())
-                logger.info(f"Connected to TGI server: {info.get('model_id', 'unknown')}")
-        except (urllib.error.URLError, TimeoutError) as e:
-            raise RuntimeError(
-                f"Cannot connect to TGI server at {self.base_url}: {e}"
-            )
+        # Determine if model_path is a local directory or a HuggingFace model ID
+        model_abs = Path(model_path).resolve()
+        volumes = {}
+        cmd_args = []
+
+        if model_abs.is_dir():
+            model_name = model_abs.name
+            volumes[str(model_abs)] = f"/models/{model_name}"
+            cmd_args = ["--model-id", f"/models/{model_name}"]
+        else:
+            # Treat as HuggingFace model ID (e.g. "meta-llama/Llama-3-8B")
+            cmd_args = ["--model-id", model_path]
+
+        container_cfg = ContainerConfig(
+            image=config.get("image", self.default_image()),
+            port=port,
+            container_port=self.container_port(),
+            volumes=volumes,
+            env=config.get("env", {}),
+            extra_args=config.get("extra_args", ["--shm-size=8g"]),
+            command_args=cmd_args,
+        )
+        self._container_id = DockerManager.run_container(container_cfg)
+
+        health_url = f"http://localhost:{port}{self.health_endpoint()}"
+        DockerManager.wait_for_healthy(
+            health_url, container_id=self._container_id
+        )
+        self._base_url = f"http://localhost:{port}"
 
     def generate(
         self,
@@ -127,7 +117,7 @@ class TGIEngine(InferenceEngine):
 
         data = json.dumps(payload).encode("utf-8")
         req = urllib.request.Request(
-            f"{self.base_url}/generate",
+            f"{self._base_url}/generate",
             data=data,
             headers={"Content-Type": "application/json"},
         )
@@ -154,7 +144,7 @@ class TGIEngine(InferenceEngine):
         )
 
         metrics = GenerationMetrics(
-            ttft_ms=0,  # TODO: Extract from TGI response timing
+            ttft_ms=0,
             tps=tps,
             total_latency_ms=total_latency_ms,
             gpu_memory_peak_gb=tracker.get_peak_memory_mb() / 1024,
@@ -170,5 +160,9 @@ class TGIEngine(InferenceEngine):
         )
 
     def cleanup(self) -> None:
-        """No cleanup needed for HTTP client."""
-        pass
+        """Stop and remove the TGI container."""
+        from .docker_manager import DockerManager
+
+        if self._container_id:
+            DockerManager.stop_container(self._container_id)
+            self._container_id = None

@@ -82,10 +82,15 @@ def run(model, engine, suite, output, skip_warmup, runs, config, store_karr):
 
     engine_cls = EngineRegistry.get_engine(engine)
     if not engine_cls.is_available():
+        diag = engine_cls.diagnose()
         console.print(
-            f"[yellow]Warning: Engine '{engine}' is registered but "
-            f"dependencies may not be fully available.[/yellow]"
+            f"[red]Engine '{engine}' is not available.[/red]"
         )
+        if diag.error:
+            console.print(f"  {diag.error}")
+        if diag.guidance:
+            console.print(f"  Fix: {diag.guidance}")
+        raise SystemExit(1)
 
     console.print(f"[bold]KITT Benchmark Runner[/bold]")
     console.print(f"  Model:  {model}")

@@ -1,11 +1,11 @@
-"""llama.cpp inference engine implementation."""
+"""llama.cpp inference engine implementation — Docker + OpenAI-compatible API."""
 
 import logging
 import time
-from datetime import datetime
-from typing import Any, Dict, List
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 
-from .base import EngineDiagnostics, GenerationMetrics, GenerationResult, InferenceEngine
+from .base import GenerationResult, InferenceEngine
 from .registry import register_engine
 
 logger = logging.getLogger(__name__)
@@ -13,10 +13,15 @@ logger = logging.getLogger(__name__)
 
 @register_engine
 class LlamaCppEngine(InferenceEngine):
-    """llama.cpp inference engine via llama-cpp-python bindings."""
+    """llama.cpp inference engine running in a Docker container.
+
+    Uses the llama.cpp server image which exposes an OpenAI-compatible API.
+    """
 
     def __init__(self) -> None:
-        self.llm = None
+        self._container_id: Optional[str] = None
+        self._base_url: str = ""
+        self._model_name: str = ""
 
     @classmethod
     def name(cls) -> str:
@@ -27,82 +32,59 @@ class LlamaCppEngine(InferenceEngine):
         return ["gguf"]
 
     @classmethod
-    def diagnose(cls) -> EngineDiagnostics:
-        """Check llama-cpp-python availability with detailed error info."""
-        try:
-            import llama_cpp  # noqa: F401
-
-            return EngineDiagnostics(available=True, engine_type="python_import")
-        except ModuleNotFoundError:
-            return EngineDiagnostics(
-                available=False,
-                engine_type="python_import",
-                error="llama-cpp-python is not installed",
-                guidance="pip install llama-cpp-python",
-            )
-        except ImportError as e:
-            error_msg = str(e)
-            if "libcudart" in error_msg or "libcuda" in error_msg:
-                return EngineDiagnostics(
-                    available=False,
-                    engine_type="python_import",
-                    error=error_msg,
-                    guidance=(
-                        "Rebuild llama-cpp-python with CUDA support:\n"
-                        '  CMAKE_ARGS="-DGGML_CUDA=on" pip install llama-cpp-python --force-reinstall --no-cache-dir'
-                    ),
-                )
-            return EngineDiagnostics(
-                available=False,
-                engine_type="python_import",
-                error=error_msg,
-            )
+    def default_image(cls) -> str:
+        return "ghcr.io/ggerganov/llama.cpp:server"
 
     @classmethod
-    def _check_dependencies(cls) -> bool:
-        try:
-            import llama_cpp  # noqa: F401
+    def default_port(cls) -> int:
+        return 8081
 
-            return True
-        except ModuleNotFoundError:
-            return False
-        except ImportError as e:
-            logger.warning(f"llama-cpp-python is installed but failed to import: {e}")
-            return False
+    @classmethod
+    def container_port(cls) -> int:
+        return 8080
+
+    @classmethod
+    def health_endpoint(cls) -> str:
+        return "/health"
 
     def initialize(self, model_path: str, config: Dict[str, Any]) -> None:
-        """Initialize llama.cpp engine.
+        """Start llama.cpp server container and wait for healthy."""
+        from .docker_manager import ContainerConfig, DockerManager
 
-        Args:
-            model_path: Path to GGUF model file.
-            config: Engine-specific configuration.
-        """
-        try:
-            from llama_cpp import Llama
-        except ModuleNotFoundError:
-            raise RuntimeError(
-                "llama-cpp-python not installed. "
-                "Install with: pip install llama-cpp-python"
-            )
-        except ImportError as e:
-            raise RuntimeError(
-                f"llama-cpp-python is installed but failed to load: {e}"
-            )
+        model_abs = str(Path(model_path).resolve())
+        self._model_name = Path(model_path).name
+        port = config.get("port", self.default_port())
 
+        n_gpu_layers = config.get("n_gpu_layers", -1)
         n_ctx = config.get("n_ctx", 4096)
-        n_gpu_layers = config.get("n_gpu_layers", -1)  # -1 = all layers on GPU
-        n_threads = config.get("n_threads", None)
 
-        kwargs: Dict[str, Any] = {
-            "model_path": model_path,
-            "n_ctx": n_ctx,
-            "n_gpu_layers": n_gpu_layers,
-            "verbose": config.get("verbose", False),
-        }
-        if n_threads is not None:
-            kwargs["n_threads"] = n_threads
+        cmd_args = [
+            "-m", f"/models/{self._model_name}",
+            "--n-gpu-layers", str(n_gpu_layers),
+            "-c", str(n_ctx),
+            "--host", "0.0.0.0",
+            "--port", str(self.container_port()),
+        ]
 
-        self.llm = Llama(**kwargs)
+        # Mount the model file's parent directory
+        model_dir = str(Path(model_abs).parent)
+
+        container_cfg = ContainerConfig(
+            image=config.get("image", self.default_image()),
+            port=port,
+            container_port=self.container_port(),
+            volumes={model_dir: "/models"},
+            env=config.get("env", {}),
+            extra_args=config.get("extra_args", []),
+            command_args=cmd_args,
+        )
+        self._container_id = DockerManager.run_container(container_cfg)
+
+        health_url = f"http://localhost:{port}{self.health_endpoint()}"
+        DockerManager.wait_for_healthy(
+            health_url, container_id=self._container_id
+        )
+        self._base_url = f"http://localhost:{port}"
 
     def generate(
         self,
@@ -113,57 +95,30 @@ class LlamaCppEngine(InferenceEngine):
         max_tokens: int = 2048,
         **engine_specific_params: Any,
     ) -> GenerationResult:
-        """Generate with llama.cpp."""
+        """Generate via OpenAI-compatible API."""
         from kitt.collectors.gpu_stats import GPUMemoryTracker
 
+        from .openai_compat import openai_generate, parse_openai_result
+
         with GPUMemoryTracker(gpu_index=0) as tracker:
-            start_time = time.perf_counter()
-            result = self.llm(
+            start = time.perf_counter()
+            response = openai_generate(
+                self._base_url,
                 prompt,
+                model=self._model_name,
                 temperature=temperature,
                 top_p=top_p,
                 top_k=top_k,
                 max_tokens=max_tokens,
             )
-            end_time = time.perf_counter()
+            elapsed_ms = (time.perf_counter() - start) * 1000
 
-        total_latency_ms = (end_time - start_time) * 1000
-
-        output = result["choices"][0]["text"]
-        usage = result.get("usage", {})
-        prompt_tokens = usage.get("prompt_tokens", 0)
-        completion_tokens = usage.get("completion_tokens", 0)
-
-        tps = (
-            completion_tokens / (total_latency_ms / 1000)
-            if total_latency_ms > 0
-            else 0
-        )
-
-        metrics = GenerationMetrics(
-            ttft_ms=0,  # TODO: Extract TTFT from llama.cpp timings
-            tps=tps,
-            total_latency_ms=total_latency_ms,
-            gpu_memory_peak_gb=tracker.get_peak_memory_mb() / 1024,
-            gpu_memory_avg_gb=tracker.get_average_memory_mb() / 1024,
-            timestamp=datetime.now(),
-        )
-
-        return GenerationResult(
-            output=output,
-            metrics=metrics,
-            prompt_tokens=prompt_tokens,
-            completion_tokens=completion_tokens,
-        )
+        return parse_openai_result(response, elapsed_ms, tracker)
 
     def cleanup(self) -> None:
-        """Cleanup llama.cpp resources."""
-        if self.llm is not None:
-            del self.llm
-            self.llm = None
+        """Stop and remove the llama.cpp container."""
+        from .docker_manager import DockerManager
 
-    def translate_params(self, universal_params: Dict[str, Any]) -> Dict[str, Any]:
-        """Translate universal params to llama.cpp params."""
-        translated = universal_params.copy()
-        # llama.cpp uses 'max_tokens' same as universal
-        return translated
+        if self._container_id:
+            DockerManager.stop_container(self._container_id)
+            self._container_id = None

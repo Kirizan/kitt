@@ -18,6 +18,8 @@ def _make_engine(engine_name: str, available: bool = True):
     """Create a minimal test engine class."""
 
     class TestEngine(InferenceEngine):
+        _available = available
+
         @classmethod
         def name(cls):
             return engine_name
@@ -27,8 +29,24 @@ def _make_engine(engine_name: str, available: bool = True):
             return ["test"]
 
         @classmethod
-        def _check_dependencies(cls):
-            return available
+        def default_image(cls):
+            return "test:latest"
+
+        @classmethod
+        def default_port(cls):
+            return 8000
+
+        @classmethod
+        def container_port(cls):
+            return 8000
+
+        @classmethod
+        def health_endpoint(cls):
+            return "/health"
+
+        @classmethod
+        def is_available(cls):
+            return cls._available
 
         def initialize(self, model_path, config):
             pass
@@ -81,8 +99,20 @@ class TestRegisterDecorator:
                 return ["test"]
 
             @classmethod
-            def _check_dependencies(cls):
-                return True
+            def default_image(cls):
+                return "test:latest"
+
+            @classmethod
+            def default_port(cls):
+                return 8000
+
+            @classmethod
+            def container_port(cls):
+                return 8000
+
+            @classmethod
+            def health_endpoint(cls):
+                return "/health"
 
             def initialize(self, model_path, config):
                 pass

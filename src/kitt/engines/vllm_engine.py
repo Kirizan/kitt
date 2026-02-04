@@ -1,12 +1,11 @@
-"""vLLM inference engine implementation."""
+"""vLLM inference engine implementation — Docker + OpenAI-compatible API."""
 
 import logging
-import re
 import time
-from datetime import datetime
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from .base import EngineDiagnostics, GenerationMetrics, GenerationResult, InferenceEngine
+from .base import GenerationResult, InferenceEngine
 from .registry import register_engine
 
 logger = logging.getLogger(__name__)
@@ -14,10 +13,15 @@ logger = logging.getLogger(__name__)
 
 @register_engine
 class VLLMEngine(InferenceEngine):
-    """vLLM inference engine implementation."""
+    """vLLM inference engine running in a Docker container.
+
+    Communicates via the OpenAI-compatible /v1/completions API.
+    """
 
     def __init__(self) -> None:
-        self.llm = None
+        self._container_id: Optional[str] = None
+        self._base_url: str = ""
+        self._model_name: str = ""
 
     @classmethod
     def name(cls) -> str:
@@ -27,144 +31,58 @@ class VLLMEngine(InferenceEngine):
     def supported_formats(cls) -> List[str]:
         return ["safetensors", "pytorch"]
 
-    @staticmethod
-    def _cuda_guidance(error_msg: str = "") -> Optional[str]:
-        """Return CUDA fix instructions based on mismatch or error context.
-
-        Checks for two situations:
-        1. PyTorch's CUDA version doesn't match the system (torch mismatch).
-        2. The error message references a specific CUDA library version
-           (e.g. libcudart.so.12) that differs from the system CUDA,
-           meaning the installed package was built for a different CUDA
-           even though torch may already be correct.
-        """
-        from kitt.hardware.detector import (
-            check_cuda_compatibility,
-            detect_cuda_version,
-        )
-
-        # Case 1: torch vs system mismatch
-        mismatch = check_cuda_compatibility()
-        if mismatch is not None:
-            cu_tag = f"cu{mismatch.system_major}0"
-            return (
-                f"CUDA version mismatch: system has CUDA {mismatch.system_cuda} "
-                f"but PyTorch was built for CUDA {mismatch.torch_cuda}.\n"
-                f"Fix by reinstalling with the correct CUDA wheels:\n"
-                f"  pip install torch --force-reinstall --no-deps "
-                f"--index-url https://download.pytorch.org/whl/{cu_tag}\n"
-                f"  pip install vllm --force-reinstall --no-deps "
-                f"--extra-index-url https://download.pytorch.org/whl/{cu_tag}\n"
-                f"Or run: kitt engines setup vllm"
-            )
-
-        # Case 2: package references a CUDA library the system doesn't have
-        system_cuda = detect_cuda_version()
-        if system_cuda and error_msg:
-            match = re.search(r"libcuda\w*\.so\.(\d+)", error_msg)
-            if match:
-                lib_major = int(match.group(1))
-                system_major = int(system_cuda.split(".")[0])
-                if lib_major != system_major:
-                    return (
-                        f"The installed vLLM package requires CUDA {lib_major} "
-                        f"runtime libraries but this system has CUDA {system_cuda}.\n"
-                        f"CUDA {system_major} wheels for vLLM may not be "
-                        f"available yet. Options:\n"
-                        f"  1. Install the CUDA {lib_major} compatibility "
-                        f"package so both runtimes coexist:\n"
-                        f"       sudo apt install cuda-compat-{lib_major}\n"
-                        f"  2. Build vLLM from source against CUDA {system_major}:\n"
-                        f"       pip install vllm --no-binary vllm\n"
-                        f"  3. Check for a nightly/pre-release wheel:\n"
-                        f"       pip install vllm --pre --extra-index-url "
-                        f"https://download.pytorch.org/whl/nightly/"
-                        f"cu{system_major}0"
-                    )
-
-        return None
+    @classmethod
+    def default_image(cls) -> str:
+        return "vllm/vllm-openai:latest"
 
     @classmethod
-    def diagnose(cls) -> EngineDiagnostics:
-        """Check vLLM availability with detailed error info."""
-        try:
-            import vllm  # noqa: F401
-
-            return EngineDiagnostics(available=True, engine_type="python_import")
-        except ModuleNotFoundError:
-            return EngineDiagnostics(
-                available=False,
-                engine_type="python_import",
-                error="vllm is not installed",
-                guidance="pip install vllm\nOr: poetry install -E vllm",
-            )
-        except ImportError as e:
-            error_msg = str(e)
-            if "libcudart" in error_msg or "libcuda" in error_msg:
-                guidance = cls._cuda_guidance(error_msg)
-                return EngineDiagnostics(
-                    available=False,
-                    engine_type="python_import",
-                    error=error_msg,
-                    guidance=guidance,
-                )
-            return EngineDiagnostics(
-                available=False,
-                engine_type="python_import",
-                error=error_msg,
-            )
+    def default_port(cls) -> int:
+        return 8000
 
     @classmethod
-    def _check_dependencies(cls) -> bool:
-        try:
-            import vllm  # noqa: F401
+    def container_port(cls) -> int:
+        return 8000
 
-            return True
-        except ModuleNotFoundError:
-            return False
-        except ImportError as e:
-            error_msg = str(e)
-            if "libcudart" in error_msg or "libcuda" in error_msg:
-                guidance = cls._cuda_guidance(error_msg)
-                if guidance:
-                    logger.warning(guidance)
-                else:
-                    logger.warning(
-                        f"vLLM failed to import due to a CUDA library error: {e}\n"
-                        "Check that your CUDA runtime matches the installed packages."
-                    )
-            else:
-                logger.warning(f"vLLM is installed but failed to import: {e}")
-            return False
+    @classmethod
+    def health_endpoint(cls) -> str:
+        return "/health"
 
     def initialize(self, model_path: str, config: Dict[str, Any]) -> None:
-        """Initialize vLLM engine."""
-        try:
-            from vllm import LLM
-        except ModuleNotFoundError:
-            raise RuntimeError(
-                "vLLM not installed. Install with: poetry install -E vllm"
-            )
-        except ImportError as e:
-            error_msg = str(e)
-            if "libcudart" in error_msg or "libcuda" in error_msg:
-                guidance = self._cuda_guidance(error_msg)
-                if guidance:
-                    raise RuntimeError(
-                        f"vLLM failed to load: {e}\n\n{guidance}"
-                    )
-            raise RuntimeError(
-                f"vLLM is installed but failed to load: {e}"
-            )
+        """Start vLLM container and wait for healthy."""
+        from .docker_manager import ContainerConfig, DockerManager
 
-        tensor_parallel_size = config.get("tensor_parallel_size", 1)
-        gpu_memory_utilization = config.get("gpu_memory_utilization", 0.9)
+        model_abs = str(Path(model_path).resolve())
+        self._model_name = Path(model_path).name
+        port = config.get("port", self.default_port())
 
-        self.llm = LLM(
-            model=model_path,
-            tensor_parallel_size=tensor_parallel_size,
-            gpu_memory_utilization=gpu_memory_utilization,
+        cmd_args = ["--model", f"/models/{self._model_name}"]
+        if config.get("tensor_parallel_size", 1) > 1:
+            cmd_args += [
+                "--tensor-parallel-size",
+                str(config["tensor_parallel_size"]),
+            ]
+        if "gpu_memory_utilization" in config:
+            cmd_args += [
+                "--gpu-memory-utilization",
+                str(config["gpu_memory_utilization"]),
+            ]
+
+        container_cfg = ContainerConfig(
+            image=config.get("image", self.default_image()),
+            port=port,
+            container_port=self.container_port(),
+            volumes={model_abs: f"/models/{self._model_name}"},
+            env=config.get("env", {}),
+            extra_args=config.get("extra_args", ["--shm-size=8g"]),
+            command_args=cmd_args,
         )
+        self._container_id = DockerManager.run_container(container_cfg)
+
+        health_url = f"http://localhost:{port}{self.health_endpoint()}"
+        DockerManager.wait_for_healthy(
+            health_url, container_id=self._container_id
+        )
+        self._base_url = f"http://localhost:{port}"
 
     def generate(
         self,
@@ -175,56 +93,29 @@ class VLLMEngine(InferenceEngine):
         max_tokens: int = 2048,
         **engine_specific_params: Any,
     ) -> GenerationResult:
-        """Generate with vLLM and GPU memory tracking."""
-        from vllm import SamplingParams
-
+        """Generate via OpenAI-compatible API."""
         from kitt.collectors.gpu_stats import GPUMemoryTracker
 
-        sampling_params = SamplingParams(
-            temperature=temperature,
-            top_p=top_p,
-            top_k=top_k,
-            max_tokens=max_tokens,
-        )
+        from .openai_compat import openai_generate, parse_openai_result
 
         with GPUMemoryTracker(gpu_index=0) as tracker:
-            start_time = time.perf_counter()
-            outputs = self.llm.generate([prompt], sampling_params)
-            end_time = time.perf_counter()
+            start = time.perf_counter()
+            response = openai_generate(
+                self._base_url,
+                prompt,
+                model=self._model_name,
+                temperature=temperature,
+                top_p=top_p,
+                max_tokens=max_tokens,
+            )
+            elapsed_ms = (time.perf_counter() - start) * 1000
 
-        total_latency_ms = (end_time - start_time) * 1000
-
-        output = outputs[0].outputs[0].text
-        prompt_tokens = len(outputs[0].prompt_token_ids)
-        completion_tokens = len(outputs[0].outputs[0].token_ids)
-
-        tps = (
-            completion_tokens / (total_latency_ms / 1000)
-            if total_latency_ms > 0
-            else 0
-        )
-
-        gpu_memory_peak_gb = tracker.get_peak_memory_mb() / 1024
-        gpu_memory_avg_gb = tracker.get_average_memory_mb() / 1024
-
-        metrics = GenerationMetrics(
-            ttft_ms=0,  # TODO: Extract from vLLM metrics if available
-            tps=tps,
-            total_latency_ms=total_latency_ms,
-            gpu_memory_peak_gb=gpu_memory_peak_gb,
-            gpu_memory_avg_gb=gpu_memory_avg_gb,
-            timestamp=datetime.now(),
-        )
-
-        return GenerationResult(
-            output=output,
-            metrics=metrics,
-            prompt_tokens=prompt_tokens,
-            completion_tokens=completion_tokens,
-        )
+        return parse_openai_result(response, elapsed_ms, tracker)
 
     def cleanup(self) -> None:
-        """Cleanup vLLM resources."""
-        if self.llm is not None:
-            del self.llm
-            self.llm = None
+        """Stop and remove the vLLM container."""
+        from .docker_manager import DockerManager
+
+        if self._container_id:
+            DockerManager.stop_container(self._container_id)
+            self._container_id = None

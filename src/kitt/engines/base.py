@@ -33,13 +33,16 @@ class EngineDiagnostics:
     """Structured diagnostics from an engine availability check."""
 
     available: bool
-    engine_type: str  # "python_import" or "http_server"
+    image: str = ""
     error: Optional[str] = None
     guidance: Optional[str] = None
 
 
 class InferenceEngine(ABC):
-    """Abstract base class for inference engines."""
+    """Abstract base class for inference engines.
+
+    All engines run inside Docker containers and communicate via HTTP APIs.
+    """
 
     @classmethod
     @abstractmethod
@@ -52,48 +55,63 @@ class InferenceEngine(ABC):
         """Model formats this engine supports (e.g., ['safetensors', 'pytorch'])."""
 
     @classmethod
+    @abstractmethod
+    def default_image(cls) -> str:
+        """Default Docker image for this engine."""
+
+    @classmethod
+    @abstractmethod
+    def default_port(cls) -> int:
+        """Default host port for this engine's container."""
+
+    @classmethod
+    @abstractmethod
+    def container_port(cls) -> int:
+        """Port the engine listens on inside the container."""
+
+    @classmethod
+    @abstractmethod
+    def health_endpoint(cls) -> str:
+        """Health check URL path (e.g. '/health')."""
+
+    @classmethod
     def is_available(cls) -> bool:
-        """Check if this engine is available on the system."""
-        try:
-            return cls._check_dependencies()
-        except Exception:
-            return False
+        """Check if Docker is available and the engine's image is pulled."""
+        from .docker_manager import DockerManager
+
+        return (
+            DockerManager.is_docker_available()
+            and DockerManager.image_exists(cls.default_image())
+        )
 
     @classmethod
     def diagnose(cls) -> EngineDiagnostics:
-        """Perform a detailed availability check with error info and guidance.
+        """Check Docker availability and image status.
 
         Returns structured diagnostics including the exact error message
-        and actionable fix suggestions. Unlike is_available(), this method
-        is intended for CLI output where users need to know *why* an engine
-        is unavailable and *how* to fix it.
+        and actionable fix suggestions.
         """
-        try:
-            available = cls._check_dependencies()
-            if available:
-                return EngineDiagnostics(
-                    available=True, engine_type="python_import"
-                )
-            return EngineDiagnostics(
-                available=False,
-                engine_type="python_import",
-                error="Dependency check failed",
-            )
-        except Exception as e:
-            return EngineDiagnostics(
-                available=False,
-                engine_type="python_import",
-                error=str(e),
-            )
+        from .docker_manager import DockerManager
 
-    @classmethod
-    @abstractmethod
-    def _check_dependencies(cls) -> bool:
-        """Engine-specific dependency check."""
+        if not DockerManager.is_docker_available():
+            return EngineDiagnostics(
+                available=False,
+                image=cls.default_image(),
+                error="Docker is not installed or not running",
+                guidance="Install Docker: https://docs.docker.com/get-docker/",
+            )
+        if not DockerManager.image_exists(cls.default_image()):
+            return EngineDiagnostics(
+                available=False,
+                image=cls.default_image(),
+                error=f"Docker image not pulled: {cls.default_image()}",
+                guidance=f"Pull with: kitt engines setup {cls.name()}",
+            )
+        return EngineDiagnostics(available=True, image=cls.default_image())
 
     @abstractmethod
     def initialize(self, model_path: str, config: Dict[str, Any]) -> None:
-        """Load model and prepare engine.
+        """Start Docker container and wait for healthy.
 
         Args:
             model_path: Path to model directory or model identifier.
@@ -110,7 +128,7 @@ class InferenceEngine(ABC):
         max_tokens: int = 2048,
         **engine_specific_params: Any,
     ) -> GenerationResult:
-        """Generate response with metrics collection.
+        """Generate response via HTTP API to container.
 
         Args:
             prompt: Input prompt.
@@ -124,13 +142,10 @@ class InferenceEngine(ABC):
             GenerationResult with output and metrics.
         """
 
-    @abstractmethod
     def cleanup(self) -> None:
-        """Clean shutdown and resource cleanup."""
+        """Stop and remove the Docker container."""
+        from .docker_manager import DockerManager
 
-    def translate_params(self, universal_params: Dict[str, Any]) -> Dict[str, Any]:
-        """Translate universal parameters to engine-specific parameters.
-
-        Override if engine has different parameter names.
-        """
-        return universal_params
+        if hasattr(self, "_container_id") and self._container_id:
+            DockerManager.stop_container(self._container_id)
+            self._container_id = None

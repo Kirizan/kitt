@@ -1,14 +1,14 @@
-"""Ollama inference engine implementation."""
+"""Ollama inference engine implementation — Docker container."""
 
 import json
 import logging
 import time
-import urllib.request
 import urllib.error
+import urllib.request
 from datetime import datetime
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
-from .base import EngineDiagnostics, GenerationMetrics, GenerationResult, InferenceEngine
+from .base import GenerationMetrics, GenerationResult, InferenceEngine
 from .registry import register_engine
 
 logger = logging.getLogger(__name__)
@@ -16,15 +16,16 @@ logger = logging.getLogger(__name__)
 
 @register_engine
 class OllamaEngine(InferenceEngine):
-    """Ollama inference engine via HTTP API.
+    """Ollama inference engine running in a Docker container.
 
-    Communicates with a running Ollama server (default: localhost:11434).
-    No special Python dependencies needed beyond stdlib.
+    Communicates via the Ollama HTTP API (/api/generate).
+    Model pulling is handled via docker exec.
     """
 
     def __init__(self) -> None:
-        self.base_url: str = ""
-        self.model_name: str = ""
+        self._container_id: Optional[str] = None
+        self._base_url: str = ""
+        self._model_name: str = ""
 
     @classmethod
     def name(cls) -> str:
@@ -35,73 +36,50 @@ class OllamaEngine(InferenceEngine):
         return ["gguf"]
 
     @classmethod
-    def diagnose(cls) -> EngineDiagnostics:
-        """Check Ollama server connectivity with detailed error info."""
-        try:
-            req = urllib.request.Request("http://localhost:11434/api/tags")
-            with urllib.request.urlopen(req, timeout=2) as response:
-                data = json.loads(response.read())
-                model_count = len(data.get("models", []))
-                return EngineDiagnostics(
-                    available=True,
-                    engine_type="http_server",
-                    guidance=f"{model_count} model(s) available" if model_count else None,
-                )
-        except urllib.error.URLError:
-            return EngineDiagnostics(
-                available=False,
-                engine_type="http_server",
-                error="Cannot connect to Ollama server at localhost:11434",
-                guidance="Start the server with: ollama serve",
-            )
-        except (TimeoutError, OSError) as e:
-            return EngineDiagnostics(
-                available=False,
-                engine_type="http_server",
-                error=f"Connection error: {e}",
-                guidance="Start the server with: ollama serve",
-            )
+    def default_image(cls) -> str:
+        return "ollama/ollama:latest"
 
     @classmethod
-    def _check_dependencies(cls) -> bool:
-        # Ollama uses HTTP API - check if server is reachable
-        try:
-            req = urllib.request.Request("http://localhost:11434/api/tags")
-            with urllib.request.urlopen(req, timeout=2):
-                return True
-        except (urllib.error.URLError, TimeoutError, OSError):
-            return False
+    def default_port(cls) -> int:
+        return 11434
+
+    @classmethod
+    def container_port(cls) -> int:
+        return 11434
+
+    @classmethod
+    def health_endpoint(cls) -> str:
+        return "/api/tags"
 
     def initialize(self, model_path: str, config: Dict[str, Any]) -> None:
-        """Initialize Ollama engine connection.
+        """Start Ollama container, wait for healthy, and pull the model."""
+        from .docker_manager import ContainerConfig, DockerManager
 
-        Args:
-            model_path: Ollama model name (e.g., 'llama3', 'mistral').
-            config: Must contain optional 'base_url' (default: http://localhost:11434).
-        """
-        self.base_url = config.get("base_url", "http://localhost:11434").rstrip("/")
-        self.model_name = model_path
+        self._model_name = model_path
+        port = config.get("port", self.default_port())
 
-        # Verify server is reachable and model exists
-        try:
-            req = urllib.request.Request(f"{self.base_url}/api/tags")
-            with urllib.request.urlopen(req, timeout=5) as response:
-                data = json.loads(response.read())
-                models = [m["name"] for m in data.get("models", [])]
-                # Check if model is available (with or without :latest tag)
-                model_found = any(
-                    m == self.model_name or m.startswith(f"{self.model_name}:")
-                    for m in models
-                )
-                if not model_found:
-                    logger.warning(
-                        f"Model '{self.model_name}' not found locally. "
-                        f"Available: {models}. Ollama may pull it on first use."
-                    )
-        except (urllib.error.URLError, TimeoutError) as e:
-            raise RuntimeError(
-                f"Cannot connect to Ollama server at {self.base_url}: {e}"
-            )
+        container_cfg = ContainerConfig(
+            image=config.get("image", self.default_image()),
+            port=port,
+            container_port=self.container_port(),
+            volumes=config.get("volumes", {}),
+            env=config.get("env", {}),
+            extra_args=config.get("extra_args", []),
+            command_args=[],
+        )
+        self._container_id = DockerManager.run_container(container_cfg)
+
+        health_url = f"http://localhost:{port}{self.health_endpoint()}"
+        DockerManager.wait_for_healthy(
+            health_url, container_id=self._container_id
+        )
+        self._base_url = f"http://localhost:{port}"
+
+        # Pull the model inside the container
+        logger.info(f"Pulling model '{self._model_name}' in Ollama container...")
+        DockerManager.exec_in_container(
+            self._container_id, ["ollama", "pull", self._model_name]
+        )
 
     def generate(
         self,
@@ -116,7 +94,7 @@ class OllamaEngine(InferenceEngine):
         from kitt.collectors.gpu_stats import GPUMemoryTracker
 
         payload = {
-            "model": self.model_name,
+            "model": self._model_name,
             "prompt": prompt,
             "stream": False,
             "options": {
@@ -129,7 +107,7 @@ class OllamaEngine(InferenceEngine):
 
         data = json.dumps(payload).encode("utf-8")
         req = urllib.request.Request(
-            f"{self.base_url}/api/generate",
+            f"{self._base_url}/api/generate",
             data=data,
             headers={"Content-Type": "application/json"},
         )
@@ -176,5 +154,9 @@ class OllamaEngine(InferenceEngine):
         )
 
     def cleanup(self) -> None:
-        """No cleanup needed for HTTP client."""
-        pass
+        """Stop and remove the Ollama container."""
+        from .docker_manager import DockerManager
+
+        if self._container_id:
+            DockerManager.stop_container(self._container_id)
+            self._container_id = None
