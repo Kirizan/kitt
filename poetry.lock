@@ -4987,6 +4987,18 @@ tests = ["check-manifest", "coverage (>=7.4.2)", "defusedxml", "markdown2", "ole
 xmp = ["defusedxml"]
 
 [[package]]
+name = "pip"
+version = "26.0"
+description = "The PyPA recommended tool for installing Python packages."
+optional = false
+python-versions = ">=3.9"
+groups = ["main"]
+files = [
+    {file = "pip-26.0-py3-none-any.whl", hash = "sha256:98436feffb9e31bc9339cf369fd55d3331b1580b6a6f1173bacacddcf9c34754"},
+    {file = "pip-26.0.tar.gz", hash = "sha256:3ce220a0a17915972fbf1ab451baae1521c4539e778b28127efa79b974aff0fa"},
+]
+
+[[package]]
 name = "platformdirs"
 version = "4.5.1"
 description = "A small Python package for determining appropriate platform-specific dirs, e.g. a `user data dir`."
@@ -9056,4 +9068,4 @@ web = ["flask"]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.10"
-content-hash = "d90d4d0b99a0206e8868425734ffacd8ee09d77aefa25e1fc9b2f35122f4e86f"
+content-hash = "4f88b44080bbd5bf4faa8203f9ace6892ad6bc8a9fc3cfaaf98c954381730b09"
