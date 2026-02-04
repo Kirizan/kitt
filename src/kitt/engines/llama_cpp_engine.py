@@ -32,7 +32,10 @@ class LlamaCppEngine(InferenceEngine):
             import llama_cpp  # noqa: F401
 
             return True
-        except ImportError:
+        except ModuleNotFoundError:
+            return False
+        except ImportError as e:
+            logger.warning(f"llama-cpp-python is installed but failed to import: {e}")
             return False
 
     def initialize(self, model_path: str, config: Dict[str, Any]) -> None:
@@ -44,10 +47,14 @@ class LlamaCppEngine(InferenceEngine):
         """
         try:
             from llama_cpp import Llama
-        except ImportError:
+        except ModuleNotFoundError:
             raise RuntimeError(
                 "llama-cpp-python not installed. "
                 "Install with: pip install llama-cpp-python"
+            )
+        except ImportError as e:
+            raise RuntimeError(
+                f"llama-cpp-python is installed but failed to load: {e}"
             )
 
         n_ctx = config.get("n_ctx", 4096)

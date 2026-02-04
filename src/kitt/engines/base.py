@@ -46,7 +46,7 @@ class InferenceEngine(ABC):
         """Check if this engine is available on the system."""
         try:
             return cls._check_dependencies()
-        except ImportError:
+        except Exception:
             return False
 
     @classmethod

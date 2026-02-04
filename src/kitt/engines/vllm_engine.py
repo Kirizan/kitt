@@ -32,16 +32,23 @@ class VLLMEngine(InferenceEngine):
             import vllm  # noqa: F401
 
             return True
-        except ImportError:
+        except ModuleNotFoundError:
+            return False
+        except ImportError as e:
+            logger.warning(f"vLLM is installed but failed to import: {e}")
             return False
 
     def initialize(self, model_path: str, config: Dict[str, Any]) -> None:
         """Initialize vLLM engine."""
         try:
             from vllm import LLM
-        except ImportError:
+        except ModuleNotFoundError:
             raise RuntimeError(
-                "vLLM not installed. Install with: pip install vllm"
+                "vLLM not installed. Install with: poetry install -E vllm"
+            )
+        except ImportError as e:
+            raise RuntimeError(
+                f"vLLM is installed but failed to load: {e}"
             )
 
         tensor_parallel_size = config.get("tensor_parallel_size", 1)
