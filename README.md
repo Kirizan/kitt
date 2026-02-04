@@ -183,16 +183,56 @@ Displays a table of engines with their status (Available / Not Available) and su
 
 #### `kitt engines check`
 
-Check whether a specific engine is available and show its details.
+Check whether a specific engine is available and show its details. For GPU-based engines (`vllm`, `llama_cpp`), also displays the system CUDA version, the PyTorch CUDA version, and flags any mismatch between them.
 
 ```bash
 kitt engines check <engine_name>
 ```
 
-**Example:**
+**Examples:**
 
 ```bash
-kitt engines check vllm
+$ kitt engines check vllm
+Engine: vllm
+  Formats: safetensors, pytorch
+  Status: Not Available
+  Dependencies may be missing. Check installation.
+  System CUDA: 13.0
+  PyTorch CUDA: 12.4
+  CUDA mismatch: system CUDA 13.0 vs PyTorch CUDA 12.4
+  Fix with:
+    pip install torch --index-url https://download.pytorch.org/whl/cu130
+    pip install vllm --extra-index-url https://download.pytorch.org/whl/cu130
+  Or run: kitt engines setup vllm
+```
+
+#### `kitt engines setup`
+
+Install an engine with CUDA-matched wheels. Detects the system CUDA version and runs `pip install` with the correct `--index-url` so PyTorch and the engine are built for the right CUDA runtime.
+
+```bash
+kitt engines setup <engine_name> [--dry-run]
+```
+
+| Option | Description |
+|---|---|
+| `--dry-run` | Show the pip commands that would be run without executing them |
+
+Currently supported engines: `vllm`.
+
+**Examples:**
+
+```bash
+# Preview the install commands
+$ kitt engines setup --dry-run vllm
+Setting up vllm for CUDA 13.0 (cu130)
+  would run: /path/to/python -m pip install torch --index-url https://download.pytorch.org/whl/cu130
+  would run: /path/to/python -m pip install vllm --extra-index-url https://download.pytorch.org/whl/cu130
+
+Dry run — no commands were executed.
+
+# Actually install
+kitt engines setup vllm
 ```
 
 ### `kitt test`
