@@ -97,6 +97,25 @@ class TestTGIEngineInitialize:
         assert "--model-id" in config.command_args
         assert "/models/llama-7b" in config.command_args
 
+    @patch("kitt.engines.image_resolver._detect_cc", return_value=None)
+    @patch("kitt.engines.tgi_engine.Path")
+    @patch("kitt.engines.docker_manager.DockerManager.wait_for_healthy", return_value=True)
+    @patch("kitt.engines.docker_manager.DockerManager.run_container", return_value="container123")
+    def test_initialize_local_model_volume_mapping(self, mock_run, mock_wait, mock_path, mock_cc):
+        """Local models should have correct volume mapping."""
+        mock_resolved = MagicMock()
+        mock_resolved.is_dir.return_value = True
+        mock_resolved.name = "Qwen2.5-0.5B"
+        mock_resolved.__str__ = lambda s: "/home/user/models/Qwen2.5-0.5B"
+        mock_path.return_value.resolve.return_value = mock_resolved
+
+        engine = TGIEngine()
+        engine.initialize("/home/user/models/Qwen2.5-0.5B", {})
+
+        config = mock_run.call_args[0][0]
+        # TGI mounts model dir to /models/{name}
+        assert "/models/Qwen2.5-0.5B" in config.volumes.values()
+
 
 class TestTGIEngineGenerate:
     @patch("kitt.collectors.gpu_stats.GPUMemoryTracker")

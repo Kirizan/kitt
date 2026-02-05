@@ -52,14 +52,16 @@ class LlamaCppEngine(InferenceEngine):
         from .docker_manager import ContainerConfig, DockerManager
 
         model_abs = str(Path(model_path).resolve())
-        self._model_name = Path(model_path).name
+        model_basename = Path(model_path).name
+        # Use full container path for consistency (llama.cpp serves single model)
+        self._model_name = f"/models/{model_basename}"
         port = config.get("port", self.default_port())
 
         n_gpu_layers = config.get("n_gpu_layers", -1)
         n_ctx = config.get("n_ctx", 4096)
 
         cmd_args = [
-            "-m", f"/models/{self._model_name}",
+            "-m", self._model_name,
             "--n-gpu-layers", str(n_gpu_layers),
             "-c", str(n_ctx),
             "--host", "0.0.0.0",

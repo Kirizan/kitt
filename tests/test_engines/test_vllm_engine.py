@@ -137,6 +137,34 @@ class TestVLLMEngineInitialize:
         config = mock_run.call_args[0][0]
         assert config.image == "custom/image:v1"
 
+    @patch("kitt.engines.image_resolver._detect_cc", return_value=None)
+    @patch("kitt.engines.docker_manager.DockerManager.wait_for_healthy", return_value=True)
+    @patch("kitt.engines.docker_manager.DockerManager.run_container", return_value="container123")
+    def test_initialize_sets_model_name_with_container_path(self, mock_run, mock_wait, mock_cc):
+        """Model name should include /models/ prefix for vLLM served_model_name."""
+        engine = VLLMEngine()
+        engine.initialize("/path/to/Qwen2.5-0.5B-Instruct", {})
+
+        # Model name should be full container path for API calls
+        assert engine._model_name == "/models/Qwen2.5-0.5B-Instruct"
+        # Volume should mount to the same path
+        config = mock_run.call_args[0][0]
+        assert "/models/Qwen2.5-0.5B-Instruct" in config.volumes.values()
+
+    @patch("kitt.engines.image_resolver._detect_cc", return_value=None)
+    @patch("kitt.engines.docker_manager.DockerManager.wait_for_healthy", return_value=True)
+    @patch("kitt.engines.docker_manager.DockerManager.run_container", return_value="container123")
+    def test_initialize_model_name_in_command_args(self, mock_run, mock_wait, mock_cc):
+        """Command args should use the container path for --model flag."""
+        engine = VLLMEngine()
+        engine.initialize("/home/user/models/my-model", {})
+
+        config = mock_run.call_args[0][0]
+        # Standard image uses --model flag
+        assert "--model" in config.command_args
+        idx = config.command_args.index("--model")
+        assert config.command_args[idx + 1] == "/models/my-model"
+
 
 class TestVLLMEngineGenerate:
     @patch("kitt.engines.openai_compat.parse_openai_result")

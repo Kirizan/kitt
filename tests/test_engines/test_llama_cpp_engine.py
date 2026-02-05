@@ -79,6 +79,22 @@ class TestLlamaCppEngineInitialize:
         assert "-c" in config.command_args
         assert "8192" in config.command_args
 
+    @patch("kitt.engines.image_resolver._detect_cc", return_value=None)
+    @patch("kitt.engines.docker_manager.DockerManager.wait_for_healthy", return_value=True)
+    @patch("kitt.engines.docker_manager.DockerManager.run_container", return_value="container123")
+    def test_initialize_sets_model_name_with_container_path(self, mock_run, mock_wait, mock_cc):
+        """Model name should include /models/ prefix for API consistency."""
+        engine = LlamaCppEngine()
+        engine.initialize("/path/to/my-model.gguf", {})
+
+        # Model name should be full container path
+        assert engine._model_name == "/models/my-model.gguf"
+        # Command args should use the same path
+        config = mock_run.call_args[0][0]
+        assert "-m" in config.command_args
+        idx = config.command_args.index("-m")
+        assert config.command_args[idx + 1] == "/models/my-model.gguf"
+
 
 class TestLlamaCppEngineGenerate:
     @patch("kitt.engines.openai_compat.parse_openai_result")
@@ -94,11 +110,12 @@ class TestLlamaCppEngineGenerate:
 
         engine = LlamaCppEngine()
         engine._base_url = "http://localhost:8081"
-        engine._model_name = "model.gguf"
+        engine._model_name = "/models/model.gguf"
 
         engine.generate("Hello", temperature=0.7, top_k=40)
 
         mock_gen.assert_called_once()
+        assert mock_gen.call_args[1]["model"] == "/models/model.gguf"
         assert mock_gen.call_args[1]["top_k"] == 40
         mock_parse.assert_called_once()
 
