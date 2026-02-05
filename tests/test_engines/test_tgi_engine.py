@@ -3,7 +3,17 @@
 import json
 from unittest.mock import MagicMock, patch
 
+import pytest
+
+from kitt.engines.image_resolver import clear_cache
 from kitt.engines.tgi_engine import TGIEngine
+
+
+@pytest.fixture(autouse=True)
+def _reset_image_resolver():
+    clear_cache()
+    yield
+    clear_cache()
 
 
 class TestTGIEngineMetadata:
@@ -28,20 +38,23 @@ class TestTGIEngineMetadata:
 
 
 class TestTGIEngineAvailability:
+    @patch("kitt.engines.image_resolver._detect_cc", return_value=None)
     @patch("kitt.engines.docker_manager.DockerManager.image_exists", return_value=True)
     @patch("kitt.engines.docker_manager.DockerManager.is_docker_available", return_value=True)
-    def test_is_available_true(self, mock_avail, mock_exists):
+    def test_is_available_true(self, mock_avail, mock_exists, mock_cc):
         assert TGIEngine.is_available() is True
 
+    @patch("kitt.engines.image_resolver._detect_cc", return_value=None)
     @patch("kitt.engines.docker_manager.DockerManager.is_docker_available", return_value=False)
-    def test_diagnose_no_docker(self, mock_avail):
+    def test_diagnose_no_docker(self, mock_avail, mock_cc):
         diag = TGIEngine.diagnose()
         assert diag.available is False
         assert "Docker is not installed" in diag.error
 
+    @patch("kitt.engines.image_resolver._detect_cc", return_value=None)
     @patch("kitt.engines.docker_manager.DockerManager.image_exists", return_value=False)
     @patch("kitt.engines.docker_manager.DockerManager.is_docker_available", return_value=True)
-    def test_diagnose_image_not_pulled(self, mock_avail, mock_exists):
+    def test_diagnose_image_not_pulled(self, mock_avail, mock_exists, mock_cc):
         diag = TGIEngine.diagnose()
         assert diag.available is False
         assert "not pulled" in diag.error
@@ -49,10 +62,11 @@ class TestTGIEngineAvailability:
 
 
 class TestTGIEngineInitialize:
+    @patch("kitt.engines.image_resolver._detect_cc", return_value=None)
     @patch("kitt.engines.tgi_engine.Path")
     @patch("kitt.engines.docker_manager.DockerManager.wait_for_healthy", return_value=True)
     @patch("kitt.engines.docker_manager.DockerManager.run_container", return_value="container123")
-    def test_initialize_with_hf_model(self, mock_run, mock_wait, mock_path):
+    def test_initialize_with_hf_model(self, mock_run, mock_wait, mock_path, mock_cc):
         # model_path is not a local directory
         mock_path.return_value.resolve.return_value.is_dir.return_value = False
 
@@ -64,10 +78,11 @@ class TestTGIEngineInitialize:
         assert "--model-id" in config.command_args
         assert "meta-llama/Llama-3-8B" in config.command_args
 
+    @patch("kitt.engines.image_resolver._detect_cc", return_value=None)
     @patch("kitt.engines.tgi_engine.Path")
     @patch("kitt.engines.docker_manager.DockerManager.wait_for_healthy", return_value=True)
     @patch("kitt.engines.docker_manager.DockerManager.run_container", return_value="container123")
-    def test_initialize_with_local_model(self, mock_run, mock_wait, mock_path):
+    def test_initialize_with_local_model(self, mock_run, mock_wait, mock_path, mock_cc):
         # model_path is a local directory
         mock_resolved = MagicMock()
         mock_resolved.is_dir.return_value = True

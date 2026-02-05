@@ -2,7 +2,17 @@
 
 from unittest.mock import MagicMock, patch
 
+import pytest
+
+from kitt.engines.image_resolver import clear_cache
 from kitt.engines.llama_cpp_engine import LlamaCppEngine
+
+
+@pytest.fixture(autouse=True)
+def _reset_image_resolver():
+    clear_cache()
+    yield
+    clear_cache()
 
 
 class TestLlamaCppEngineMetadata:
@@ -26,14 +36,16 @@ class TestLlamaCppEngineMetadata:
 
 
 class TestLlamaCppEngineAvailability:
+    @patch("kitt.engines.image_resolver._detect_cc", return_value=None)
     @patch("kitt.engines.docker_manager.DockerManager.image_exists", return_value=True)
     @patch("kitt.engines.docker_manager.DockerManager.is_docker_available", return_value=True)
-    def test_is_available_true(self, mock_avail, mock_exists):
+    def test_is_available_true(self, mock_avail, mock_exists, mock_cc):
         assert LlamaCppEngine.is_available() is True
 
+    @patch("kitt.engines.image_resolver._detect_cc", return_value=None)
     @patch("kitt.engines.docker_manager.DockerManager.image_exists", return_value=False)
     @patch("kitt.engines.docker_manager.DockerManager.is_docker_available", return_value=True)
-    def test_diagnose_image_not_pulled(self, mock_avail, mock_exists):
+    def test_diagnose_image_not_pulled(self, mock_avail, mock_exists, mock_cc):
         diag = LlamaCppEngine.diagnose()
         assert diag.available is False
         assert "not pulled" in diag.error
@@ -41,9 +53,10 @@ class TestLlamaCppEngineAvailability:
 
 
 class TestLlamaCppEngineInitialize:
+    @patch("kitt.engines.image_resolver._detect_cc", return_value=None)
     @patch("kitt.engines.docker_manager.DockerManager.wait_for_healthy", return_value=True)
     @patch("kitt.engines.docker_manager.DockerManager.run_container", return_value="container123")
-    def test_initialize_starts_container(self, mock_run, mock_wait):
+    def test_initialize_starts_container(self, mock_run, mock_wait, mock_cc):
         engine = LlamaCppEngine()
         engine.initialize("/models/model.gguf", {})
 
@@ -53,9 +66,10 @@ class TestLlamaCppEngineInitialize:
         assert "-m" in config.command_args
         mock_wait.assert_called_once()
 
+    @patch("kitt.engines.image_resolver._detect_cc", return_value=None)
     @patch("kitt.engines.docker_manager.DockerManager.wait_for_healthy", return_value=True)
     @patch("kitt.engines.docker_manager.DockerManager.run_container", return_value="container123")
-    def test_initialize_with_gpu_layers(self, mock_run, mock_wait):
+    def test_initialize_with_gpu_layers(self, mock_run, mock_wait, mock_cc):
         engine = LlamaCppEngine()
         engine.initialize("/models/model.gguf", {"n_gpu_layers": 32, "n_ctx": 8192})
 
