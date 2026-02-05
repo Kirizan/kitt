@@ -5,7 +5,7 @@ import platform
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -15,6 +15,7 @@ class GPUInfo:
     model: str
     vram_gb: int
     count: int = 1
+    compute_capability: Optional[Tuple[int, int]] = None
 
 
 @dataclass
@@ -118,12 +119,21 @@ def detect_gpu(environment_type: Optional[str] = None) -> Optional[GPUInfo]:
             except Exception as mem_err:
                 logger.debug(f"pynvml memory query failed (unified memory?): {mem_err}")
 
+            # Compute capability detection
+            cc = None
+            try:
+                major, minor = pynvml.nvmlDeviceGetCudaComputeCapability(handle)
+                cc = (major, minor)
+            except Exception as cc_err:
+                logger.debug(f"pynvml compute capability query failed: {cc_err}")
+
             pynvml.nvmlShutdown()
 
             return GPUInfo(
                 model=name,
                 vram_gb=vram_gb,
                 count=device_count,
+                compute_capability=cc,
             )
     except Exception as e:
         pynvml_error = e
@@ -148,10 +158,12 @@ def detect_gpu(environment_type: Optional[str] = None) -> Optional[GPUInfo]:
                 except ValueError:
                     vram_gb = 0
                     logger.debug(f"nvidia-smi reported memory as '{mem_str}' (unified memory?)")
+                cc = _detect_compute_capability_smi()
                 return GPUInfo(
                     model=name.strip(),
                     vram_gb=vram_gb,
                     count=len(lines),
+                    compute_capability=cc,
                 )
         else:
             smi_error = result.stderr.strip() if result.stderr else f"exit code {result.returncode}"
@@ -171,6 +183,52 @@ def detect_gpu(environment_type: Optional[str] = None) -> Optional[GPUInfo]:
         logger.warning("No NVIDIA GPU detected")
 
     return None
+
+
+def _detect_compute_capability_smi() -> Optional[Tuple[int, int]]:
+    """Detect GPU compute capability via nvidia-smi."""
+    try:
+        result = subprocess.run(
+            [
+                "nvidia-smi",
+                "--query-gpu=compute_cap",
+                "--format=csv,noheader",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        if result.returncode == 0:
+            cap_str = result.stdout.strip().split("\n")[0].strip()
+            parts = cap_str.split(".")
+            if len(parts) == 2:
+                return (int(parts[0]), int(parts[1]))
+    except Exception as e:
+        logger.debug(f"nvidia-smi compute capability detection failed: {e}")
+    return None
+
+
+def detect_gpu_compute_capability() -> Optional[Tuple[int, int]]:
+    """Detect GPU compute capability.
+
+    Returns:
+        Tuple of (major, minor) compute capability, or None if not detected.
+        E.g. (8, 9) for Ada Lovelace, (12, 1) for GB10 Blackwell.
+    """
+    # Try pynvml first
+    try:
+        import pynvml
+
+        pynvml.nvmlInit()
+        handle = pynvml.nvmlDeviceGetHandleByIndex(0)
+        major, minor = pynvml.nvmlDeviceGetCudaComputeCapability(handle)
+        pynvml.nvmlShutdown()
+        return (major, minor)
+    except Exception:
+        pass
+
+    # Fallback to nvidia-smi
+    return _detect_compute_capability_smi()
 
 
 def detect_cpu() -> CPUInfo:
