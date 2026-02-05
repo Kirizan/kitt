@@ -27,11 +27,12 @@ def list_engines():
 
     for name in sorted(EngineRegistry.list_all()):
         engine_cls = EngineRegistry.get_engine(name)
+        image = engine_cls.resolved_image()
         available = engine_cls.is_available()
         status = "[green]Ready[/green]" if available else "[red]Not Pulled[/red]"
         table.add_row(
             name,
-            engine_cls.default_image(),
+            image,
             status,
             ", ".join(engine_cls.supported_formats()),
         )
@@ -85,7 +86,7 @@ def setup_engine(engine_name, dry_run):
         console.print(f"[red]{e}[/red]")
         raise SystemExit(1)
 
-    image = engine_cls.default_image()
+    image = engine_cls.resolved_image()
 
     if not DockerManager.is_docker_available():
         console.print("[red]Docker is not installed or not running.[/red]")
