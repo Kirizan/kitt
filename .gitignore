@@ -49,6 +49,7 @@ Thumbs.db
 
 # KITT specific
 .kitt/
+.claude/
 checkpoints/
 
 # pyenv
