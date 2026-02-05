@@ -51,6 +51,7 @@ Thumbs.db
 .kitt/
 .claude/
 checkpoints/
+kitt-results/
 
 # pyenv
 .python-version
