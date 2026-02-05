@@ -161,7 +161,7 @@ class DockerManager:
     @staticmethod
     def wait_for_healthy(
         url: str,
-        timeout: float = 300.0,
+        timeout: float = 600.0,
         interval: float = 2.0,
         container_id: Optional[str] = None,
     ) -> bool:
