@@ -55,7 +55,9 @@ class VLLMEngine(InferenceEngine):
         from .docker_manager import ContainerConfig, DockerManager
 
         model_abs = str(Path(model_path).resolve())
-        self._model_name = Path(model_path).name
+        model_basename = Path(model_path).name
+        # vLLM uses the container path as served_model_name
+        self._model_name = f"/models/{model_basename}"
         port = config.get("port", self.default_port())
         image = config.get("image", self.resolved_image())
 
@@ -63,10 +65,10 @@ class VLLMEngine(InferenceEngine):
         # and pass the model as a positional arg instead of --model.
         if image.startswith(self._NGC_PREFIX):
             cmd_args = [
-                "vllm", "serve", f"/models/{self._model_name}",
+                "vllm", "serve", self._model_name,
             ]
         else:
-            cmd_args = ["--model", f"/models/{self._model_name}"]
+            cmd_args = ["--model", self._model_name]
 
         if config.get("tensor_parallel_size", 1) > 1:
             cmd_args += [
@@ -83,7 +85,7 @@ class VLLMEngine(InferenceEngine):
             image=image,
             port=port,
             container_port=self.container_port(),
-            volumes={model_abs: f"/models/{self._model_name}"},
+            volumes={model_abs: self._model_name},
             env=config.get("env", {}),
             extra_args=config.get("extra_args", ["--shm-size=8g"]),
             command_args=cmd_args,

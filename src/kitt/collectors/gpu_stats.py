@@ -23,6 +23,9 @@ class GPUMemoryStats:
 class GPUMonitor:
     """Monitor GPU memory and utilization during tests."""
 
+    # Class-level flag to only warn once per session about unsupported operations
+    _stats_warned: bool = False
+
     def __init__(self) -> None:
         """Initialize NVIDIA Management Library."""
         self._initialized = False
@@ -73,17 +76,38 @@ class GPUMonitor:
             import pynvml
 
             handle = pynvml.nvmlDeviceGetHandleByIndex(gpu_index)
-            mem_info = pynvml.nvmlDeviceGetMemoryInfo(handle)
-            utilization = pynvml.nvmlDeviceGetUtilizationRates(handle)
+
+            # Memory info may not be supported on unified memory systems (e.g., GB10)
+            try:
+                mem_info = pynvml.nvmlDeviceGetMemoryInfo(handle)
+                used_mb = mem_info.used / (1024 * 1024)
+                free_mb = mem_info.free / (1024 * 1024)
+                total_mb = mem_info.total / (1024 * 1024)
+            except pynvml.NVMLError:
+                # Return None if we can't get memory info - that's the core data we need
+                if not GPUMonitor._stats_warned:
+                    logger.debug("GPU memory info not supported (unified memory system?)")
+                    GPUMonitor._stats_warned = True
+                return None
+
+            # Utilization may also not be supported on some GPUs
+            try:
+                utilization = pynvml.nvmlDeviceGetUtilizationRates(handle)
+                utilization_percent = utilization.gpu
+            except pynvml.NVMLError:
+                utilization_percent = 0.0
 
             return GPUMemoryStats(
-                used_mb=mem_info.used / (1024 * 1024),
-                free_mb=mem_info.free / (1024 * 1024),
-                total_mb=mem_info.total / (1024 * 1024),
-                utilization_percent=utilization.gpu,
+                used_mb=used_mb,
+                free_mb=free_mb,
+                total_mb=total_mb,
+                utilization_percent=utilization_percent,
             )
         except Exception as e:
-            logger.warning(f"Could not get GPU stats: {e}")
+            # Only warn once per session to avoid log spam
+            if not GPUMonitor._stats_warned:
+                logger.warning(f"Could not get GPU stats: {e}")
+                GPUMonitor._stats_warned = True
             return None
 
     def get_all_gpus_stats(self) -> List[GPUMemoryStats]:
