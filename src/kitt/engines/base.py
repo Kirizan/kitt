@@ -75,13 +75,25 @@ class InferenceEngine(ABC):
         """Health check URL path (e.g. '/health')."""
 
     @classmethod
+    def resolved_image(cls) -> str:
+        """Return the best Docker image for this engine on the current GPU.
+
+        Uses hardware detection to select an optimized image when available
+        (e.g. NGC containers for Blackwell GPUs), falling back to the
+        default image otherwise.
+        """
+        from .image_resolver import resolve_image
+
+        return resolve_image(cls.name(), cls.default_image())
+
+    @classmethod
     def is_available(cls) -> bool:
         """Check if Docker is available and the engine's image is pulled."""
         from .docker_manager import DockerManager
 
         return (
             DockerManager.is_docker_available()
-            and DockerManager.image_exists(cls.default_image())
+            and DockerManager.image_exists(cls.resolved_image())
         )
 
     @classmethod
@@ -93,21 +105,23 @@ class InferenceEngine(ABC):
         """
         from .docker_manager import DockerManager
 
+        image = cls.resolved_image()
+
         if not DockerManager.is_docker_available():
             return EngineDiagnostics(
                 available=False,
-                image=cls.default_image(),
+                image=image,
                 error="Docker is not installed or not running",
                 guidance="Install Docker: https://docs.docker.com/get-docker/",
             )
-        if not DockerManager.image_exists(cls.default_image()):
+        if not DockerManager.image_exists(image):
             return EngineDiagnostics(
                 available=False,
-                image=cls.default_image(),
-                error=f"Docker image not pulled: {cls.default_image()}",
+                image=image,
+                error=f"Docker image not pulled: {image}",
                 guidance=f"Pull with: kitt engines setup {cls.name()}",
             )
-        return EngineDiagnostics(available=True, image=cls.default_image())
+        return EngineDiagnostics(available=True, image=image)
 
     @abstractmethod
     def initialize(self, model_path: str, config: Dict[str, Any]) -> None:

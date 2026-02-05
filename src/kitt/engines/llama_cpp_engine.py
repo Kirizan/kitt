@@ -70,7 +70,7 @@ class LlamaCppEngine(InferenceEngine):
         model_dir = str(Path(model_abs).parent)
 
         container_cfg = ContainerConfig(
-            image=config.get("image", self.default_image()),
+            image=config.get("image", self.resolved_image()),
             port=port,
             container_port=self.container_port(),
             volumes={model_dir: "/models"},
@@ -81,8 +81,9 @@ class LlamaCppEngine(InferenceEngine):
         self._container_id = DockerManager.run_container(container_cfg)
 
         health_url = f"http://localhost:{port}{self.health_endpoint()}"
+        startup_timeout = config.get("startup_timeout", 600.0)
         DockerManager.wait_for_healthy(
-            health_url, container_id=self._container_id
+            health_url, timeout=startup_timeout, container_id=self._container_id
         )
         self._base_url = f"http://localhost:{port}"
 

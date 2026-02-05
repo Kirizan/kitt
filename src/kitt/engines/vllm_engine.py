@@ -47,6 +47,9 @@ class VLLMEngine(InferenceEngine):
     def health_endpoint(cls) -> str:
         return "/health"
 
+    # NGC images use a wrapper entrypoint and need explicit 'vllm serve'
+    _NGC_PREFIX = "nvcr.io/"
+
     def initialize(self, model_path: str, config: Dict[str, Any]) -> None:
         """Start vLLM container and wait for healthy."""
         from .docker_manager import ContainerConfig, DockerManager
@@ -54,8 +57,17 @@ class VLLMEngine(InferenceEngine):
         model_abs = str(Path(model_path).resolve())
         self._model_name = Path(model_path).name
         port = config.get("port", self.default_port())
+        image = config.get("image", self.resolved_image())
 
-        cmd_args = ["--model", f"/models/{self._model_name}"]
+        # NGC images use a wrapper entrypoint; prepend 'vllm serve'
+        # and pass the model as a positional arg instead of --model.
+        if image.startswith(self._NGC_PREFIX):
+            cmd_args = [
+                "vllm", "serve", f"/models/{self._model_name}",
+            ]
+        else:
+            cmd_args = ["--model", f"/models/{self._model_name}"]
+
         if config.get("tensor_parallel_size", 1) > 1:
             cmd_args += [
                 "--tensor-parallel-size",
@@ -68,7 +80,7 @@ class VLLMEngine(InferenceEngine):
             ]
 
         container_cfg = ContainerConfig(
-            image=config.get("image", self.default_image()),
+            image=image,
             port=port,
             container_port=self.container_port(),
             volumes={model_abs: f"/models/{self._model_name}"},
@@ -79,8 +91,9 @@ class VLLMEngine(InferenceEngine):
         self._container_id = DockerManager.run_container(container_cfg)
 
         health_url = f"http://localhost:{port}{self.health_endpoint()}"
+        startup_timeout = config.get("startup_timeout", 600.0)
         DockerManager.wait_for_healthy(
-            health_url, container_id=self._container_id
+            health_url, timeout=startup_timeout, container_id=self._container_id
         )
         self._base_url = f"http://localhost:{port}"
 
