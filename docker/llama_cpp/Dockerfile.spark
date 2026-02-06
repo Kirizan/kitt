@@ -27,11 +27,26 @@ RUN git clone --depth 1 --branch ${LLAMA_CPP_REF} \
 WORKDIR /llama.cpp
 
 # Build with native optimisations and sm_121 CUDA arch
+#
+# The CUDA driver library (libcuda.so) ships with the host driver, not the
+# toolkit.  CUDA devel images include a stub at /usr/local/cuda/lib64/stubs/
+# but only as libcuda.so (no versioned SONAME symlink).
+#
+# 1. Create libcuda.so.1 symlink so the linker can resolve the SONAME that
+#    gets recorded as a DT_NEEDED entry in libggml-cuda.so.
+# 2. LIBRARY_PATH lets the *direct* link step (-lcuda) find the stub.
+# 3. -rpath-link lets the *transitive* dependency resolution find libcuda.so.1
+#    when linking the final executable against libggml-cuda.so.
+RUN ln -sf /usr/local/cuda/lib64/stubs/libcuda.so \
+           /usr/local/cuda/lib64/stubs/libcuda.so.1
+ENV LIBRARY_PATH=/usr/local/cuda/lib64/stubs:${LIBRARY_PATH}
+
 RUN cmake -B build \
         -DGGML_CUDA=ON \
         -DGGML_NATIVE=ON \
         -DCMAKE_CUDA_ARCHITECTURES=121 \
         -DLLAMA_CURL=ON \
+        -DCMAKE_EXE_LINKER_FLAGS="-Wl,-rpath-link=/usr/local/cuda/lib64/stubs" \
     && cmake --build build --config Release --target llama-server -j$(nproc)
 
 # ---- Stage 2: Runtime ----
@@ -42,6 +57,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=build /llama.cpp/build/bin/llama-server /usr/local/bin/llama-server
+COPY --from=build /llama.cpp/build/bin/lib*.so* /usr/local/lib/
+
+RUN ldconfig
 
 ENV LLAMA_ARG_HOST=0.0.0.0
 

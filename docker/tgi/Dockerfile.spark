@@ -4,6 +4,12 @@
 # TGI's custom CUDA kernels may need additional patches for sm_121.
 # Use at your own risk; contributions and reports welcome.
 #
+# Known issues:
+#   - PyTorch cu124 wheels install but do NOT support sm_121 (only up to sm_90a).
+#     A nightly or source build with Blackwell support is needed.
+#   - flash-attention / flashinfer have no pre-built wheels for this target.
+#   - The peft library and other transitive deps may need explicit installation.
+#
 # Build: docker build -f docker/tgi/Dockerfile.spark \
 #          -t kitt/tgi:spark .
 # Run:   docker run --gpus all --network host kitt/tgi:spark ...
@@ -20,7 +26,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
         git curl build-essential pkg-config libssl-dev protobuf-compiler \
-        python3 python3-pip python3-venv \
+        python3 python3-dev python3-pip python3-venv \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Rust toolchain
@@ -34,16 +40,26 @@ RUN git clone --depth 1 --branch ${TGI_REF} \
 
 WORKDIR /tgi
 
-# Build the Rust router
+# Build the Rust launcher and router
 ENV CUDA_COMPUTE_CAP=121
-RUN cargo build --release --bin text-generation-router
+RUN cargo build --release --bin text-generation-launcher --bin text-generation-router
 
-# Build Python server with custom CUDA kernels
+# Build Python server — non-editable install so the package works without
+# the source tree.  PyTorch for ARM64+CUDA 13 may not have wheels, so we
+# install torch separately first and fall back gracefully.
 RUN python3 -m venv /opt/tgi-env \
     && /opt/tgi-env/bin/pip install --no-cache-dir --upgrade pip setuptools wheel \
     && /opt/tgi-env/bin/pip install --no-cache-dir ninja packaging \
-    && cd server \
-    && TORCH_CUDA_ARCH_LIST="12.1" /opt/tgi-env/bin/pip install --no-cache-dir -e ".[cuda]" \
+    && /opt/tgi-env/bin/pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cu124 \
+    || echo "WARNING: PyTorch install failed — trying default index" \
+    && /opt/tgi-env/bin/pip install --no-cache-dir torch \
+    || echo "WARNING: PyTorch not available for this platform"
+
+RUN cd server \
+    && TORCH_CUDA_ARCH_LIST="12.1" /opt/tgi-env/bin/pip install --no-cache-dir ".[cuda]" \
+    || echo "WARNING: TGI server install with CUDA extras failed — trying without" \
+    && cd /tgi/server \
+    && /opt/tgi-env/bin/pip install --no-cache-dir . \
     || echo "WARNING: TGI server install failed — experimental build"
 
 # ---- Stage 2: Runtime ----
@@ -52,9 +68,10 @@ FROM nvidia/cuda:${CUDA_VERSION}-runtime-ubuntu${UBUNTU_VERSION} AS runtime
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        python3 libssl3 ca-certificates curl \
+        python3 libpython3-dev libssl3 ca-certificates curl \
     && rm -rf /var/lib/apt/lists/*
 
+COPY --from=build /tgi/target/release/text-generation-launcher /usr/local/bin/
 COPY --from=build /tgi/target/release/text-generation-router /usr/local/bin/
 COPY --from=build /opt/tgi-env /opt/tgi-env
 
