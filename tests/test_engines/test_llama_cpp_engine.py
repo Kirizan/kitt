@@ -23,7 +23,7 @@ class TestLlamaCppEngineMetadata:
         assert "gguf" in LlamaCppEngine.supported_formats()
 
     def test_default_image(self):
-        assert LlamaCppEngine.default_image() == "ghcr.io/ggerganov/llama.cpp:server"
+        assert LlamaCppEngine.default_image() == "ghcr.io/ggml-org/llama.cpp:server-cuda"
 
     def test_default_port(self):
         assert LlamaCppEngine.default_port() == 8081
@@ -62,7 +62,7 @@ class TestLlamaCppEngineInitialize:
 
         mock_run.assert_called_once()
         config = mock_run.call_args[0][0]
-        assert config.image == "ghcr.io/ggerganov/llama.cpp:server"
+        assert config.image == "ghcr.io/ggml-org/llama.cpp:server-cuda"
         assert "-m" in config.command_args
         mock_wait.assert_called_once()
 

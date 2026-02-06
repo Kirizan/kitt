@@ -33,7 +33,7 @@ class LlamaCppEngine(InferenceEngine):
 
     @classmethod
     def default_image(cls) -> str:
-        return "ghcr.io/ggerganov/llama.cpp:server"
+        return "ghcr.io/ggml-org/llama.cpp:server-cuda"
 
     @classmethod
     def default_port(cls) -> int:

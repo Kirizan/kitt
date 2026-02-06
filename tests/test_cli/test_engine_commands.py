@@ -91,7 +91,7 @@ class TestSetupEngine:
         result = runner.invoke(engines, ["setup", "llama_cpp"])
         assert result.exit_code == 0
         mock_pull.assert_called_once_with(
-            "ghcr.io/ggerganov/llama.cpp:server"
+            "ghcr.io/ggml-org/llama.cpp:server-cuda"
         )
 
     @patch("kitt.engines.image_resolver._detect_cc", return_value=(12, 1))
