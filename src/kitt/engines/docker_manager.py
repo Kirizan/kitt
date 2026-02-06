@@ -209,6 +209,50 @@ class DockerManager:
         )
 
     @staticmethod
+    def build_image(
+        image: str,
+        dockerfile: str,
+        context_dir: str,
+        target: Optional[str] = None,
+        build_args: Optional[Dict[str, str]] = None,
+        timeout: int = 3600,
+    ) -> None:
+        """Build a Docker image from a Dockerfile.
+
+        Args:
+            image: Tag for the built image (e.g. 'kitt/llama-cpp:spark').
+            dockerfile: Path to the Dockerfile.
+            context_dir: Build context directory.
+            target: Optional multi-stage build target.
+            build_args: Optional dict of --build-arg key=value pairs.
+            timeout: Build timeout in seconds (default 3600 for CUDA builds).
+
+        Raises:
+            RuntimeError: If the build fails.
+        """
+        cmd = ["docker", "build", "-f", dockerfile, "-t", image]
+
+        if target:
+            cmd.extend(["--target", target])
+
+        for key, value in (build_args or {}).items():
+            cmd.extend(["--build-arg", f"{key}={value}"])
+
+        cmd.append(context_dir)
+
+        logger.info(f"Building image: {' '.join(cmd)}")
+        result = subprocess.run(
+            cmd, capture_output=True, text=True, timeout=timeout
+        )
+
+        if result.returncode != 0:
+            raise RuntimeError(
+                f"Failed to build Docker image '{image}': {result.stderr.strip()}"
+            )
+
+        logger.info(f"Successfully built image: {image}")
+
+    @staticmethod
     def exec_in_container(
         container_id: str, command: List[str]
     ) -> subprocess.CompletedProcess:

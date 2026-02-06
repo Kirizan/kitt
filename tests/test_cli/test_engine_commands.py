@@ -104,15 +104,95 @@ class TestSetupEngine:
         assert result.exit_code == 0
         mock_pull.assert_called_once_with("nvcr.io/nvidia/vllm:26.01-py3")
 
+
+class TestSetupEngineBuild:
+    """Tests for KITT-managed image builds (docker build path)."""
+
     @patch("kitt.engines.image_resolver._detect_cc", return_value=(12, 1))
-    @patch("kitt.engines.docker_manager.DockerManager.pull_image")
+    @patch("kitt.engines.docker_manager.DockerManager.image_exists", return_value=False)
+    @patch("kitt.engines.docker_manager.DockerManager.build_image")
     @patch("kitt.engines.docker_manager.DockerManager.is_docker_available", return_value=True)
-    def test_setup_llama_cpp_blackwell_pulls_spark(self, mock_avail, mock_pull, mock_cc):
-        """On Blackwell hardware, setup pulls the Spark-built image for llama.cpp."""
+    def test_setup_llama_cpp_blackwell_builds(self, mock_avail, mock_build, mock_exists, mock_cc):
+        """On Blackwell, llama_cpp setup builds the KITT-managed image."""
         runner = CliRunner()
         result = runner.invoke(engines, ["setup", "llama_cpp"])
         assert result.exit_code == 0
-        mock_pull.assert_called_once_with("llama.cpp:server-spark")
+        assert "Building" in result.output
+        assert "ready" in result.output
+        mock_build.assert_called_once()
+        call_kwargs = mock_build.call_args[1]
+        assert call_kwargs["image"] == "kitt/llama-cpp:spark"
+        assert call_kwargs["target"] == "server"
+
+    @patch("kitt.engines.image_resolver._detect_cc", return_value=(12, 1))
+    @patch("kitt.engines.docker_manager.DockerManager.image_exists", return_value=False)
+    @patch("kitt.engines.docker_manager.DockerManager.build_image")
+    @patch("kitt.engines.docker_manager.DockerManager.is_docker_available", return_value=True)
+    def test_setup_tgi_blackwell_builds_with_warning(self, mock_avail, mock_build, mock_exists, mock_cc):
+        """On Blackwell, TGI setup builds with experimental warning."""
+        runner = CliRunner()
+        result = runner.invoke(engines, ["setup", "tgi"])
+        assert result.exit_code == 0
+        assert "experimental" in result.output.lower()
+        assert "Building" in result.output
+        mock_build.assert_called_once()
+
+    @patch("kitt.engines.image_resolver._detect_cc", return_value=(12, 1))
+    @patch("kitt.engines.docker_manager.DockerManager.is_docker_available", return_value=True)
+    def test_setup_llama_cpp_blackwell_dry_run(self, mock_avail, mock_cc):
+        """Dry run for KITT-managed image shows docker build command."""
+        runner = CliRunner()
+        result = runner.invoke(engines, ["setup", "--dry-run", "llama_cpp"])
+        assert result.exit_code == 0
+        assert "would run" in result.output
+        assert "docker build" in result.output
+        assert "kitt/llama-cpp:spark" in result.output
+        assert "--target server" in result.output
+        assert "Dry run" in result.output
+
+    @patch("kitt.engines.image_resolver._detect_cc", return_value=(12, 1))
+    @patch("kitt.engines.docker_manager.DockerManager.is_docker_available", return_value=True)
+    def test_setup_tgi_blackwell_dry_run_shows_experimental(self, mock_avail, mock_cc):
+        """Dry run for experimental build shows warning."""
+        runner = CliRunner()
+        result = runner.invoke(engines, ["setup", "--dry-run", "tgi"])
+        assert result.exit_code == 0
+        assert "experimental" in result.output.lower()
+
+    @patch("kitt.engines.image_resolver._detect_cc", return_value=(12, 1))
+    @patch("kitt.engines.docker_manager.DockerManager.image_exists", return_value=True)
+    @patch("kitt.engines.docker_manager.DockerManager.build_image")
+    @patch("kitt.engines.docker_manager.DockerManager.is_docker_available", return_value=True)
+    def test_setup_skips_existing_build(self, mock_avail, mock_build, mock_exists, mock_cc):
+        """If KITT-managed image already exists, skip build."""
+        runner = CliRunner()
+        result = runner.invoke(engines, ["setup", "llama_cpp"])
+        assert result.exit_code == 0
+        assert "already exists" in result.output
+        mock_build.assert_not_called()
+
+    @patch("kitt.engines.image_resolver._detect_cc", return_value=(12, 1))
+    @patch("kitt.engines.docker_manager.DockerManager.image_exists", return_value=True)
+    @patch("kitt.engines.docker_manager.DockerManager.build_image")
+    @patch("kitt.engines.docker_manager.DockerManager.is_docker_available", return_value=True)
+    def test_setup_force_rebuild(self, mock_avail, mock_build, mock_exists, mock_cc):
+        """--force-rebuild builds even if image exists."""
+        runner = CliRunner()
+        result = runner.invoke(engines, ["setup", "--force-rebuild", "llama_cpp"])
+        assert result.exit_code == 0
+        assert "Building" in result.output
+        mock_build.assert_called_once()
+
+    @patch("kitt.engines.image_resolver._detect_cc", return_value=(12, 1))
+    @patch("kitt.engines.docker_manager.DockerManager.image_exists", return_value=False)
+    @patch("kitt.engines.docker_manager.DockerManager.build_image", side_effect=RuntimeError("build failed"))
+    @patch("kitt.engines.docker_manager.DockerManager.is_docker_available", return_value=True)
+    def test_setup_build_failure(self, mock_avail, mock_build, mock_exists, mock_cc):
+        """Build failure is reported to user."""
+        runner = CliRunner()
+        result = runner.invoke(engines, ["setup", "llama_cpp"])
+        assert result.exit_code != 0
+        assert "build failed" in result.output
 
 
 class TestCheckEngine:
@@ -144,6 +224,22 @@ class TestCheckEngine:
         assert "Not Available" in result.output
         assert "not pulled" in result.output
         assert "kitt engines setup vllm" in result.output
+
+    def test_check_not_built(self):
+        """KITT-managed image shows 'not built' message."""
+        diag = EngineDiagnostics(
+            available=False,
+            image="kitt/llama-cpp:spark",
+            error="Docker image not built: kitt/llama-cpp:spark",
+            guidance="Build with: kitt engines setup llama_cpp",
+        )
+        with patch(
+            "kitt.engines.llama_cpp_engine.LlamaCppEngine.diagnose", return_value=diag
+        ):
+            runner = CliRunner()
+            result = runner.invoke(engines, ["check", "llama_cpp"])
+        assert "Not Available" in result.output
+        assert "not built" in result.output
 
     def test_check_no_docker(self):
         diag = EngineDiagnostics(
@@ -196,6 +292,16 @@ class TestListEngines:
         result = runner.invoke(engines, ["list"])
         assert "Not Pulled" in result.output
 
+    @patch("kitt.engines.image_resolver._detect_cc", return_value=None)
+    @patch("kitt.engines.docker_manager.DockerManager.image_exists", return_value=False)
+    @patch("kitt.engines.docker_manager.DockerManager.is_docker_available", return_value=True)
+    def test_list_shows_source_column(self, mock_avail, mock_exists, mock_cc):
+        """List shows Registry as source for non-Blackwell images."""
+        runner = CliRunner()
+        result = runner.invoke(engines, ["list"])
+        assert "Source" in result.output
+        assert "Registry" in result.output
+
     @patch("kitt.engines.image_resolver._detect_cc", return_value=(12, 1))
     @patch("kitt.engines.docker_manager.DockerManager.image_exists", return_value=True)
     @patch("kitt.engines.docker_manager.DockerManager.is_docker_available", return_value=True)
@@ -204,7 +310,26 @@ class TestListEngines:
         runner = CliRunner()
         result = runner.invoke(engines, ["list"])
         assert "nvcr.io/nvidia/vllm" in result.output
-        # llama.cpp shows the Spark-built image
-        assert "llama.cpp:server-spark" in result.output
+        # llama.cpp shows the KITT-managed image
+        assert "kitt/llama-cpp:spark" in result.output
         # Other engines still show their default images
         assert "ollama/ollama" in result.output
+
+    @patch("kitt.engines.image_resolver._detect_cc", return_value=(12, 1))
+    @patch("kitt.engines.docker_manager.DockerManager.image_exists", return_value=False)
+    @patch("kitt.engines.docker_manager.DockerManager.is_docker_available", return_value=True)
+    def test_list_blackwell_shows_build_source(self, mock_avail, mock_exists, mock_cc):
+        """On Blackwell, KITT-managed images show Build source and Not Built status."""
+        runner = CliRunner()
+        result = runner.invoke(engines, ["list"])
+        assert "Build" in result.output
+        assert "Not Built" in result.output
+
+    @patch("kitt.engines.image_resolver._detect_cc", return_value=(12, 1))
+    @patch("kitt.engines.docker_manager.DockerManager.image_exists", return_value=False)
+    @patch("kitt.engines.docker_manager.DockerManager.is_docker_available", return_value=True)
+    def test_list_blackwell_shows_tgi_kitt_managed(self, mock_avail, mock_exists, mock_cc):
+        """On Blackwell, TGI shows the KITT-managed image."""
+        runner = CliRunner()
+        result = runner.invoke(engines, ["list"])
+        assert "kitt/tgi:spark" in result.output

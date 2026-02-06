@@ -20,9 +20,61 @@ When adding new overrides:
 """
 
 import logging
+from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
+
+# Project root (two levels up from this file: engines/ -> kitt/ -> src/ -> project)
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
+
+
+@dataclass
+class BuildRecipe:
+    """Recipe for building a KITT-managed Docker image.
+
+    Attributes:
+        dockerfile: Path to the Dockerfile relative to project root.
+        target: Docker build target stage (e.g. 'server').
+        build_args: Build arguments passed via --build-arg.
+        experimental: If True, warn the user before building.
+    """
+
+    dockerfile: str
+    target: Optional[str] = None
+    build_args: Dict[str, str] = field(default_factory=dict)
+    experimental: bool = False
+
+    @property
+    def dockerfile_path(self) -> Path:
+        """Absolute path to the Dockerfile."""
+        return _PROJECT_ROOT / self.dockerfile
+
+
+# Build recipes keyed by KITT-managed image name.
+# These images are built locally instead of pulled from a registry.
+_BUILD_RECIPES: Dict[str, BuildRecipe] = {
+    "kitt/llama-cpp:spark": BuildRecipe(
+        dockerfile="docker/llama_cpp/Dockerfile.spark",
+        target="server",
+    ),
+    "kitt/tgi:spark": BuildRecipe(
+        dockerfile="docker/tgi/Dockerfile.spark",
+        target="runtime",
+        experimental=True,
+    ),
+}
+
+
+def get_build_recipe(image: str) -> Optional[BuildRecipe]:
+    """Return the BuildRecipe for a KITT-managed image, or None."""
+    return _BUILD_RECIPES.get(image)
+
+
+def is_kitt_managed_image(image: str) -> bool:
+    """Check if an image is built locally by KITT (not pulled from a registry)."""
+    return image in _BUILD_RECIPES
 
 
 # Image overrides keyed by engine name.
@@ -38,17 +90,15 @@ _IMAGE_OVERRIDES: Dict[str, List[Tuple[Tuple[int, int], str]]] = {
     "vllm": [
         ((10, 0), "nvcr.io/nvidia/vllm:26.01-py3"),
     ],
-    # TGI: No ARM64 Docker images published. Cannot run on aarch64 platforms
-    # like DGX Spark. Add overrides here if ARM64 images become available.
-    "tgi": [],
+    # TGI: No ARM64 Docker images published. On Blackwell/aarch64 (DGX Spark),
+    # use the KITT-managed experimental build.
+    "tgi": [
+        ((10, 0), "kitt/tgi:spark"),
+    ],
     # llama.cpp: Official CUDA images are x86_64-only. On Blackwell/aarch64
-    # (DGX Spark, GB10), use a locally-built image targeting sm_121.
-    # Build with: docker build -f .devops/cuda.Dockerfile --build-arg
-    #   CUDA_VERSION=13.1.1 --build-arg UBUNTU_VERSION=24.04
-    #   --build-arg CUDA_DOCKER_ARCH=121 --target server
-    #   -t llama.cpp:server-spark .
+    # (DGX Spark, GB10), use the KITT-managed build targeting sm_121.
     "llama_cpp": [
-        ((10, 0), "llama.cpp:server-spark"),
+        ((10, 0), "kitt/llama-cpp:spark"),
     ],
     # Ollama: Bundles its own llama.cpp, works on all supported hardware.
     "ollama": [],

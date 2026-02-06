@@ -3,9 +3,12 @@
 from unittest.mock import patch
 
 from kitt.engines.image_resolver import (
+    BuildRecipe,
     clear_cache,
+    get_build_recipe,
     get_supported_engines,
     has_hardware_overrides,
+    is_kitt_managed_image,
     resolve_image,
 )
 
@@ -48,14 +51,14 @@ class TestResolveImage:
         assert result == "nvcr.io/nvidia/vllm:26.01-py3"
 
     @patch("kitt.engines.image_resolver._detect_cc", return_value=(12, 1))
-    def test_blackwell_gb10_llama_cpp_returns_spark(self, mock_cc):
+    def test_blackwell_gb10_llama_cpp_returns_kitt_managed(self, mock_cc):
         result = resolve_image("llama_cpp", "ghcr.io/ggml-org/llama.cpp:server-cuda")
-        assert result == "llama.cpp:server-spark"
+        assert result == "kitt/llama-cpp:spark"
 
     @patch("kitt.engines.image_resolver._detect_cc", return_value=(10, 0))
-    def test_blackwell_b200_llama_cpp_returns_spark(self, mock_cc):
+    def test_blackwell_b200_llama_cpp_returns_kitt_managed(self, mock_cc):
         result = resolve_image("llama_cpp", "ghcr.io/ggml-org/llama.cpp:server-cuda")
-        assert result == "llama.cpp:server-spark"
+        assert result == "kitt/llama-cpp:spark"
 
     @patch("kitt.engines.image_resolver._detect_cc", return_value=(8, 9))
     def test_ada_lovelace_llama_cpp_returns_default(self, mock_cc):
@@ -63,8 +66,15 @@ class TestResolveImage:
         assert result == "ghcr.io/ggml-org/llama.cpp:server-cuda"
 
     @patch("kitt.engines.image_resolver._detect_cc", return_value=(12, 1))
-    def test_tgi_blackwell_returns_default(self, mock_cc):
-        """TGI has no Blackwell overrides, so default is returned."""
+    def test_tgi_blackwell_returns_kitt_managed(self, mock_cc):
+        """TGI on Blackwell returns KITT-managed experimental build."""
+        default = "ghcr.io/huggingface/text-generation-inference:latest"
+        result = resolve_image("tgi", default)
+        assert result == "kitt/tgi:spark"
+
+    @patch("kitt.engines.image_resolver._detect_cc", return_value=(8, 9))
+    def test_tgi_non_blackwell_returns_default(self, mock_cc):
+        """TGI on non-Blackwell returns default."""
         default = "ghcr.io/huggingface/text-generation-inference:latest"
         result = resolve_image("tgi", default)
         assert result == default
@@ -112,9 +122,9 @@ class TestHasHardwareOverrides:
         """vLLM has Blackwell overrides."""
         assert has_hardware_overrides("vllm") is True
 
-    def test_tgi_no_overrides(self):
-        """TGI currently has no hardware-specific overrides."""
-        assert has_hardware_overrides("tgi") is False
+    def test_tgi_has_overrides(self):
+        """TGI now has Blackwell overrides (KITT-managed build)."""
+        assert has_hardware_overrides("tgi") is True
 
     def test_llama_cpp_has_overrides(self):
         """llama.cpp has Blackwell overrides for ARM64+CUDA."""
@@ -127,6 +137,42 @@ class TestHasHardwareOverrides:
     def test_unknown_engine_no_overrides(self):
         """Unknown engines have no overrides."""
         assert has_hardware_overrides("nonexistent_engine") is False
+
+
+class TestBuildRecipe:
+    def test_llama_cpp_recipe_exists(self):
+        recipe = get_build_recipe("kitt/llama-cpp:spark")
+        assert recipe is not None
+        assert recipe.dockerfile == "docker/llama_cpp/Dockerfile.spark"
+        assert recipe.target == "server"
+        assert recipe.experimental is False
+
+    def test_tgi_recipe_exists(self):
+        recipe = get_build_recipe("kitt/tgi:spark")
+        assert recipe is not None
+        assert recipe.dockerfile == "docker/tgi/Dockerfile.spark"
+        assert recipe.target == "runtime"
+        assert recipe.experimental is True
+
+    def test_registry_image_has_no_recipe(self):
+        assert get_build_recipe("vllm/vllm-openai:latest") is None
+        assert get_build_recipe("nvcr.io/nvidia/vllm:26.01-py3") is None
+
+    def test_dockerfile_path_is_absolute(self):
+        recipe = get_build_recipe("kitt/llama-cpp:spark")
+        assert recipe.dockerfile_path.is_absolute()
+        assert recipe.dockerfile_path.name == "Dockerfile.spark"
+
+
+class TestIsKittManagedImage:
+    def test_kitt_managed_images(self):
+        assert is_kitt_managed_image("kitt/llama-cpp:spark") is True
+        assert is_kitt_managed_image("kitt/tgi:spark") is True
+
+    def test_registry_images(self):
+        assert is_kitt_managed_image("vllm/vllm-openai:latest") is False
+        assert is_kitt_managed_image("nvcr.io/nvidia/vllm:26.01-py3") is False
+        assert is_kitt_managed_image("ollama/ollama:latest") is False
 
 
 class TestFutureHardwareCompatibility:
@@ -146,17 +192,17 @@ class TestFutureHardwareCompatibility:
         assert result == "nvcr.io/nvidia/vllm:26.01-py3"
 
     @patch("kitt.engines.image_resolver._detect_cc", return_value=(15, 0))
-    def test_future_gpu_llama_cpp_uses_spark(self, mock_cc):
-        """A future GPU should match llama.cpp Blackwell override."""
+    def test_future_gpu_llama_cpp_uses_kitt_managed(self, mock_cc):
+        """A future GPU should match llama.cpp KITT-managed build."""
         result = resolve_image("llama_cpp", "ghcr.io/ggml-org/llama.cpp:server-cuda")
-        assert result == "llama.cpp:server-spark"
+        assert result == "kitt/llama-cpp:spark"
 
     @patch("kitt.engines.image_resolver._detect_cc", return_value=(15, 0))
-    def test_future_gpu_tgi_returns_default(self, mock_cc):
-        """TGI with future GPU returns default (no overrides)."""
+    def test_future_gpu_tgi_uses_kitt_managed(self, mock_cc):
+        """TGI with future GPU returns KITT-managed build."""
         default = "ghcr.io/huggingface/text-generation-inference:latest"
         result = resolve_image("tgi", default)
-        assert result == default
+        assert result == "kitt/tgi:spark"
 
     @patch("kitt.engines.image_resolver._detect_cc", return_value=(7, 5))
     def test_older_gpu_returns_default(self, mock_cc):

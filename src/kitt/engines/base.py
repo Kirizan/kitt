@@ -115,6 +115,15 @@ class InferenceEngine(ABC):
                 guidance="Install Docker: https://docs.docker.com/get-docker/",
             )
         if not DockerManager.image_exists(image):
+            from .image_resolver import is_kitt_managed_image
+
+            if is_kitt_managed_image(image):
+                return EngineDiagnostics(
+                    available=False,
+                    image=image,
+                    error=f"Docker image not built: {image}",
+                    guidance=f"Build with: kitt engines setup {cls.name()}",
+                )
             return EngineDiagnostics(
                 available=False,
                 image=image,

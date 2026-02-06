@@ -69,6 +69,85 @@ class TestPullImage:
             DockerManager.pull_image("bad/image:latest")
 
 
+class TestBuildImage:
+    @patch("kitt.engines.docker_manager.subprocess.run")
+    def test_build_success(self, mock_run):
+        mock_run.return_value = MagicMock(returncode=0)
+        DockerManager.build_image(
+            image="kitt/llama-cpp:spark",
+            dockerfile="/project/docker/llama_cpp/Dockerfile.spark",
+            context_dir="/project/docker/llama_cpp",
+        )
+        cmd = mock_run.call_args[0][0]
+        assert cmd[0] == "docker"
+        assert "build" in cmd
+        assert "-f" in cmd
+        assert "/project/docker/llama_cpp/Dockerfile.spark" in cmd
+        assert "-t" in cmd
+        assert "kitt/llama-cpp:spark" in cmd
+        assert cmd[-1] == "/project/docker/llama_cpp"
+
+    @patch("kitt.engines.docker_manager.subprocess.run")
+    def test_build_with_target(self, mock_run):
+        mock_run.return_value = MagicMock(returncode=0)
+        DockerManager.build_image(
+            image="kitt/llama-cpp:spark",
+            dockerfile="/project/docker/llama_cpp/Dockerfile.spark",
+            context_dir="/project/docker/llama_cpp",
+            target="server",
+        )
+        cmd = mock_run.call_args[0][0]
+        assert "--target" in cmd
+        target_idx = cmd.index("--target")
+        assert cmd[target_idx + 1] == "server"
+
+    @patch("kitt.engines.docker_manager.subprocess.run")
+    def test_build_with_build_args(self, mock_run):
+        mock_run.return_value = MagicMock(returncode=0)
+        DockerManager.build_image(
+            image="kitt/llama-cpp:spark",
+            dockerfile="/project/docker/llama_cpp/Dockerfile.spark",
+            context_dir="/project/docker/llama_cpp",
+            build_args={"CUDA_VERSION": "13.1.1", "LLAMA_CPP_REF": "b1234"},
+        )
+        cmd = mock_run.call_args[0][0]
+        assert "--build-arg" in cmd
+        assert "CUDA_VERSION=13.1.1" in cmd
+        assert "LLAMA_CPP_REF=b1234" in cmd
+
+    @patch("kitt.engines.docker_manager.subprocess.run")
+    def test_build_failure(self, mock_run):
+        mock_run.return_value = MagicMock(returncode=1, stderr="build error")
+        with pytest.raises(RuntimeError, match="Failed to build"):
+            DockerManager.build_image(
+                image="kitt/llama-cpp:spark",
+                dockerfile="/project/docker/llama_cpp/Dockerfile.spark",
+                context_dir="/project/docker/llama_cpp",
+            )
+
+    @patch("kitt.engines.docker_manager.subprocess.run")
+    def test_build_timeout(self, mock_run):
+        """Build uses 3600s timeout by default."""
+        mock_run.return_value = MagicMock(returncode=0)
+        DockerManager.build_image(
+            image="kitt/llama-cpp:spark",
+            dockerfile="/project/docker/llama_cpp/Dockerfile.spark",
+            context_dir="/project/docker/llama_cpp",
+        )
+        assert mock_run.call_args[1]["timeout"] == 3600
+
+    @patch("kitt.engines.docker_manager.subprocess.run")
+    def test_build_custom_timeout(self, mock_run):
+        mock_run.return_value = MagicMock(returncode=0)
+        DockerManager.build_image(
+            image="kitt/llama-cpp:spark",
+            dockerfile="/project/docker/llama_cpp/Dockerfile.spark",
+            context_dir="/project/docker/llama_cpp",
+            timeout=7200,
+        )
+        assert mock_run.call_args[1]["timeout"] == 7200
+
+
 class TestRunContainer:
     @patch("kitt.engines.docker_manager.time.time", return_value=1700000000)
     @patch("kitt.engines.docker_manager.subprocess.run")

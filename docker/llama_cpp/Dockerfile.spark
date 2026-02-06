@@ -1,0 +1,51 @@
+# KITT-managed Dockerfile for llama.cpp on DGX Spark (GB10, ARM64, sm_121)
+#
+# Builds llama.cpp server with CUDA 13.1.1 targeting Blackwell edge GPU.
+# Multi-stage build: devel image for compilation, runtime image for execution.
+#
+# Build: docker build -f docker/llama_cpp/Dockerfile.spark \
+#          --target server -t kitt/llama-cpp:spark .
+# Run:   docker run --gpus all --network host kitt/llama-cpp:spark ...
+#
+# Typical build time: 10-20 minutes on DGX Spark.
+
+ARG CUDA_VERSION=13.1.1
+ARG UBUNTU_VERSION=24.04
+
+# ---- Stage 1: Build ----
+FROM nvidia/cuda:${CUDA_VERSION}-devel-ubuntu${UBUNTU_VERSION} AS build
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        git cmake build-essential libcurl4-openssl-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Clone llama.cpp at build time (pin via LLAMA_CPP_REF if needed)
+ARG LLAMA_CPP_REF=master
+RUN git clone --depth 1 --branch ${LLAMA_CPP_REF} \
+        https://github.com/ggerganov/llama.cpp.git /llama.cpp
+
+WORKDIR /llama.cpp
+
+# Build with native optimisations and sm_121 CUDA arch
+RUN cmake -B build \
+        -DGGML_CUDA=ON \
+        -DGGML_NATIVE=ON \
+        -DCMAKE_CUDA_ARCHITECTURES=121 \
+        -DLLAMA_CURL=ON \
+    && cmake --build build --config Release --target llama-server -j$(nproc)
+
+# ---- Stage 2: Runtime ----
+FROM nvidia/cuda:${CUDA_VERSION}-runtime-ubuntu${UBUNTU_VERSION} AS server
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        libcurl4 libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=build /llama.cpp/build/bin/llama-server /usr/local/bin/llama-server
+
+ENV LLAMA_ARG_HOST=0.0.0.0
+
+HEALTHCHECK --interval=10s --timeout=5s --retries=3 \
+    CMD curl -f http://localhost:8080/health || exit 1
+
+ENTRYPOINT ["llama-server"]

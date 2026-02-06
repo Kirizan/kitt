@@ -1,0 +1,67 @@
+# KITT-managed Dockerfile for TGI on DGX Spark (GB10, ARM64, sm_121)
+#
+# !! EXPERIMENTAL !! — This build is not yet proven on hardware.
+# TGI's custom CUDA kernels may need additional patches for sm_121.
+# Use at your own risk; contributions and reports welcome.
+#
+# Build: docker build -f docker/tgi/Dockerfile.spark \
+#          -t kitt/tgi:spark .
+# Run:   docker run --gpus all --network host kitt/tgi:spark ...
+#
+# Typical build time: 30-60 minutes (Rust + PyTorch + CUDA kernels).
+
+ARG CUDA_VERSION=13.1.1
+ARG UBUNTU_VERSION=24.04
+
+# ---- Stage 1: Build ----
+FROM nvidia/cuda:${CUDA_VERSION}-devel-ubuntu${UBUNTU_VERSION} AS build
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        git curl build-essential pkg-config libssl-dev protobuf-compiler \
+        python3 python3-pip python3-venv \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Rust toolchain
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+ENV PATH="/root/.cargo/bin:${PATH}"
+
+# Clone TGI
+ARG TGI_REF=main
+RUN git clone --depth 1 --branch ${TGI_REF} \
+        https://github.com/huggingface/text-generation-inference.git /tgi
+
+WORKDIR /tgi
+
+# Build the Rust router
+ENV CUDA_COMPUTE_CAP=121
+RUN cargo build --release --bin text-generation-router
+
+# Build Python server with custom CUDA kernels
+RUN python3 -m venv /opt/tgi-env \
+    && /opt/tgi-env/bin/pip install --no-cache-dir --upgrade pip setuptools wheel \
+    && /opt/tgi-env/bin/pip install --no-cache-dir ninja packaging \
+    && cd server \
+    && TORCH_CUDA_ARCH_LIST="12.1" /opt/tgi-env/bin/pip install --no-cache-dir -e ".[cuda]" \
+    || echo "WARNING: TGI server install failed — experimental build"
+
+# ---- Stage 2: Runtime ----
+FROM nvidia/cuda:${CUDA_VERSION}-runtime-ubuntu${UBUNTU_VERSION} AS runtime
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        python3 libssl3 ca-certificates curl \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=build /tgi/target/release/text-generation-router /usr/local/bin/
+COPY --from=build /opt/tgi-env /opt/tgi-env
+
+ENV PATH="/opt/tgi-env/bin:${PATH}"
+ENV PORT=8080
+
+HEALTHCHECK --interval=10s --timeout=5s --retries=3 \
+    CMD curl -f http://localhost:${PORT}/health || exit 1
+
+ENTRYPOINT ["text-generation-launcher"]
