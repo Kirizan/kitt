@@ -77,6 +77,9 @@ class TestTGIEngineInitialize:
         config = mock_run.call_args[0][0]
         assert "--model-id" in config.command_args
         assert "meta-llama/Llama-3-8B" in config.command_args
+        # Port must be passed for --network host
+        assert "--port" in config.command_args
+        assert "8080" in config.command_args
 
     @patch("kitt.engines.image_resolver._detect_cc", return_value=None)
     @patch("kitt.engines.tgi_engine.Path")

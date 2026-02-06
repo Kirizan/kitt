@@ -66,10 +66,10 @@ class TGIEngine(InferenceEngine):
         if model_abs.is_dir():
             model_name = model_abs.name
             volumes[str(model_abs)] = f"/models/{model_name}"
-            cmd_args = ["--model-id", f"/models/{model_name}"]
+            cmd_args = ["--model-id", f"/models/{model_name}", "--port", str(port)]
         else:
             # Treat as HuggingFace model ID (e.g. "meta-llama/Llama-3-8B")
-            cmd_args = ["--model-id", model_path]
+            cmd_args = ["--model-id", model_path, "--port", str(port)]
 
         container_cfg = ContainerConfig(
             image=config.get("image", self.resolved_image()),

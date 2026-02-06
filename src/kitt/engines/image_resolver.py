@@ -38,12 +38,18 @@ _IMAGE_OVERRIDES: Dict[str, List[Tuple[Tuple[int, int], str]]] = {
     "vllm": [
         ((10, 0), "nvcr.io/nvidia/vllm:26.01-py3"),
     ],
-    # TGI: Currently works on all supported hardware with default image.
-    # Add overrides here if future hardware requires special images.
+    # TGI: No ARM64 Docker images published. Cannot run on aarch64 platforms
+    # like DGX Spark. Add overrides here if ARM64 images become available.
     "tgi": [],
-    # llama.cpp: Currently works on all supported hardware with default image.
-    # CUDA builds are architecture-agnostic for most operations.
-    "llama_cpp": [],
+    # llama.cpp: Official CUDA images are x86_64-only. On Blackwell/aarch64
+    # (DGX Spark, GB10), use a locally-built image targeting sm_121.
+    # Build with: docker build -f .devops/cuda.Dockerfile --build-arg
+    #   CUDA_VERSION=13.1.1 --build-arg UBUNTU_VERSION=24.04
+    #   --build-arg CUDA_DOCKER_ARCH=121 --target server
+    #   -t llama.cpp:server-spark .
+    "llama_cpp": [
+        ((10, 0), "llama.cpp:server-spark"),
+    ],
     # Ollama: Bundles its own llama.cpp, works on all supported hardware.
     "ollama": [],
 }

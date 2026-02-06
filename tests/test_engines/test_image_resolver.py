@@ -48,6 +48,21 @@ class TestResolveImage:
         assert result == "nvcr.io/nvidia/vllm:26.01-py3"
 
     @patch("kitt.engines.image_resolver._detect_cc", return_value=(12, 1))
+    def test_blackwell_gb10_llama_cpp_returns_spark(self, mock_cc):
+        result = resolve_image("llama_cpp", "ghcr.io/ggml-org/llama.cpp:server-cuda")
+        assert result == "llama.cpp:server-spark"
+
+    @patch("kitt.engines.image_resolver._detect_cc", return_value=(10, 0))
+    def test_blackwell_b200_llama_cpp_returns_spark(self, mock_cc):
+        result = resolve_image("llama_cpp", "ghcr.io/ggml-org/llama.cpp:server-cuda")
+        assert result == "llama.cpp:server-spark"
+
+    @patch("kitt.engines.image_resolver._detect_cc", return_value=(8, 9))
+    def test_ada_lovelace_llama_cpp_returns_default(self, mock_cc):
+        result = resolve_image("llama_cpp", "ghcr.io/ggml-org/llama.cpp:server-cuda")
+        assert result == "ghcr.io/ggml-org/llama.cpp:server-cuda"
+
+    @patch("kitt.engines.image_resolver._detect_cc", return_value=(12, 1))
     def test_tgi_blackwell_returns_default(self, mock_cc):
         """TGI has no Blackwell overrides, so default is returned."""
         default = "ghcr.io/huggingface/text-generation-inference:latest"
@@ -101,9 +116,9 @@ class TestHasHardwareOverrides:
         """TGI currently has no hardware-specific overrides."""
         assert has_hardware_overrides("tgi") is False
 
-    def test_llama_cpp_no_overrides(self):
-        """llama.cpp currently has no hardware-specific overrides."""
-        assert has_hardware_overrides("llama_cpp") is False
+    def test_llama_cpp_has_overrides(self):
+        """llama.cpp has Blackwell overrides for ARM64+CUDA."""
+        assert has_hardware_overrides("llama_cpp") is True
 
     def test_ollama_no_overrides(self):
         """Ollama currently has no hardware-specific overrides."""
@@ -129,6 +144,12 @@ class TestFutureHardwareCompatibility:
         result = resolve_image("vllm", "vllm/vllm-openai:latest")
         # Should match (10, 0) override since 15.0 >= 10.0
         assert result == "nvcr.io/nvidia/vllm:26.01-py3"
+
+    @patch("kitt.engines.image_resolver._detect_cc", return_value=(15, 0))
+    def test_future_gpu_llama_cpp_uses_spark(self, mock_cc):
+        """A future GPU should match llama.cpp Blackwell override."""
+        result = resolve_image("llama_cpp", "ghcr.io/ggml-org/llama.cpp:server-cuda")
+        assert result == "llama.cpp:server-spark"
 
     @patch("kitt.engines.image_resolver._detect_cc", return_value=(15, 0))
     def test_future_gpu_tgi_returns_default(self, mock_cc):

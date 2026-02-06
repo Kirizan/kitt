@@ -65,7 +65,7 @@ class LlamaCppEngine(InferenceEngine):
             "--n-gpu-layers", str(n_gpu_layers),
             "-c", str(n_ctx),
             "--host", "0.0.0.0",
-            "--port", str(self.container_port()),
+            "--port", str(port),
         ]
 
         # Mount the model file's parent directory

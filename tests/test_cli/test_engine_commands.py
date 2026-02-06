@@ -104,6 +104,16 @@ class TestSetupEngine:
         assert result.exit_code == 0
         mock_pull.assert_called_once_with("nvcr.io/nvidia/vllm:26.01-py3")
 
+    @patch("kitt.engines.image_resolver._detect_cc", return_value=(12, 1))
+    @patch("kitt.engines.docker_manager.DockerManager.pull_image")
+    @patch("kitt.engines.docker_manager.DockerManager.is_docker_available", return_value=True)
+    def test_setup_llama_cpp_blackwell_pulls_spark(self, mock_avail, mock_pull, mock_cc):
+        """On Blackwell hardware, setup pulls the Spark-built image for llama.cpp."""
+        runner = CliRunner()
+        result = runner.invoke(engines, ["setup", "llama_cpp"])
+        assert result.exit_code == 0
+        mock_pull.assert_called_once_with("llama.cpp:server-spark")
+
 
 class TestCheckEngine:
     def test_check_available(self):
@@ -194,5 +204,7 @@ class TestListEngines:
         runner = CliRunner()
         result = runner.invoke(engines, ["list"])
         assert "nvcr.io/nvidia/vllm" in result.output
+        # llama.cpp shows the Spark-built image
+        assert "llama.cpp:server-spark" in result.output
         # Other engines still show their default images
         assert "ollama/ollama" in result.output

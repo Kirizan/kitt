@@ -69,6 +69,20 @@ class TestLlamaCppEngineInitialize:
     @patch("kitt.engines.image_resolver._detect_cc", return_value=None)
     @patch("kitt.engines.docker_manager.DockerManager.wait_for_healthy", return_value=True)
     @patch("kitt.engines.docker_manager.DockerManager.run_container", return_value="container123")
+    def test_initialize_uses_host_port_for_server(self, mock_run, mock_wait, mock_cc):
+        """With --network host, server must listen on the host port."""
+        engine = LlamaCppEngine()
+        engine.initialize("/models/model.gguf", {})
+
+        config = mock_run.call_args[0][0]
+        # --port must use the host port (8081), not container_port (8080)
+        assert "--port" in config.command_args
+        idx = config.command_args.index("--port")
+        assert config.command_args[idx + 1] == "8081"
+
+    @patch("kitt.engines.image_resolver._detect_cc", return_value=None)
+    @patch("kitt.engines.docker_manager.DockerManager.wait_for_healthy", return_value=True)
+    @patch("kitt.engines.docker_manager.DockerManager.run_container", return_value="container123")
     def test_initialize_with_gpu_layers(self, mock_run, mock_wait, mock_cc):
         engine = LlamaCppEngine()
         engine.initialize("/models/model.gguf", {"n_gpu_layers": 32, "n_ctx": 8192})
