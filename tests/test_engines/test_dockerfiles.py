@@ -13,12 +13,10 @@ class TestDockerfilesExist:
             f"Dockerfile not found: {recipe.dockerfile_path}"
         )
 
-    def test_tgi_dockerfile_exists(self):
-        recipe = get_build_recipe("kitt/tgi:spark")
-        assert recipe is not None
-        assert recipe.dockerfile_path.exists(), (
-            f"Dockerfile not found: {recipe.dockerfile_path}"
-        )
+    def test_tgi_dockerfile_exists_as_reference(self):
+        """TGI Dockerfile exists as reference even though build recipe is removed."""
+        path = _PROJECT_ROOT / "docker" / "tgi" / "Dockerfile.spark"
+        assert path.exists(), f"Reference Dockerfile not found: {path}"
 
     def test_all_recipes_have_dockerfiles(self):
         """Every BuildRecipe must reference an existing Dockerfile."""
@@ -58,15 +56,17 @@ class TestLlamaCppDockerfileSpark:
 
 
 class TestTgiDockerfileSpark:
+    """TGI Dockerfile kept as reference — non-functional due to missing CUDA kernels."""
+
     def setup_method(self):
-        recipe = get_build_recipe("kitt/tgi:spark")
-        self.content = recipe.dockerfile_path.read_text()
+        path = _PROJECT_ROOT / "docker" / "tgi" / "Dockerfile.spark"
+        self.content = path.read_text()
 
     def test_uses_cuda_13(self):
         assert "CUDA_VERSION=13" in self.content
 
-    def test_experimental_warning(self):
-        assert "EXPERIMENTAL" in self.content
+    def test_non_functional_warning(self):
+        assert "NON-FUNCTIONAL" in self.content
 
     def test_installs_rust(self):
         assert "rustup" in self.content

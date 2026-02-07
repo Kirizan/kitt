@@ -66,11 +66,11 @@ class TestResolveImage:
         assert result == "ghcr.io/ggml-org/llama.cpp:server-cuda"
 
     @patch("kitt.engines.image_resolver._detect_cc", return_value=(12, 1))
-    def test_tgi_blackwell_returns_kitt_managed(self, mock_cc):
-        """TGI on Blackwell returns KITT-managed experimental build."""
+    def test_tgi_blackwell_returns_default(self, mock_cc):
+        """TGI on Blackwell returns default (no viable ARM64+sm_121 build)."""
         default = "ghcr.io/huggingface/text-generation-inference:latest"
         result = resolve_image("tgi", default)
-        assert result == "kitt/tgi:spark"
+        assert result == default
 
     @patch("kitt.engines.image_resolver._detect_cc", return_value=(8, 9))
     def test_tgi_non_blackwell_returns_default(self, mock_cc):
@@ -122,9 +122,9 @@ class TestHasHardwareOverrides:
         """vLLM has Blackwell overrides."""
         assert has_hardware_overrides("vllm") is True
 
-    def test_tgi_has_overrides(self):
-        """TGI now has Blackwell overrides (KITT-managed build)."""
-        assert has_hardware_overrides("tgi") is True
+    def test_tgi_no_overrides(self):
+        """TGI has no viable Blackwell build (custom CUDA kernels missing)."""
+        assert has_hardware_overrides("tgi") is False
 
     def test_llama_cpp_has_overrides(self):
         """llama.cpp has Blackwell overrides for ARM64+CUDA."""
@@ -147,12 +147,10 @@ class TestBuildRecipe:
         assert recipe.target == "server"
         assert recipe.experimental is False
 
-    def test_tgi_recipe_exists(self):
+    def test_tgi_recipe_removed(self):
+        """TGI build recipe removed — image is non-functional on Spark."""
         recipe = get_build_recipe("kitt/tgi:spark")
-        assert recipe is not None
-        assert recipe.dockerfile == "docker/tgi/Dockerfile.spark"
-        assert recipe.target == "runtime"
-        assert recipe.experimental is True
+        assert recipe is None
 
     def test_registry_image_has_no_recipe(self):
         assert get_build_recipe("vllm/vllm-openai:latest") is None
@@ -167,7 +165,8 @@ class TestBuildRecipe:
 class TestIsKittManagedImage:
     def test_kitt_managed_images(self):
         assert is_kitt_managed_image("kitt/llama-cpp:spark") is True
-        assert is_kitt_managed_image("kitt/tgi:spark") is True
+        # TGI build recipe removed (non-functional on Spark)
+        assert is_kitt_managed_image("kitt/tgi:spark") is False
 
     def test_registry_images(self):
         assert is_kitt_managed_image("vllm/vllm-openai:latest") is False
@@ -198,11 +197,11 @@ class TestFutureHardwareCompatibility:
         assert result == "kitt/llama-cpp:spark"
 
     @patch("kitt.engines.image_resolver._detect_cc", return_value=(15, 0))
-    def test_future_gpu_tgi_uses_kitt_managed(self, mock_cc):
-        """TGI with future GPU returns KITT-managed build."""
+    def test_future_gpu_tgi_returns_default(self, mock_cc):
+        """TGI has no viable build — returns default on any hardware."""
         default = "ghcr.io/huggingface/text-generation-inference:latest"
         result = resolve_image("tgi", default)
-        assert result == "kitt/tgi:spark"
+        assert result == default
 
     @patch("kitt.engines.image_resolver._detect_cc", return_value=(7, 5))
     def test_older_gpu_returns_default(self, mock_cc):

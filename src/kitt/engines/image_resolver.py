@@ -59,11 +59,16 @@ _BUILD_RECIPES: Dict[str, BuildRecipe] = {
         dockerfile="docker/llama_cpp/Dockerfile.spark",
         target="server",
     ),
-    "kitt/tgi:spark": BuildRecipe(
-        dockerfile="docker/tgi/Dockerfile.spark",
-        target="runtime",
-        experimental=True,
-    ),
+    # TGI: Dockerfile exists but image is non-functional on DGX Spark.
+    # TGI requires custom CUDA kernels (dropout_layer_norm, flash_attn,
+    # flashinfer, vllm._custom_ops) that have no aarch64+sm_121 builds.
+    # See docker/tgi/Dockerfile.spark for details.  Uncomment if TGI ever
+    # gains ARM64/Blackwell support.
+    # "kitt/tgi:spark": BuildRecipe(
+    #     dockerfile="docker/tgi/Dockerfile.spark",
+    #     target="runtime",
+    #     experimental=True,
+    # ),
 }
 
 
@@ -90,11 +95,12 @@ _IMAGE_OVERRIDES: Dict[str, List[Tuple[Tuple[int, int], str]]] = {
     "vllm": [
         ((10, 0), "nvcr.io/nvidia/vllm:26.01-py3"),
     ],
-    # TGI: No ARM64 Docker images published. On Blackwell/aarch64 (DGX Spark),
-    # use the KITT-managed experimental build.
-    "tgi": [
-        ((10, 0), "kitt/tgi:spark"),
-    ],
+    # TGI: No ARM64 Docker images published. TGI is not viable on DGX Spark
+    # due to hard dependencies on custom CUDA kernels (dropout_layer_norm,
+    # flash_attn, flashinfer) with no aarch64+sm_121 builds available.
+    # Falls back to default image (x86_64-only).
+    # See docker/tgi/Dockerfile.spark for full analysis.
+    "tgi": [],
     # llama.cpp: Official CUDA images are x86_64-only. On Blackwell/aarch64
     # (DGX Spark, GB10), use the KITT-managed build targeting sm_121.
     "llama_cpp": [

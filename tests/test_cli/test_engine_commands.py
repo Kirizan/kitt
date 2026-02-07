@@ -125,17 +125,16 @@ class TestSetupEngineBuild:
         assert call_kwargs["target"] == "server"
 
     @patch("kitt.engines.image_resolver._detect_cc", return_value=(12, 1))
-    @patch("kitt.engines.docker_manager.DockerManager.image_exists", return_value=False)
-    @patch("kitt.engines.docker_manager.DockerManager.build_image")
+    @patch("kitt.engines.docker_manager.DockerManager.pull_image")
     @patch("kitt.engines.docker_manager.DockerManager.is_docker_available", return_value=True)
-    def test_setup_tgi_blackwell_builds_with_warning(self, mock_avail, mock_build, mock_exists, mock_cc):
-        """On Blackwell, TGI setup builds with experimental warning."""
+    def test_setup_tgi_blackwell_pulls_default(self, mock_avail, mock_pull, mock_cc):
+        """On Blackwell, TGI has no viable build — falls through to pull default image."""
         runner = CliRunner()
         result = runner.invoke(engines, ["setup", "tgi"])
         assert result.exit_code == 0
-        assert "experimental" in result.output.lower()
-        assert "Building" in result.output
-        mock_build.assert_called_once()
+        mock_pull.assert_called_once()
+        image_arg = mock_pull.call_args[0][0]
+        assert "text-generation-inference" in image_arg
 
     @patch("kitt.engines.image_resolver._detect_cc", return_value=(12, 1))
     @patch("kitt.engines.docker_manager.DockerManager.is_docker_available", return_value=True)
@@ -152,12 +151,13 @@ class TestSetupEngineBuild:
 
     @patch("kitt.engines.image_resolver._detect_cc", return_value=(12, 1))
     @patch("kitt.engines.docker_manager.DockerManager.is_docker_available", return_value=True)
-    def test_setup_tgi_blackwell_dry_run_shows_experimental(self, mock_avail, mock_cc):
-        """Dry run for experimental build shows warning."""
+    def test_setup_tgi_blackwell_dry_run_shows_pull(self, mock_avail, mock_cc):
+        """Dry run for TGI on Blackwell shows pull (no viable build)."""
         runner = CliRunner()
         result = runner.invoke(engines, ["setup", "--dry-run", "tgi"])
         assert result.exit_code == 0
-        assert "experimental" in result.output.lower()
+        assert "docker pull" in result.output
+        assert "text-generation-inference" in result.output
 
     @patch("kitt.engines.image_resolver._detect_cc", return_value=(12, 1))
     @patch("kitt.engines.docker_manager.DockerManager.image_exists", return_value=True)
@@ -328,8 +328,9 @@ class TestListEngines:
     @patch("kitt.engines.image_resolver._detect_cc", return_value=(12, 1))
     @patch("kitt.engines.docker_manager.DockerManager.image_exists", return_value=False)
     @patch("kitt.engines.docker_manager.DockerManager.is_docker_available", return_value=True)
-    def test_list_blackwell_shows_tgi_kitt_managed(self, mock_avail, mock_exists, mock_cc):
-        """On Blackwell, TGI shows the KITT-managed image."""
+    def test_list_blackwell_shows_tgi_default(self, mock_avail, mock_exists, mock_cc):
+        """On Blackwell, TGI shows default image (no viable KITT-managed build)."""
         runner = CliRunner()
         result = runner.invoke(engines, ["list"])
-        assert "kitt/tgi:spark" in result.output
+        # Rich table truncates long image names; check for the visible prefix
+        assert "ghcr.io/huggingfa" in result.output
