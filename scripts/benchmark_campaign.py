@@ -167,19 +167,27 @@ def run_cmd(args: list[str], timeout: int = 14400, dry_run: bool = False) -> sub
     if dry_run:
         log.info("[DRY RUN] Skipped")
         return subprocess.CompletedProcess(args, 0, stdout="", stderr="")
-    return subprocess.run(args, capture_output=True, text=True, timeout=timeout)
+    try:
+        return subprocess.run(args, capture_output=True, text=True, timeout=timeout)
+    except subprocess.TimeoutExpired as e:
+        log.error(f"Command timed out after {timeout}s: {cmd_str}")
+        return subprocess.CompletedProcess(args, -1, stdout=e.stdout or "", stderr=f"TIMEOUT after {timeout}s")
+    except Exception as e:
+        log.error(f"Command raised exception: {cmd_str}: {e}")
+        return subprocess.CompletedProcess(args, -1, stdout="", stderr=str(e))
 
 
-def devon_download(repo_id: str, include: Optional[str] = None, dry_run: bool = False) -> bool:
-    """Download a model via devon."""
+def devon_download(repo_id: str, include: Optional[str] = None, dry_run: bool = False) -> tuple[bool, str]:
+    """Download a model via devon. Returns (success, error_message)."""
     args = [DEVON, "download", repo_id, "-y"]
     if include:
         args.extend(["--include", include])
     result = run_cmd(args, timeout=7200, dry_run=dry_run)
     if result.returncode != 0:
-        log.error(f"Download failed: {result.stderr}")
-        return False
-    return True
+        error = _extract_error(result, "devon download")
+        log.error(f"Download failed: {error}")
+        return False, error
+    return True, ""
 
 
 def devon_remove(repo_id: str, dry_run: bool = False) -> bool:
@@ -190,12 +198,12 @@ def devon_remove(repo_id: str, dry_run: bool = False) -> bool:
     return True
 
 
-def kitt_run(model_path: str, engine: str, suite: str = SUITE, dry_run: bool = False) -> tuple[bool, str]:
-    """Run a KITT benchmark. Returns (success, output_dir)."""
+def kitt_run(model_path: str, engine: str, suite: str = SUITE, dry_run: bool = False) -> tuple[bool, str, str]:
+    """Run a KITT benchmark. Returns (success, output_dir, error_message)."""
     args = [KITT, "run", "-m", model_path, "-e", engine, "-s", suite]
     result = run_cmd(args, timeout=14400, dry_run=dry_run)
     if dry_run:
-        return True, "dry-run"
+        return True, "dry-run", ""
 
     # Parse output dir from kitt output
     output_dir = ""
@@ -208,10 +216,35 @@ def kitt_run(model_path: str, engine: str, suite: str = SUITE, dry_run: bool = F
                     break
 
     if result.returncode != 0:
-        log.error(f"KITT run failed: {result.stderr[-500:] if result.stderr else 'no stderr'}")
-        return False, output_dir
+        error = _extract_error(result, "kitt run")
+        log.error(f"KITT run failed: {error}")
+        return False, output_dir, error
 
-    return True, output_dir
+    return True, output_dir, ""
+
+
+def _extract_error(result: subprocess.CompletedProcess, label: str) -> str:
+    """Build a concise error string from a failed subprocess result."""
+    parts = [f"exit_code={result.returncode}"]
+
+    stderr = (result.stderr or "").strip()
+    if stderr:
+        # Keep last 1000 chars of stderr — most useful info is at the end
+        parts.append(f"stderr={stderr[-1000:]}")
+
+    stdout = (result.stdout or "").strip()
+    if stdout and not stderr:
+        # If no stderr, check stdout for error lines
+        error_lines = [l for l in stdout.splitlines() if any(
+            kw in l.lower() for kw in ("error", "traceback", "exception", "failed", "oom", "killed")
+        )]
+        if error_lines:
+            parts.append(f"stdout_errors={'; '.join(error_lines[-5:])}")
+        else:
+            # Last 500 chars of stdout as fallback context
+            parts.append(f"stdout_tail={stdout[-500:]}")
+
+    return f"[{label}] {' | '.join(parts)}"
 
 
 def cleanup_docker(dry_run: bool = False):
@@ -461,24 +494,25 @@ def run_vllm_benchmark(
 
     # Download safetensors model
     start = time.time()
-    if not devon_download(model.safetensors_repo, dry_run=dry_run):
-        return RunResult(model.name, "vllm", quant, "failed", error="Download failed")
+    dl_ok, dl_err = devon_download(model.safetensors_repo, dry_run=dry_run)
+    if not dl_ok:
+        return RunResult(model.name, "vllm", quant, "failed", error=dl_err)
 
     # Find model path
     model_path = find_model_path(model.safetensors_repo)
     if not model_path and not dry_run:
         devon_remove(model.safetensors_repo, dry_run=dry_run)
-        return RunResult(model.name, "vllm", quant, "failed", error="Model path not found")
+        return RunResult(model.name, "vllm", quant, "failed", error="Model path not found after download")
 
     # Run benchmark
-    success, output_dir = kitt_run(model_path or "dry-run", "vllm", dry_run=dry_run)
+    success, output_dir, run_err = kitt_run(model_path or "dry-run", "vllm", dry_run=dry_run)
     duration = time.time() - start
 
     # Clean up
     devon_remove(model.safetensors_repo, dry_run=dry_run)
 
     status = "success" if success else "failed"
-    return RunResult(model.name, "vllm", quant, status, duration, output_dir)
+    return RunResult(model.name, "vllm", quant, status, duration, output_dir, error=run_err)
 
 
 def run_llamacpp_benchmarks(
@@ -515,8 +549,9 @@ def run_llamacpp_benchmarks(
         start = time.time()
 
         # Download the GGUF file(s) for this quant
-        if not devon_download(model.gguf_repo, include=quant_info.include_pattern, dry_run=dry_run):
-            results.append(RunResult(model.name, "llama_cpp", quant, "failed", error="Download failed"))
+        dl_ok, dl_err = devon_download(model.gguf_repo, include=quant_info.include_pattern, dry_run=dry_run)
+        if not dl_ok:
+            results.append(RunResult(model.name, "llama_cpp", quant, "failed", error=dl_err))
             continue
 
         # Find the GGUF file path — use the first file (for single files) or
@@ -525,18 +560,18 @@ def run_llamacpp_benchmarks(
         model_path = find_model_path(model.gguf_repo, Path(primary_file).name)
         if not model_path and not dry_run:
             devon_remove(model.gguf_repo, dry_run=dry_run)
-            results.append(RunResult(model.name, "llama_cpp", quant, "failed", error="GGUF not found"))
+            results.append(RunResult(model.name, "llama_cpp", quant, "failed", error="GGUF not found after download"))
             continue
 
         # Run benchmark
-        success, output_dir = kitt_run(model_path or "dry-run", "llama_cpp", dry_run=dry_run)
+        success, output_dir, run_err = kitt_run(model_path or "dry-run", "llama_cpp", dry_run=dry_run)
         duration = time.time() - start
 
         # Clean up — remove the entire repo entry so next quant downloads fresh
         devon_remove(model.gguf_repo, dry_run=dry_run)
 
         status = "success" if success else "failed"
-        results.append(RunResult(model.name, "llama_cpp", quant, status, duration, output_dir))
+        results.append(RunResult(model.name, "llama_cpp", quant, status, duration, output_dir, error=run_err))
 
     return results
 
@@ -571,12 +606,12 @@ def run_ollama_benchmarks(
         start = time.time()
 
         # Ollama pulls models inside the container, no devon download needed
-        success, output_dir = kitt_run(tag, "ollama", dry_run=dry_run)
+        success, output_dir, run_err = kitt_run(tag, "ollama", dry_run=dry_run)
         duration = time.time() - start
 
         # Container cleanup removes pulled model automatically
         status = "success" if success else "failed"
-        results.append(RunResult(model.name, "ollama", quant, status, duration, output_dir))
+        results.append(RunResult(model.name, "ollama", quant, status, duration, output_dir, error=run_err))
 
     return results
 
