@@ -14,7 +14,9 @@ First-class support for defining, running, and managing multi-model benchmark ca
 - [ ] **Devon integration** — Call Devon's download/remove APIs directly (Python, not subprocess) for model lifecycle management during campaigns
 - [ ] **GGUF quant discovery** — Auto-discover available quantization files from HuggingFace repos and Ollama tags, with filtering (e.g., skip IQ1/IQ2 ultra-low quants)
 - [ ] **Campaign results rollup** — Aggregate all runs from a campaign into a single comparison report (Markdown table, JSON, or web dashboard view)
+- [ ] **Grafana dashboards** — Export campaign metrics to Prometheus/InfluxDB and provide pre-built Grafana dashboards for live campaign monitoring (run progress, throughput over time, quality scores by quant, GPU memory heatmaps) and historical comparison across campaigns
 - [ ] **Parallel engine runs** — Optionally run non-GPU benchmarks (e.g., download next model) while the current benchmark is executing
+- [ ] **Campaign from existing runs** — Generate a campaign config from previous benchmark results (e.g., `kitt campaign create --from-results ./kitt-results/`) to re-run the same model/engine/quant combinations on new hardware or after engine updates
 - [ ] **Notification hooks** — Send a notification (webhook, email, desktop) when a campaign completes or a run fails
 
 ## Engine Improvements
