@@ -48,12 +48,16 @@ disk:
   cleanup_after_run: true
 
 quant_filter:
-  # Only include the specific quants that failed
+  # Only include the specific quants that failed (minus removed variants)
   include_only:
     - "Q4_0"
-    - "Q4_0_4_4"
     - "f32"
     - "F32"
+  skip_patterns:
+    # Q4_0 repacking variants removed from llama.cpp
+    - "Q4_0_4_4"
+    - "Q4_0_4_8"
+    - "Q4_0_8_8"
 
 resource_limits:
   # Skip models > 100GB (catches 70B fp16 @ ~154GB)

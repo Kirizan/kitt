@@ -217,8 +217,17 @@ def find_model_path(
 
         # Fallback: search recursively by filename
         filename = Path(gguf_relative_path).name
-        for p in base.rglob(filename):
-            return str(p)
+        matches = sorted(base.rglob(filename))
+        if matches:
+            return str(matches[0])
+
+        # For sharded models, find the first shard (-00001-of-N)
+        # when the exact filename isn't found
+        quant = extract_quant_name(filename)
+        all_gguf = sorted(base.rglob("*.gguf"))
+        first_shard = _find_first_shard(all_gguf, quant)
+        if first_shard:
+            return str(first_shard)
 
         logger.warning(
             f"GGUF file not found: {gguf_relative_path} in {base}"
@@ -259,6 +268,27 @@ def filter_quants(
         ]
 
     return result
+
+
+def _find_first_shard(gguf_files: List[Path], quant: str) -> Optional[Path]:
+    """Find the first shard file for a given quant among GGUF files.
+
+    Looks for files matching the quant name that contain '-00001-of-'
+    in their filename, indicating the first shard of a multi-shard model.
+
+    Args:
+        gguf_files: Sorted list of GGUF file paths.
+        quant: Quantization name to match (e.g. "f32", "Q4_K_M").
+
+    Returns:
+        Path to the first shard, or None if not found.
+    """
+    quant_lower = quant.lower()
+    for p in gguf_files:
+        name_lower = p.name.lower()
+        if quant_lower in name_lower and "-00001-of-" in name_lower:
+            return p
+    return None
 
 
 def _common_prefix(strings: List[str]) -> str:

@@ -65,6 +65,10 @@ quant_filter:
   skip_patterns:
     - "IQ1_*"
     - "IQ2_*"
+    # Q4_0 repacking variants removed from llama.cpp — use plain Q4_0 instead
+    - "Q4_0_4_4"
+    - "Q4_0_4_8"
+    - "Q4_0_8_8"
 
 resource_limits:
   # DGX Spark has 128GB unified memory — skip models that won't fit

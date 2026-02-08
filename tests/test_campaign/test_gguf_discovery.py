@@ -198,6 +198,38 @@ class TestFindModelPath:
         )
         assert result is None
 
+    def test_sharded_selects_first_shard(self, tmp_path):
+        """When multiple shards exist, should return the first shard (-00001-)."""
+        model_dir = tmp_path / "huggingface" / "test" / "repo" / "f32"
+        model_dir.mkdir(parents=True)
+        shard1 = model_dir / "phi-4-f32-00001-of-00002.gguf"
+        shard2 = model_dir / "phi-4-f32-00002-of-00002.gguf"
+        shard1.touch()
+        shard2.touch()
+
+        # Searching for the include pattern should find the first shard
+        result = find_model_path(
+            "test/repo", "f32/phi-4-f32-00001-of-00002.gguf",
+            storage_root=tmp_path,
+        )
+        assert result == str(shard1)
+
+    def test_sharded_fallback_finds_first_shard(self, tmp_path):
+        """When exact file not found, fallback should find first shard by quant."""
+        model_dir = tmp_path / "huggingface" / "test" / "repo"
+        model_dir.mkdir(parents=True)
+        shard1 = model_dir / "model-f32-00001-of-00002.gguf"
+        shard2 = model_dir / "model-f32-00002-of-00002.gguf"
+        shard1.touch()
+        shard2.touch()
+
+        # Pass a non-existent filename that contains the quant name
+        result = find_model_path(
+            "test/repo", "model-f32.gguf", storage_root=tmp_path,
+        )
+        # Should find the first shard via _find_first_shard fallback
+        assert result == str(shard1)
+
 
 class TestFilterQuants:
     def test_skip_patterns(self):
