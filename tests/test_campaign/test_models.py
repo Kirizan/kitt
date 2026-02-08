@@ -11,6 +11,7 @@ from kitt.campaign.models import (
     DiskConfig,
     NotificationConfig,
     QuantFilterConfig,
+    ResourceLimitsConfig,
 )
 
 
@@ -75,6 +76,20 @@ class TestNotificationConfig:
     def test_webhook(self):
         cfg = NotificationConfig(webhook_url="https://hooks.example.com/notify")
         assert cfg.webhook_url == "https://hooks.example.com/notify"
+
+
+class TestResourceLimitsConfig:
+    def test_defaults(self):
+        cfg = ResourceLimitsConfig()
+        assert cfg.max_model_size_gb == 0.0
+
+    def test_custom(self):
+        cfg = ResourceLimitsConfig(max_model_size_gb=100.0)
+        assert cfg.max_model_size_gb == 100.0
+
+    def test_zero_means_no_limit(self):
+        cfg = ResourceLimitsConfig(max_model_size_gb=0.0)
+        assert cfg.max_model_size_gb == 0.0
 
 
 class TestCampaignRunSpec:
@@ -145,3 +160,14 @@ class TestCampaignConfig:
         assert loaded_cfg.campaign_name == "roundtrip-test"
         assert loaded_cfg.models[0].name == "TestModel"
         assert loaded_cfg.engines[0].suite == "quick"
+
+    def test_config_with_resource_limits(self):
+        cfg = CampaignConfig(
+            campaign_name="test-limits",
+            resource_limits=ResourceLimitsConfig(max_model_size_gb=100.0),
+        )
+        assert cfg.resource_limits.max_model_size_gb == 100.0
+
+    def test_config_default_resource_limits(self):
+        cfg = CampaignConfig(campaign_name="test")
+        assert cfg.resource_limits.max_model_size_gb == 0.0

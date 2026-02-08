@@ -8,8 +8,13 @@ from kitt.campaign.models import (
     CampaignModelSpec,
     CampaignRunSpec,
     DiskConfig,
+    ResourceLimitsConfig,
 )
-from kitt.campaign.scheduler import CampaignScheduler
+from kitt.campaign.scheduler import (
+    CampaignScheduler,
+    estimate_quant_size_gb,
+    parse_params,
+)
 from kitt.campaign.state_manager import CampaignState, RunState
 
 
@@ -99,3 +104,124 @@ class TestCampaignScheduler:
             estimated_size_gb=0.1,
         )
         assert scheduler.should_skip(run) is False
+
+    def test_should_skip_for_size_no_limit(self, scheduler):
+        """With default limit (0), nothing is skipped."""
+        run = CampaignRunSpec(
+            model_name="test", engine_name="e", quant="q",
+            estimated_size_gb=999.0,
+        )
+        assert scheduler.should_skip_for_size(run) is False
+
+    def test_should_skip_for_size_under_limit(self):
+        sched = CampaignScheduler(
+            DiskConfig(reserve_gb=50.0),
+            ResourceLimitsConfig(max_model_size_gb=100.0),
+        )
+        run = CampaignRunSpec(
+            model_name="test", engine_name="e", quant="q",
+            estimated_size_gb=50.0,
+        )
+        assert sched.should_skip_for_size(run) is False
+
+    def test_should_skip_for_size_over_limit(self):
+        sched = CampaignScheduler(
+            DiskConfig(reserve_gb=50.0),
+            ResourceLimitsConfig(max_model_size_gb=100.0),
+        )
+        run = CampaignRunSpec(
+            model_name="test", engine_name="e", quant="fp16",
+            estimated_size_gb=154.0,
+        )
+        assert sched.should_skip_for_size(run) is True
+
+    def test_should_skip_for_size_zero_estimated(self):
+        """Runs with no size estimate are not skipped."""
+        sched = CampaignScheduler(
+            DiskConfig(reserve_gb=50.0),
+            ResourceLimitsConfig(max_model_size_gb=100.0),
+        )
+        run = CampaignRunSpec(
+            model_name="test", engine_name="e", quant="q",
+            estimated_size_gb=0.0,
+        )
+        assert sched.should_skip_for_size(run) is False
+
+    def test_should_skip_integrates_size_check(self):
+        """should_skip() checks both disk and size."""
+        sched = CampaignScheduler(
+            DiskConfig(reserve_gb=50.0),
+            ResourceLimitsConfig(max_model_size_gb=100.0),
+        )
+        run = CampaignRunSpec(
+            model_name="big", engine_name="e", quant="fp16",
+            estimated_size_gb=150.0,
+        )
+        assert sched.should_skip(run) is True
+
+
+class TestParseParams:
+    def test_simple(self):
+        assert parse_params("8B") == 8.0
+
+    def test_large(self):
+        assert parse_params("70B") == 70.0
+
+    def test_decimal(self):
+        assert parse_params("1.5B") == 1.5
+
+    def test_lowercase(self):
+        assert parse_params("14b") == 14.0
+
+    def test_empty(self):
+        assert parse_params("") == 0.0
+
+    def test_no_match(self):
+        assert parse_params("unknown") == 0.0
+
+
+class TestEstimateQuantSizeGb:
+    def test_fp16_8b(self):
+        size = estimate_quant_size_gb(8.0, "fp16")
+        assert size == pytest.approx(17.6, abs=0.1)
+
+    def test_bf16_8b(self):
+        size = estimate_quant_size_gb(8.0, "bf16")
+        assert size == pytest.approx(17.6, abs=0.1)
+
+    def test_fp16_70b(self):
+        size = estimate_quant_size_gb(70.0, "fp16")
+        assert size == pytest.approx(154.0, abs=1.0)
+
+    def test_q4_k_m_70b(self):
+        size = estimate_quant_size_gb(70.0, "Q4_K_M")
+        assert 35.0 < size < 55.0
+
+    def test_f32_14b(self):
+        size = estimate_quant_size_gb(14.0, "f32")
+        assert size == pytest.approx(61.6, abs=1.0)
+
+    def test_q8_0_8b(self):
+        size = estimate_quant_size_gb(8.0, "Q8_0")
+        assert 7.0 < size < 12.0
+
+    def test_zero_params(self):
+        assert estimate_quant_size_gb(0.0, "Q4_K_M") == 0.0
+
+    def test_unknown_quant(self):
+        assert estimate_quant_size_gb(8.0, "unknown_format") == 0.0
+
+    def test_ollama_fp16_tag(self):
+        """Ollama tags like '70b-instruct-fp16' should match fp16."""
+        size = estimate_quant_size_gb(70.0, "70b-instruct-fp16")
+        assert size == pytest.approx(154.0, abs=1.0)
+
+    def test_ollama_q4_tag(self):
+        """Ollama tags like '8b-instruct-q4_0' should match q4_0."""
+        size = estimate_quant_size_gb(8.0, "8b-instruct-q4_0")
+        assert 3.0 < size < 7.0
+
+    def test_case_insensitive(self):
+        size_upper = estimate_quant_size_gb(8.0, "Q4_K_M")
+        size_lower = estimate_quant_size_gb(8.0, "q4_k_m")
+        assert size_upper == size_lower

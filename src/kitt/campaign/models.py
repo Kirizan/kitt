@@ -47,6 +47,20 @@ class NotificationConfig(BaseModel):
     on_failure: bool = True
 
 
+class ResourceLimitsConfig(BaseModel):
+    """Resource-based skip rules for campaign runs.
+
+    Models/quants whose estimated loaded size exceeds max_model_size_gb
+    are skipped automatically. Set to 0 to disable (no limit).
+    """
+
+    max_model_size_gb: float = Field(
+        default=0.0,
+        ge=0.0,
+        description="Skip runs where estimated model size exceeds this limit (0 = no limit)",
+    )
+
+
 class QuantFilterConfig(BaseModel):
     """Filter rules for quantization variants."""
 
@@ -83,5 +97,6 @@ class CampaignConfig(BaseModel):
     disk: DiskConfig = Field(default_factory=DiskConfig)
     notifications: NotificationConfig = Field(default_factory=NotificationConfig)
     quant_filter: QuantFilterConfig = Field(default_factory=QuantFilterConfig)
+    resource_limits: ResourceLimitsConfig = Field(default_factory=ResourceLimitsConfig)
     parallel: bool = False
     devon_managed: bool = True

@@ -12,7 +12,7 @@ from .metrics_exporter import CampaignMetricsExporter
 from .models import CampaignConfig, CampaignRunSpec
 from .notifications import NotificationDispatcher
 from .result import CampaignResult, CampaignRunResult
-from .scheduler import CampaignScheduler
+from .scheduler import CampaignScheduler, estimate_quant_size_gb, parse_params
 from .state_manager import CampaignState, CampaignStateManager, RunState
 
 logger = logging.getLogger(__name__)
@@ -39,7 +39,7 @@ class CampaignRunner:
         self.config = config
         self.state_manager = state_manager or CampaignStateManager()
         self.dry_run = dry_run
-        self.scheduler = CampaignScheduler(config.disk)
+        self.scheduler = CampaignScheduler(config.disk, config.resource_limits)
         self.notifier = NotificationDispatcher(config.notifications)
         self.metrics_exporter = metrics_exporter
 
@@ -144,8 +144,27 @@ class CampaignRunner:
         """Execute a single benchmark run with error isolation."""
         logger.info(f"Starting: {run_spec.key}")
 
+        # Check size limit first
+        if self.scheduler.should_skip_for_size(run_spec):
+            skip_reason = (
+                f"Estimated size {run_spec.estimated_size_gb:.1f}GB exceeds "
+                f"limit of {self.scheduler.resource_limits.max_model_size_gb:.1f}GB"
+            )
+            self.state_manager.update_run(
+                state, run_spec.key, "skipped", error=skip_reason
+            )
+            return CampaignRunResult(
+                model_name=run_spec.model_name,
+                engine_name=run_spec.engine_name,
+                quant=run_spec.quant,
+                status="skipped",
+                error=skip_reason,
+            )
+
         # Check disk space
-        if self.scheduler.should_skip(run_spec):
+        if not self.scheduler.check_disk_space(
+            run_spec, self.scheduler.disk_config.storage_path
+        ):
             self.state_manager.update_run(
                 state, run_spec.key, "skipped", error="Insufficient disk space"
             )
@@ -224,10 +243,21 @@ class CampaignRunner:
     def _expand_runs(
         self, planned: List[CampaignRunSpec]
     ) -> List[CampaignRunSpec]:
-        """Expand discovery placeholders into concrete runs."""
+        """Expand discovery placeholders into concrete runs.
+
+        Sets estimated_size_gb on each expanded run based on the quant
+        name and model parameter count for size-based skip rules.
+        """
         expanded: List[CampaignRunSpec] = []
 
+        # Build a lookup from model name to params string
+        model_params: dict[str, str] = {
+            m.name: m.params for m in self.config.models
+        }
+
         for run in planned:
+            params_b = parse_params(model_params.get(run.model_name, ""))
+
             if run.quant == "__discover_gguf__" and run.repo_id:
                 quants = discover_gguf_quants(run.repo_id)
                 quants = filter_quants(
@@ -236,13 +266,14 @@ class CampaignRunner:
                     include_only=self.config.quant_filter.include_only or None,
                 )
                 for q in quants:
+                    est_size = estimate_quant_size_gb(params_b, q.quant_name)
                     expanded.append(CampaignRunSpec(
                         model_name=run.model_name,
                         engine_name=run.engine_name,
                         quant=q.quant_name,
                         repo_id=run.repo_id,
                         include_pattern=q.include_pattern,
-                        estimated_size_gb=run.estimated_size_gb,
+                        estimated_size_gb=est_size or run.estimated_size_gb,
                         suite=run.suite,
                         engine_config=run.engine_config,
                     ))
@@ -251,17 +282,23 @@ class CampaignRunner:
                 tags = discover_ollama_tags(run.repo_id)
                 for tag in tags:
                     quant = tag.split(":")[-1] if ":" in tag else tag
+                    est_size = estimate_quant_size_gb(params_b, quant)
                     expanded.append(CampaignRunSpec(
                         model_name=run.model_name,
                         engine_name=run.engine_name,
                         quant=quant,
                         repo_id=tag,
-                        estimated_size_gb=run.estimated_size_gb,
+                        estimated_size_gb=est_size or run.estimated_size_gb,
                         suite=run.suite,
                         engine_config=run.engine_config,
                     ))
 
             else:
+                # For non-discovery runs (e.g. vllm bf16), estimate size
+                if run.estimated_size_gb <= 0 and params_b > 0:
+                    est_size = estimate_quant_size_gb(params_b, run.quant)
+                    if est_size > 0:
+                        run = run.model_copy(update={"estimated_size_gb": est_size})
                 expanded.append(run)
 
         return expanded
@@ -321,9 +358,12 @@ class CampaignRunner:
 
         result = subprocess.run(args, capture_output=True, text=True, timeout=7200)
         if result.returncode != 0:
-            raise RuntimeError(
-                f"Devon download failed: {result.stderr[-500:]}"
-            )
+            stderr = (result.stderr or "").strip()
+            stdout = (result.stdout or "").strip()
+            error_detail = stderr[-500:] if stderr else stdout[-500:]
+            if not error_detail:
+                error_detail = f"Process exited with code {result.returncode}"
+            raise RuntimeError(f"Devon download failed: {error_detail}")
 
         return find_model_path(run_spec.repo_id, run_spec.include_pattern)
 
@@ -332,6 +372,8 @@ class CampaignRunner:
     ) -> str:
         """Run a KITT benchmark and return the output directory."""
         args = ["kitt", "run", "-m", model_path, "-e", engine, "-s", suite]
+        logger.info(f"Running: {' '.join(args)}")
+
         result = subprocess.run(
             args, capture_output=True, text=True, timeout=14400
         )
@@ -345,9 +387,14 @@ class CampaignRunner:
                         break
 
         if result.returncode != 0:
+            # Capture both stderr and stdout for diagnostics
+            stderr = (result.stderr or "").strip()
+            stdout_tail = (result.stdout or "").strip()[-500:] if result.stdout else ""
+            error_detail = stderr[-500:] if stderr else stdout_tail
+            if not error_detail:
+                error_detail = f"Process exited with code {result.returncode} (no output captured)"
             raise RuntimeError(
-                f"kitt run failed (exit {result.returncode}): "
-                f"{(result.stderr or '')[-500:]}"
+                f"kitt run failed (exit {result.returncode}): {error_detail}"
             )
 
         return output_dir

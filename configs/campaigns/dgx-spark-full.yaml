@@ -66,5 +66,9 @@ quant_filter:
     - "IQ1_*"
     - "IQ2_*"
 
+resource_limits:
+  # DGX Spark has 128GB unified memory — skip models that won't fit
+  max_model_size_gb: 100.0
+
 parallel: false
 devon_managed: true
