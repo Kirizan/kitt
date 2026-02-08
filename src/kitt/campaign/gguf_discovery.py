@@ -10,9 +10,10 @@ from typing import List, Optional
 logger = logging.getLogger(__name__)
 
 # Regex matching all common GGUF quantization names.
-# Covers: Q2_K through Q8_0, IQ1_S through IQ4_XS, FP16, BF16, F32
+# Covers: Q2_K through Q8_0, IQ1_S through IQ4_XS, FP16, BF16, F32,
+# and repacking variants like Q4_0_4_4, Q4_0_4_8, Q4_0_8_8
 _QUANT_PATTERN = re.compile(
-    r'(IQ[1-4]_[A-Za-z]+|[Qq][2-8]_[Kk0](?:_[SMLsml])?|[Ff][Pp]16|[Bb][Ff]16|[Ff]32)'
+    r'(IQ[1-4]_[A-Za-z]+|[Qq][2-8]_[Kk0](?:_[SMLsml])?(?:_[48]_[48])?|[Ff][Pp]16|[Bb][Ff]16|[Ff]32)'
 )
 
 # Shard file pattern: -00001-of-00002.gguf

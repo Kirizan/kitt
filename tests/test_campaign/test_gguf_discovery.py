@@ -31,6 +31,12 @@ class TestExtractQuantName:
         assert extract_quant_name("Model-IQ2_XXS.gguf") == "IQ2_XXS"
         assert extract_quant_name("Model-IQ3_XXS.gguf") == "IQ3_XXS"
 
+    def test_repacking_variants(self):
+        """Q4_0_4_4, Q4_0_4_8, Q4_0_8_8 are distinct quant formats."""
+        assert extract_quant_name("Model-Q4_0_4_4.gguf") == "Q4_0_4_4"
+        assert extract_quant_name("Model-Q4_0_4_8.gguf") == "Q4_0_4_8"
+        assert extract_quant_name("Model-Q4_0_8_8.gguf") == "Q4_0_8_8"
+
     def test_fp_bf_quants(self):
         assert extract_quant_name("Model-FP16.gguf") == "FP16"
         assert extract_quant_name("Model-BF16.gguf") == "BF16"
