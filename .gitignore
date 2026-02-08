@@ -52,6 +52,9 @@ Thumbs.db
 .claude/
 checkpoints/
 kitt-results/
+campaign.log
+campaign_output.log
+campaign_state.json
 
 # pyenv
 .python-version
