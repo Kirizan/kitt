@@ -309,9 +309,10 @@ class TestListEngines:
         """On Blackwell, vLLM should show the NGC image."""
         runner = CliRunner()
         result = runner.invoke(engines, ["list"])
-        assert "nvcr.io/nvidia/vllm" in result.output
+        # Rich table truncates long image names; check for the visible prefix
+        assert "nvcr.io/nvidia/vl" in result.output
         # llama.cpp shows the KITT-managed image
-        assert "kitt/llama-cpp:spark" in result.output
+        assert "kitt/llama-cpp:sp" in result.output
         # Other engines still show their default images
         assert "ollama/ollama" in result.output
 
