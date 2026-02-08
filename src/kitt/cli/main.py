@@ -15,7 +15,9 @@ def cli():
     """
 
 
+from .campaign_commands import campaign  # noqa: E402
 from .engine_commands import engines  # noqa: E402
+from .monitoring_commands import monitoring  # noqa: E402
 from .results_commands import results  # noqa: E402
 from .run import run  # noqa: E402
 from .test_commands import test  # noqa: E402
@@ -24,6 +26,8 @@ cli.add_command(run)
 cli.add_command(test)
 cli.add_command(engines)
 cli.add_command(results)
+cli.add_command(campaign)
+cli.add_command(monitoring)
 
 
 @cli.command()

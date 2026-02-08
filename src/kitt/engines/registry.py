@@ -54,13 +54,21 @@ class EngineRegistry:
         even if modules were already imported (import-time decorator
         side effects only fire once per process).
         """
+        from .exllamav2_engine import ExLlamaV2Engine
         from .llama_cpp_engine import LlamaCppEngine
         from .ollama_engine import OllamaEngine
         from .tgi_engine import TGIEngine
         from .vllm_engine import VLLMEngine
 
-        for engine_cls in (LlamaCppEngine, OllamaEngine, TGIEngine, VLLMEngine):
+        for engine_cls in (ExLlamaV2Engine, LlamaCppEngine, OllamaEngine, TGIEngine, VLLMEngine):
             cls.register(engine_cls)
+
+        # MLX: conditional import — only available on macOS with mlx-lm
+        try:
+            from .mlx_engine import MLXEngine
+            cls.register(MLXEngine)
+        except Exception:
+            pass
 
     @classmethod
     def clear(cls) -> None:

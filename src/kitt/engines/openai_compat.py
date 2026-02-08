@@ -6,9 +6,11 @@ Uses urllib.request (no external dependencies).
 
 import json
 import logging
+import time
 import urllib.request
+from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Dict
+from typing import Any, Dict, Generator, List
 
 from .base import GenerationMetrics, GenerationResult
 
@@ -114,3 +116,84 @@ def parse_openai_result(
         prompt_tokens=prompt_tokens,
         completion_tokens=completion_tokens,
     )
+
+
+@dataclass
+class StreamChunk:
+    """A single token chunk from a streaming response."""
+
+    token: str
+    timestamp_ms: float  # Time since request start in milliseconds
+
+
+def openai_generate_stream(
+    base_url: str,
+    prompt: str,
+    model: str = "default",
+    temperature: float = 0.0,
+    top_p: float = 1.0,
+    max_tokens: int = 2048,
+) -> Generator[StreamChunk, None, None]:
+    """Send a streaming completion request and yield token chunks.
+
+    Uses SSE (Server-Sent Events) to receive tokens as they're generated.
+
+    Args:
+        base_url: Base URL of the server.
+        prompt: Input prompt text.
+        model: Model name.
+        temperature: Sampling temperature.
+        top_p: Nucleus sampling parameter.
+        max_tokens: Maximum tokens to generate.
+
+    Yields:
+        StreamChunk with token text and timestamp.
+    """
+    payload = {
+        "model": model,
+        "prompt": prompt,
+        "temperature": temperature,
+        "top_p": top_p,
+        "max_tokens": max_tokens,
+        "stream": True,
+    }
+
+    data = json.dumps(payload).encode("utf-8")
+    url = f"{base_url.rstrip('/')}/v1/completions"
+    req = urllib.request.Request(
+        url,
+        data=data,
+        headers={"Content-Type": "application/json"},
+    )
+
+    start_time = time.perf_counter()
+
+    try:
+        with urllib.request.urlopen(req) as response:
+            buffer = ""
+            for raw_line in response:
+                line = raw_line.decode("utf-8", errors="replace").strip()
+                if not line or line.startswith(":"):
+                    continue
+                if line.startswith("data: "):
+                    line = line[6:]
+                if line == "[DONE]":
+                    break
+                try:
+                    chunk_data = json.loads(line)
+                    choices = chunk_data.get("choices", [])
+                    if choices:
+                        token = choices[0].get("text", "")
+                        if token:
+                            elapsed_ms = (time.perf_counter() - start_time) * 1000
+                            yield StreamChunk(
+                                token=token,
+                                timestamp_ms=elapsed_ms,
+                            )
+                except json.JSONDecodeError:
+                    continue
+    except urllib.error.HTTPError as e:
+        body = e.read().decode("utf-8", errors="replace")
+        raise RuntimeError(f"Streaming request failed ({e.code}): {body}")
+    except urllib.error.URLError as e:
+        raise RuntimeError(f"Cannot connect for streaming at {base_url}: {e}")

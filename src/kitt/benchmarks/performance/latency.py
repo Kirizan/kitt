@@ -33,7 +33,7 @@ class LatencyBenchmark(LLMBenchmark):
 
     def _execute(self, engine, config: Dict[str, Any]) -> BenchmarkResult:
         """Run latency benchmark."""
-        prompts = config.get("prompts", DEFAULT_PROMPTS)
+        prompts = self._load_prompts(config)
         max_tokens = config.get("max_tokens", 128)
         temperature = config.get("temperature", 0.0)
         iterations = config.get("iterations", len(prompts))
@@ -82,6 +82,23 @@ class LatencyBenchmark(LLMBenchmark):
             outputs=outputs,
             errors=errors,
         )
+
+    def _load_prompts(self, config: Dict[str, Any]) -> List[str]:
+        """Load prompts from config, dataset_path, or defaults."""
+        if "dataset_path" in config:
+            from pathlib import Path
+            dataset_path = Path(config["dataset_path"])
+            if dataset_path.exists():
+                lines = [
+                    line.strip()
+                    for line in dataset_path.read_text().splitlines()
+                    if line.strip()
+                ]
+                if lines:
+                    logger.info(f"Loaded {len(lines)} prompts from {dataset_path}")
+                    return lines
+            logger.warning(f"Dataset file not found: {dataset_path}, using defaults")
+        return config.get("prompts", DEFAULT_PROMPTS)
 
     def _aggregate_metrics(self, outputs: List[Dict[str, Any]]) -> Dict[str, Any]:
         """Aggregate latency metrics with percentiles."""

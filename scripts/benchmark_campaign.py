@@ -292,15 +292,17 @@ def discover_gguf_quants(repo_id: str) -> list[GGUFQuant]:
     quant_groups: dict[str, list[str]] = {}
 
     for f in gguf_files:
+        # Extract quant name from the filename part only, not directory path
+        filename = Path(f).name
         # Check if this is a shard file (contains -NNNNN-of-NNNNN)
-        shard_match = re.search(r'-(\d{5})-of-(\d{5})\.gguf$', f)
+        shard_match = re.search(r'-(\d{5})-of-(\d{5})\.gguf$', filename)
         if shard_match:
             # Group key: everything before the shard numbering
-            base = re.sub(r'-\d{5}-of-\d{5}\.gguf$', '', f)
-            quant_name = extract_quant_name(Path(base).name)
+            base = re.sub(r'-\d{5}-of-\d{5}\.gguf$', '', filename)
+            quant_name = extract_quant_name(base)
             key = quant_name
         else:
-            quant_name = extract_quant_name(f)
+            quant_name = extract_quant_name(filename)
             key = quant_name
 
         quant_groups.setdefault(key, []).append(f)
@@ -461,7 +463,7 @@ def extract_quant_name(gguf_filename: str) -> str:
     # Common quant patterns
     import re
     match = re.search(
-        r'(IQ[12]_[A-Z]+|[Qq][2-8]_[Kk0](?:_[SMLsml])?|[Ff][Pp]16|[Bb][Ff]16|[Ff]32)',
+        r'(IQ[1-4]_[A-Za-z]+|[Qq][2-8]_[Kk0](?:_[SMLsml])?|[Ff][Pp]16|[Bb][Ff]16|[Ff]32)',
         stem,
     )
     return match.group(0) if match else stem
@@ -557,7 +559,7 @@ def run_llamacpp_benchmarks(
         # Find the GGUF file path — use the first file (for single files) or
         # the first shard (llama.cpp loads sharded models from the first shard)
         primary_file = quant_info.files[0]
-        model_path = find_model_path(model.gguf_repo, Path(primary_file).name)
+        model_path = find_model_path(model.gguf_repo, primary_file)
         if not model_path and not dry_run:
             devon_remove(model.gguf_repo, dry_run=dry_run)
             results.append(RunResult(model.name, "llama_cpp", quant, "failed", error="GGUF not found after download"))

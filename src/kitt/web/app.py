@@ -47,6 +47,25 @@ INDEX_TEMPLATE = """
         header h1 { font-size: 1.8em; }
         header h1 span { color: var(--accent); }
         header p { color: var(--text-dim); margin-top: 5px; }
+        .filter-bar {
+            background: var(--surface);
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .filter-bar label { color: var(--text-dim); font-size: 0.9em; }
+        .filter-bar select {
+            background: var(--primary);
+            color: var(--text);
+            border: 1px solid rgba(255,255,255,0.1);
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -106,6 +125,25 @@ INDEX_TEMPLATE = """
     </header>
 
     <div class="container">
+        {% if all_models or all_engines %}
+        <div class="filter-bar">
+            <label>Model:</label>
+            <select onchange="window.location.search='model='+this.value+(new URLSearchParams(window.location.search).get('engine')?'&engine='+new URLSearchParams(window.location.search).get('engine'):'')">
+                <option value="">All Models</option>
+                {% for m in all_models %}
+                <option value="{{ m }}" {{ 'selected' if filter_model == m }}>{{ m }}</option>
+                {% endfor %}
+            </select>
+            <label>Engine:</label>
+            <select onchange="window.location.search='engine='+this.value+(new URLSearchParams(window.location.search).get('model')?'&model='+new URLSearchParams(window.location.search).get('model'):'')">
+                <option value="">All Engines</option>
+                {% for e in all_engines %}
+                <option value="{{ e }}" {{ 'selected' if filter_engine == e }}>{{ e }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        {% endif %}
+
         {% if results %}
         <div class="stats-grid">
             <div class="stat-card">
@@ -219,7 +257,19 @@ def create_app(results_dir: Optional[str] = None) -> "Flask":
 
     @app.route("/")
     def index():
-        results = _scan_results(base_dir)
+        all_results = _scan_results(base_dir)
+        all_engines = sorted(set(r.get("engine", "") for r in all_results))
+        all_models = sorted(set(r.get("model", "") for r in all_results))
+
+        # Apply filters
+        filter_model = request.args.get("model", "")
+        filter_engine = request.args.get("engine", "")
+        results = all_results
+        if filter_model:
+            results = [r for r in results if r.get("model") == filter_model]
+        if filter_engine:
+            results = [r for r in results if r.get("engine") == filter_engine]
+
         engines = set(r.get("engine", "") for r in results)
         models = set(r.get("model", "") for r in results)
         total = len(results)
@@ -231,6 +281,10 @@ def create_app(results_dir: Optional[str] = None) -> "Flask":
             results=results,
             engines=engines,
             models=models,
+            all_engines=all_engines,
+            all_models=all_models,
+            filter_model=filter_model,
+            filter_engine=filter_engine,
             pass_rate=pass_rate,
         )
 
@@ -245,6 +299,38 @@ def create_app(results_dir: Optional[str] = None) -> "Flask":
         if 0 <= idx < len(results):
             return jsonify(results[idx])
         return jsonify({"error": "Not found"}), 404
+
+    @app.route("/api/campaigns")
+    def api_campaigns():
+        results = _scan_results(base_dir)
+        filter_model = request.args.get("model", "")
+        filter_engine = request.args.get("engine", "")
+        if filter_model:
+            results = [r for r in results if r.get("model") == filter_model]
+        if filter_engine:
+            results = [r for r in results if r.get("engine") == filter_engine]
+
+        # Group by model|engine
+        groups: Dict[str, Dict[str, Any]] = {}
+        for r in results:
+            model = r.get("model", "unknown")
+            engine = r.get("engine", "unknown")
+            key = f"{model}|{engine}"
+            if key not in groups:
+                groups[key] = {
+                    "model": model,
+                    "engine": engine,
+                    "runs": 0,
+                    "passed": 0,
+                    "failed": 0,
+                }
+            groups[key]["runs"] += 1
+            if r.get("passed", False):
+                groups[key]["passed"] += 1
+            else:
+                groups[key]["failed"] += 1
+
+        return jsonify(list(groups.values()))
 
     @app.route("/api/health")
     def health():

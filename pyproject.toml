@@ -23,6 +23,7 @@ rich = ">=13.0"
 datasets = {version = ">=2.19", optional = true}
 flask = {version = "^3.1", optional = true}
 textual = {version = "^7.5", optional = true}
+pyarrow = {version = ">=14.0", optional = true}
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.0"
@@ -34,7 +35,9 @@ pytest-timeout = "^2.4.0"
 datasets = ["datasets"]
 web = ["flask"]
 cli_ui = ["textual"]
-all = ["datasets", "flask", "textual"]
+devon = []
+parquet = ["pyarrow"]
+all = ["datasets", "flask", "textual", "pyarrow"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

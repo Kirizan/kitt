@@ -72,3 +72,14 @@ def load_suite_config(path: Path) -> SuiteConfig:
 def load_engine_config(path: Path) -> EngineConfig:
     """Load an engine configuration file."""
     return load_config(path, EngineConfig)
+
+
+def load_campaign_config(path: Path) -> "CampaignConfig":
+    """Load a campaign configuration file.
+
+    Returns:
+        Validated CampaignConfig instance.
+    """
+    from kitt.campaign.models import CampaignConfig
+
+    return load_config(path, CampaignConfig)

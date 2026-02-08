@@ -108,6 +108,8 @@ _IMAGE_OVERRIDES: Dict[str, List[Tuple[Tuple[int, int], str]]] = {
     ],
     # Ollama: Bundles its own llama.cpp, works on all supported hardware.
     "ollama": [],
+    # ExLlamaV2: Standard CUDA image works on most hardware.
+    "exllamav2": [],
 }
 
 # Cache for detected compute capability (None = not yet detected)
