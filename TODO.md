@@ -79,8 +79,12 @@ Longer-term ideas that aren't yet planned for a specific release.
 - [ ] **Jupyter integration** — `%kitt` magic commands and result visualization widgets for notebook-based analysis workflows
 - [ ] **Model recommendation engine** — Given hardware constraints and quality requirements, recommend the best model/quant/engine combination from historical results
 
+### Smart Campaigns and Data Management
+
+- [ ] **Metadata-driven custom campaigns** — Create dynamic campaigns by querying any combination of run metadata (engine, model, quant, suite, hardware fingerprint, date range, pass/fail status, etc.). For example, `kitt campaign create --where "engine=vllm AND model LIKE 'Qwen%'"` or `kitt campaign create --where "quant IN (Q4_K_M, Q5_K_M, Q6_K)"` would generate a campaign covering all matching historical runs. Custom campaigns should also define matching rules so that new runs fitting the criteria are automatically included in the campaign's dashboards and rollup reports
+- [ ] **Database backend** — Migrate result storage from flat JSON files to SQLite (local) or PostgreSQL (shared) to support indexed queries, metadata filtering, and efficient aggregation across thousands of runs. Flat-file export/import should remain supported for portability. This is a prerequisite for metadata-driven campaigns at scale
+
 ### Data and Visualization
 
-- [ ] **Public leaderboard** — Optional opt-in leaderboard for sharing anonymized or public benchmark results across hardware configurations
 - [ ] **Power consumption tracking** — Monitor and report GPU/system power draw during benchmarks for energy efficiency comparisons
 - [ ] **Quant quality curves** — Auto-generate quality-vs-size tradeoff charts showing how each quantization level affects accuracy and throughput for a given model family
