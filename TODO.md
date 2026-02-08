@@ -39,3 +39,48 @@ First-class support for defining, running, and managing multi-model benchmark ca
 - [x] **Regression detection** — Flag when a model/engine combination performs significantly worse than a previous run
 - [x] **Export to CSV/Parquet** — Machine-readable exports for analysis in notebooks or dashboards
 - [x] **Web dashboard filtering** — Filter results by model family, parameter count, quant level, or engine in the web UI
+
+---
+
+## Future Ideas
+
+Longer-term ideas that aren't yet planned for a specific release.
+
+### Multi-GPU and Distributed
+
+- [ ] **Tensor parallel benchmarks** — Benchmark models across multiple GPUs with configurable tensor parallel size, measuring scaling efficiency and inter-GPU communication overhead
+- [ ] **Speculative decoding** — Benchmark draft-model speculative decoding setups (small model proposes, large model verifies) and measure acceptance rates, speedup, and quality impact
+- [ ] **Batch inference** — Measure offline/batch throughput with configurable concurrency levels, queue depths, and continuous batching vs. static batching comparisons
+
+### CI/CD and Automation
+
+- [ ] **GitHub Actions integration** — Provide a reusable GitHub Action that runs KITT benchmarks on self-hosted GPU runners and posts regression reports as PR comments
+- [ ] **Scheduled campaigns** — Cron-like scheduling for nightly or weekly benchmark campaigns with automatic result comparison against the previous run
+- [ ] **Slack/Discord bot** — Interactive bot that can trigger campaigns, report results, and answer queries about historical performance
+
+### Cloud and Remote Execution
+
+- [ ] **Cloud GPU support** — Run campaigns on cloud GPU instances (Lambda Labs, RunPod, AWS) with automatic provisioning, benchmark execution, and teardown
+- [ ] **Cost tracking** — Track and report cloud GPU cost per benchmark run, per model, and per campaign to help optimize spend
+- [ ] **Remote agent** — Lightweight agent that runs on a remote machine and accepts campaign jobs from a central KITT coordinator
+
+### Advanced Benchmarks
+
+- [ ] **Function calling** — Evaluate tool-use and function-calling accuracy across structured output formats
+- [ ] **Vision-language benchmarks** — Benchmark multimodal models on image understanding tasks (requires VLM engine support)
+- [ ] **Coding benchmarks** — HumanEval / MBPP pass@k for code generation quality
+- [ ] **RAG pipeline benchmarks** — End-to-end retrieval-augmented generation latency and accuracy with configurable chunk sizes and retriever backends
+- [ ] **Prompt robustness** — Measure output stability across paraphrased prompts to evaluate sensitivity to prompt phrasing
+
+### Developer Experience
+
+- [ ] **Plugin marketplace** — Allow community-contributed engines, benchmarks, and reporters to be installed via `kitt plugin install <name>`
+- [ ] **Interactive TUI campaign builder** — Textual-based wizard for building campaign configs interactively instead of writing YAML by hand
+- [ ] **Jupyter integration** — `%kitt` magic commands and result visualization widgets for notebook-based analysis workflows
+- [ ] **Model recommendation engine** — Given hardware constraints and quality requirements, recommend the best model/quant/engine combination from historical results
+
+### Data and Visualization
+
+- [ ] **Public leaderboard** — Optional opt-in leaderboard for sharing anonymized or public benchmark results across hardware configurations
+- [ ] **Power consumption tracking** — Monitor and report GPU/system power draw during benchmarks for energy efficiency comparisons
+- [ ] **Quant quality curves** — Auto-generate quality-vs-size tradeoff charts showing how each quantization level affects accuracy and throughput for a given model family
