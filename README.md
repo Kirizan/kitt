@@ -431,6 +431,86 @@ kitt web [OPTIONS]
 kitt web --port 9090 --results-dir ./kitt-results
 ```
 
+### `kitt monitoring`
+
+Manage a Prometheus + Grafana + InfluxDB monitoring stack for tracking campaign metrics on local or remote hardware. KITT can generate customized stacks with configurable scrape targets, deploy them to remote hosts via SSH, and manage their full lifecycle.
+
+#### Local stack (`start` / `stop` / `status`)
+
+Start, stop, or check the built-in monitoring stack from `docker/monitoring/`, or target a generated stack by name.
+
+```bash
+kitt monitoring start [--compose-dir PATH] [--name STACK]
+kitt monitoring stop  [--compose-dir PATH] [--name STACK]
+kitt monitoring status [--compose-dir PATH] [--name STACK]
+```
+
+| Option | Description |
+|---|---|
+| `--compose-dir` | Path to docker-compose directory (auto-detected by default) |
+| `--name` | Name of a generated monitoring stack to target |
+
+#### `kitt monitoring generate`
+
+Generate a customized docker-compose monitoring stack at `~/.kitt/monitoring/<name>/`.
+
+```bash
+kitt monitoring generate <name> -t <host:port> [-t ...] [OPTIONS]
+```
+
+| Option | Description |
+|---|---|
+| `<name>` | Stack name (required, positional) |
+| `-t` / `--target` | Scrape target `host:port` (repeatable, required) |
+| `--grafana-port` | Grafana port (default: 3000) |
+| `--prometheus-port` | Prometheus port (default: 9090) |
+| `--influxdb-port` | InfluxDB port (default: 8086) |
+| `--grafana-password` | Grafana admin password (default: kitt) |
+| `--influxdb-token` | InfluxDB admin token |
+| `--deploy` | Deploy to remote host after generation |
+| `--host` | Remote host name (from `~/.kitt/hosts.yaml`) |
+
+#### Remote lifecycle (`deploy` / `remote-start` / `remote-stop` / `remote-status`)
+
+Deploy a generated stack to a remote host and manage it via SSH.
+
+```bash
+kitt monitoring deploy <name> --host <host>
+kitt monitoring remote-start <name> --host <host>
+kitt monitoring remote-stop <name> --host <host>
+kitt monitoring remote-status <name> --host <host>
+```
+
+| Option | Description |
+|---|---|
+| `<name>` | Stack name (required, positional) |
+| `--host` | Remote host name from `~/.kitt/hosts.yaml` (required) |
+
+#### `kitt monitoring list-stacks` / `remove-stack`
+
+List all generated stacks or remove one by name.
+
+```bash
+kitt monitoring list-stacks
+kitt monitoring remove-stack <name> [--delete-files]
+```
+
+#### Example workflow
+
+```bash
+# Generate a stack targeting two hosts
+kitt monitoring generate lab -t 192.168.1.10:9100 -t 192.168.1.11:9100
+
+# Deploy to a remote DGX host
+kitt monitoring deploy lab --host dgx01
+
+# Check status on the remote host
+kitt monitoring remote-status lab --host dgx01
+
+# Stop when done
+kitt monitoring remote-stop lab --host dgx01
+```
+
 ## Engine Architecture
 
 All engines run inside Docker containers. KITT manages the full container lifecycle automatically:
