@@ -48,44 +48,44 @@ Longer-term ideas that aren't yet planned for a specific release.
 
 ### Multi-GPU and Distributed
 
-- [ ] **Tensor parallel benchmarks** — Benchmark models across multiple GPUs with configurable tensor parallel size, measuring scaling efficiency and inter-GPU communication overhead
-- [ ] **Speculative decoding** — Benchmark draft-model speculative decoding setups (small model proposes, large model verifies) and measure acceptance rates, speedup, and quality impact
-- [ ] **Batch inference** — Measure offline/batch throughput with configurable concurrency levels, queue depths, and continuous batching vs. static batching comparisons
+- [x] **Tensor parallel benchmarks** — Benchmark models across multiple GPUs with configurable tensor parallel size, measuring scaling efficiency and inter-GPU communication overhead
+- [x] **Speculative decoding** — Benchmark draft-model speculative decoding setups (small model proposes, large model verifies) and measure acceptance rates, speedup, and quality impact
+- [x] **Batch inference** — Measure offline/batch throughput with configurable concurrency levels, queue depths, and continuous batching vs. static batching comparisons
 
 ### CI/CD and Automation
 
-- [ ] **GitHub Actions integration** — Provide a reusable GitHub Action that runs KITT benchmarks on self-hosted GPU runners and posts regression reports as PR comments
-- [ ] **Scheduled campaigns** — Cron-like scheduling for nightly or weekly benchmark campaigns with automatic result comparison against the previous run
-- [ ] **Slack/Discord bot** — Interactive bot that can trigger campaigns, report results, and answer queries about historical performance
+- [x] **GitHub Actions integration** — Provide a reusable GitHub Action that runs KITT benchmarks on self-hosted GPU runners and posts regression reports as PR comments
+- [x] **Scheduled campaigns** — Cron-like scheduling for nightly or weekly benchmark campaigns with automatic result comparison against the previous run
+- [x] **Slack/Discord bot** — Interactive bot that can trigger campaigns, report results, and answer queries about historical performance
 
 ### Cloud and Remote Execution
 
 - [ ] **Cloud GPU support** — Run campaigns on cloud GPU instances (Lambda Labs, RunPod, AWS) with automatic provisioning, benchmark execution, and teardown
 - [ ] **Cost tracking** — Track and report cloud GPU cost per benchmark run, per model, and per campaign to help optimize spend
-- [ ] **Remote agent** — Lightweight agent that runs on a remote machine and accepts campaign jobs from a central KITT coordinator
+- [x] **Remote execution** — SSH-based remote campaign execution with host provisioning, result sync, and central coordination via `kitt remote` commands
 
 ### Advanced Benchmarks
 
-- [ ] **Function calling** — Evaluate tool-use and function-calling accuracy across structured output formats
-- [ ] **Vision-language benchmarks** — Benchmark multimodal models on image understanding tasks (requires VLM engine support)
-- [ ] **Coding benchmarks** — HumanEval / MBPP pass@k for code generation quality
-- [ ] **RAG pipeline benchmarks** — End-to-end retrieval-augmented generation latency and accuracy with configurable chunk sizes and retriever backends
-- [ ] **Prompt robustness** — Measure output stability across paraphrased prompts to evaluate sensitivity to prompt phrasing
+- [x] **Function calling** — Evaluate tool-use and function-calling accuracy across structured output formats
+- [x] **Vision-language benchmarks** — Benchmark multimodal models on image understanding tasks (requires VLM engine support)
+- [x] **Coding benchmarks** — HumanEval / MBPP pass@k for code generation quality
+- [x] **RAG pipeline benchmarks** — End-to-end retrieval-augmented generation latency and accuracy with configurable chunk sizes and retriever backends
+- [x] **Prompt robustness** — Measure output stability across paraphrased prompts to evaluate sensitivity to prompt phrasing
 
 ### Developer Experience
 
-- [ ] **Plugin marketplace** — Allow community-contributed engines, benchmarks, and reporters to be installed via `kitt plugin install <name>`
-- [ ] **Interactive TUI campaign builder** — Textual-based wizard for building campaign configs interactively instead of writing YAML by hand
-- [ ] **Jupyter integration** — `%kitt` magic commands and result visualization widgets for notebook-based analysis workflows
-- [ ] **Model recommendation engine** — Given hardware constraints and quality requirements, recommend the best model/quant/engine combination from historical results
+- [x] **Plugin marketplace** — Allow community-contributed engines, benchmarks, and reporters to be installed via `kitt plugin install <name>`
+- [x] **Interactive TUI campaign builder** — Textual-based wizard for building campaign configs interactively instead of writing YAML by hand
+- [x] **Jupyter integration** — `%kitt` magic commands and result visualization widgets for notebook-based analysis workflows
+- [x] **Model recommendation engine** — Given hardware constraints and quality requirements, recommend the best model/quant/engine combination from historical results
 
 ### Smart Campaigns and Data Management
 
-- [ ] **Gated model detection** — During campaign planning, query the HuggingFace API to detect gated models (requiring login or license acceptance) and automatically skip them if no HF token is configured or the license hasn't been accepted. Devon's download should surface a clear error distinguishing "not authenticated" from "license not accepted" instead of silently downloading only metadata files (README, LICENSE)
-- [ ] **Metadata-driven custom campaigns** — Create dynamic campaigns by querying any combination of run metadata (engine, model, quant, suite, hardware fingerprint, date range, pass/fail status, etc.). For example, `kitt campaign create --where "engine=vllm AND model LIKE 'Qwen%'"` or `kitt campaign create --where "quant IN (Q4_K_M, Q5_K_M, Q6_K)"` would generate a campaign covering all matching historical runs. Custom campaigns should also define matching rules so that new runs fitting the criteria are automatically included in the campaign's dashboards and rollup reports
-- [ ] **Database backend** — Migrate result storage from flat JSON files to SQLite (local) or PostgreSQL (shared) to support indexed queries, metadata filtering, and efficient aggregation across thousands of runs. Flat-file export/import should remain supported for portability. This is a prerequisite for metadata-driven campaigns at scale
+- [x] **Gated model detection** — During campaign planning, query the HuggingFace API to detect gated models (requiring login or license acceptance) and automatically skip them if no HF token is configured or the license hasn't been accepted
+- [x] **Metadata-driven custom campaigns** — Create dynamic campaigns by querying any combination of run metadata (engine, model, quant, suite, hardware fingerprint, date range, pass/fail status, etc.) via `kitt campaign create --where "engine=vllm AND model LIKE 'Qwen%'"`
+- [x] **Database backend** — SQLite (local) and PostgreSQL (shared) storage backends with indexed queries, metadata filtering, and efficient aggregation. Flat-file JSON import/export remains supported for portability
 
 ### Data and Visualization
 
-- [ ] **Power consumption tracking** — Monitor and report GPU/system power draw during benchmarks for energy efficiency comparisons
-- [ ] **Quant quality curves** — Auto-generate quality-vs-size tradeoff charts showing how each quantization level affects accuracy and throughput for a given model family
+- [x] **Power consumption tracking** — Monitor and report GPU/system power draw during benchmarks for energy efficiency comparisons via pynvml
+- [x] **Quant quality curves** — Auto-generate quality-vs-size tradeoff charts showing how each quantization level affects accuracy and throughput for a given model family
