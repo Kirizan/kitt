@@ -81,6 +81,7 @@ Longer-term ideas that aren't yet planned for a specific release.
 
 ### Smart Campaigns and Data Management
 
+- [ ] **Gated model detection** — During campaign planning, query the HuggingFace API to detect gated models (requiring login or license acceptance) and automatically skip them if no HF token is configured or the license hasn't been accepted. Devon's download should surface a clear error distinguishing "not authenticated" from "license not accepted" instead of silently downloading only metadata files (README, LICENSE)
 - [ ] **Metadata-driven custom campaigns** — Create dynamic campaigns by querying any combination of run metadata (engine, model, quant, suite, hardware fingerprint, date range, pass/fail status, etc.). For example, `kitt campaign create --where "engine=vllm AND model LIKE 'Qwen%'"` or `kitt campaign create --where "quant IN (Q4_K_M, Q5_K_M, Q6_K)"` would generate a campaign covering all matching historical runs. Custom campaigns should also define matching rules so that new runs fitting the criteria are automatically included in the campaign's dashboards and rollup reports
 - [ ] **Database backend** — Migrate result storage from flat JSON files to SQLite (local) or PostgreSQL (shared) to support indexed queries, metadata filtering, and efficient aggregation across thousands of runs. Flat-file export/import should remain supported for portability. This is a prerequisite for metadata-driven campaigns at scale
 
