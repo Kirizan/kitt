@@ -125,7 +125,9 @@ class MonitoringStackGenerator:
         }
 
         compose_path = stack_dir / "docker-compose.yaml"
-        compose_path.write_text(yaml.dump(compose, default_flow_style=False, sort_keys=False))
+        compose_path.write_text(
+            yaml.dump(compose, default_flow_style=False, sort_keys=False)
+        )
 
     def _generate_prometheus_config(self, stack_dir: Path) -> None:
         """Generate prometheus.yml with dynamic scrape targets."""
@@ -149,13 +151,17 @@ class MonitoringStackGenerator:
         }
 
         prom_path = prom_dir / "prometheus.yml"
-        prom_path.write_text(yaml.dump(config, default_flow_style=False, sort_keys=False))
+        prom_path.write_text(
+            yaml.dump(config, default_flow_style=False, sort_keys=False)
+        )
 
     def _copy_grafana_files(self, stack_dir: Path) -> None:
         """Copy Grafana provisioning and dashboard files from template."""
         template_dir = _find_template_dir()
         if not template_dir:
-            logger.warning("Template directory not found — generating minimal Grafana config")
+            logger.warning(
+                "Template directory not found — generating minimal Grafana config"
+            )
             self._generate_minimal_grafana(stack_dir)
             return
 

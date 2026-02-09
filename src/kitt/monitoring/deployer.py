@@ -72,7 +72,9 @@ class MonitoringDeployer:
         stack_config.remote_dir = remote_dir
         self.config_manager.add(stack_config)
 
-        logger.info(f"Stack '{stack_config.name}' deployed to {self.host_config.hostname}")
+        logger.info(
+            f"Stack '{stack_config.name}' deployed to {self.host_config.hostname}"
+        )
         return True
 
     def start(self, remote_dir: str) -> tuple[int, str, str]:

@@ -148,8 +148,9 @@ class TestMonitoringDeployer:
 
         stack_config = MonitoringStackConfig(name="no-dir", local_dir="")
 
-        with patch.object(deployer.ssh, "check_connection", return_value=True), patch.object(
-            deployer.ssh, "run_command", return_value=(0, "ok", "")
+        with (
+            patch.object(deployer.ssh, "check_connection", return_value=True),
+            patch.object(deployer.ssh, "run_command", return_value=(0, "ok", "")),
         ):
             result = deployer.deploy(stack_config)
             assert result is False

@@ -59,7 +59,9 @@ def start(compose_dir, name):
     compose_path = _resolve_compose_dir(compose_dir, name)
     if not compose_path:
         console.print("[red]Could not find docker/monitoring/ directory.[/red]")
-        console.print("Specify with --compose-dir, --name, or run from the KITT project root.")
+        console.print(
+            "Specify with --compose-dir, --name, or run from the KITT project root."
+        )
         raise SystemExit(1)
 
     console.print("[bold]Starting KITT monitoring stack...[/bold]")
@@ -163,12 +165,18 @@ def status(compose_dir, name):
     help="Scrape target host:port (repeatable).",
 )
 @click.option("--grafana-port", default=3000, help="Grafana port (default: 3000).")
-@click.option("--prometheus-port", default=9090, help="Prometheus port (default: 9090).")
+@click.option(
+    "--prometheus-port", default=9090, help="Prometheus port (default: 9090)."
+)
 @click.option("--influxdb-port", default=8086, help="InfluxDB port (default: 8086).")
 @click.option("--grafana-password", default="kitt", help="Grafana admin password.")
-@click.option("--influxdb-token", default="kitt-influx-token", help="InfluxDB admin token.")
+@click.option(
+    "--influxdb-token", default="kitt-influx-token", help="InfluxDB admin token."
+)
 @click.option("--deploy", is_flag=True, help="Deploy to remote host after generation.")
-@click.option("--host", default=None, help="Remote host name (from ~/.kitt/hosts.yaml).")
+@click.option(
+    "--host", default=None, help="Remote host name (from ~/.kitt/hosts.yaml)."
+)
 def generate(
     name,
     target,
@@ -214,7 +222,9 @@ def generate(
 
 @monitoring.command()
 @click.argument("name")
-@click.option("--host", required=True, help="Remote host name (from ~/.kitt/hosts.yaml).")
+@click.option(
+    "--host", required=True, help="Remote host name (from ~/.kitt/hosts.yaml)."
+)
 def deploy(name, host):
     """Deploy a generated monitoring stack to a remote host."""
     _do_deploy(name, host)
@@ -222,7 +232,9 @@ def deploy(name, host):
 
 @monitoring.command("remote-start")
 @click.argument("name")
-@click.option("--host", required=True, help="Remote host name (from ~/.kitt/hosts.yaml).")
+@click.option(
+    "--host", required=True, help="Remote host name (from ~/.kitt/hosts.yaml)."
+)
 def remote_start(name, host):
     """Start a deployed monitoring stack on a remote host."""
     deployer, stack_config = _get_deployer_and_config(name, host)
@@ -241,7 +253,9 @@ def remote_start(name, host):
 
 @monitoring.command("remote-stop")
 @click.argument("name")
-@click.option("--host", required=True, help="Remote host name (from ~/.kitt/hosts.yaml).")
+@click.option(
+    "--host", required=True, help="Remote host name (from ~/.kitt/hosts.yaml)."
+)
 def remote_stop(name, host):
     """Stop a deployed monitoring stack on a remote host."""
     deployer, stack_config = _get_deployer_and_config(name, host)
@@ -258,7 +272,9 @@ def remote_stop(name, host):
 
 @monitoring.command("remote-status")
 @click.argument("name")
-@click.option("--host", required=True, help="Remote host name (from ~/.kitt/hosts.yaml).")
+@click.option(
+    "--host", required=True, help="Remote host name (from ~/.kitt/hosts.yaml)."
+)
 def remote_status(name, host):
     """Check status of a deployed monitoring stack on a remote host."""
     deployer, stack_config = _get_deployer_and_config(name, host)
@@ -312,7 +328,9 @@ def list_stacks():
 
 @monitoring.command("remove-stack")
 @click.argument("name")
-@click.option("--delete-files", is_flag=True, help="Also delete generated files on disk.")
+@click.option(
+    "--delete-files", is_flag=True, help="Also delete generated files on disk."
+)
 def remove_stack(name, delete_files):
     """Remove a monitoring stack configuration."""
     from kitt.monitoring.config import MonitoringConfigManager
@@ -398,7 +416,9 @@ def _get_deployer_and_config(name, host):
         raise SystemExit(1)
 
     if not stack_config.remote_dir:
-        console.print(f"[red]Stack '{name}' has not been deployed. Deploy it first.[/red]")
+        console.print(
+            f"[red]Stack '{name}' has not been deployed. Deploy it first.[/red]"
+        )
         raise SystemExit(1)
 
     deployer = MonitoringDeployer(host_config, config_manager)

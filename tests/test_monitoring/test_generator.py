@@ -46,7 +46,9 @@ class TestMonitoringStackGenerator:
         prom_config = yaml.safe_load(
             (stack_dir / "prometheus" / "prometheus.yml").read_text()
         )
-        scrape_targets = prom_config["scrape_configs"][0]["static_configs"][0]["targets"]
+        scrape_targets = prom_config["scrape_configs"][0]["static_configs"][0][
+            "targets"
+        ]
         assert scrape_targets == targets
 
     def test_generate_custom_ports(self, tmp_path: Path):
