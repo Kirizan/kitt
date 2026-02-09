@@ -1,6 +1,6 @@
 """Tests for campaign runner."""
 
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -43,7 +43,9 @@ def state_mgr(tmp_path):
 
 
 class TestCampaignRunner:
-    def test_dry_run(self, simple_config, state_mgr):
+    @patch("shutil.disk_usage")
+    def test_dry_run(self, mock_disk, simple_config, state_mgr):
+        mock_disk.return_value = MagicMock(free=500 * 1024**3)
         runner = CampaignRunner(simple_config, state_mgr, dry_run=True)
         result = runner.run(campaign_id="test-dry")
 
@@ -53,8 +55,10 @@ class TestCampaignRunner:
         assert result.runs[0].status == "success"
         assert result.runs[0].output_dir == "dry-run"
 
-    def test_resume_skips_completed(self, simple_config, state_mgr):
+    @patch("shutil.disk_usage")
+    def test_resume_skips_completed(self, mock_disk, simple_config, state_mgr):
         """Resume should skip already-completed runs."""
+        mock_disk.return_value = MagicMock(free=500 * 1024**3)
         # First run
         runner = CampaignRunner(simple_config, state_mgr, dry_run=True)
         result1 = runner.run(campaign_id="test-resume")

@@ -4,7 +4,9 @@ import json
 
 import pytest
 
-from kitt.web.app import _scan_results, create_app
+from kitt.web.app import FLASK_AVAILABLE, _scan_results, create_app
+
+pytestmark = pytest.mark.skipif(not FLASK_AVAILABLE, reason="flask not installed")
 
 
 @pytest.fixture

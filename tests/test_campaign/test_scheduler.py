@@ -1,5 +1,7 @@
 """Tests for campaign scheduler."""
 
+from unittest.mock import MagicMock, patch
+
 import pytest
 
 from kitt.campaign.models import (
@@ -95,18 +97,21 @@ class TestCampaignScheduler:
         assert len(remaining) == 1
         assert remaining[0].model_name == "M2"
 
-    def test_check_disk_space_passes(self, scheduler):
-        """Should pass when disk has plenty of space (checking home dir)."""
+    @patch("shutil.disk_usage")
+    def test_check_disk_space_passes(self, mock_disk, scheduler):
+        """Should pass when disk has plenty of space."""
+        mock_disk.return_value = MagicMock(free=500 * 1024**3)  # 500 GB free
         run = CampaignRunSpec(
             model_name="test",
             engine_name="e",
             quant="q",
             estimated_size_gb=1.0,
         )
-        # This tests against actual disk — should pass in any CI/dev environment
         assert scheduler.check_disk_space(run) is True
 
-    def test_should_skip_returns_false_normally(self, scheduler):
+    @patch("shutil.disk_usage")
+    def test_should_skip_returns_false_normally(self, mock_disk, scheduler):
+        mock_disk.return_value = MagicMock(free=500 * 1024**3)  # 500 GB free
         run = CampaignRunSpec(
             model_name="test",
             engine_name="e",

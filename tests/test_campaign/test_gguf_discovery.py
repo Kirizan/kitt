@@ -1,5 +1,6 @@
 """Tests for GGUF quant discovery."""
 
+import sys
 from unittest.mock import MagicMock, patch
 
 from kitt.campaign.gguf_discovery import (
@@ -10,6 +11,11 @@ from kitt.campaign.gguf_discovery import (
     filter_quants,
     find_model_path,
 )
+
+# huggingface_hub may not be installed; create a stub so @patch targets resolve
+if "huggingface_hub" not in sys.modules:
+    _hf_stub = MagicMock()
+    sys.modules["huggingface_hub"] = _hf_stub
 
 
 class TestExtractQuantName:
