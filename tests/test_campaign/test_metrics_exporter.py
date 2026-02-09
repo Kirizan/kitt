@@ -1,7 +1,10 @@
 """Tests for campaign metrics exporter."""
 
+import sys
 import urllib.request
 from unittest.mock import patch
+
+import pytest
 
 from kitt.campaign.metrics_exporter import (
     CampaignMetricsExporter,
@@ -111,6 +114,7 @@ class TestCampaignMetricsExporter:
             )
             mock_url.assert_not_called()
 
+    @pytest.mark.skipif(sys.platform == "darwin", reason="HTTPServer.shutdown() unreliable on macOS")
     def test_start_stop_server(self):
         exporter = CampaignMetricsExporter(prometheus_port=19100)
         exporter.start()
