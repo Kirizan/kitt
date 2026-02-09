@@ -1,7 +1,5 @@
 """Tests for cross-campaign comparison."""
 
-import pytest
-
 from kitt.reporters.campaign_comparison import compare_campaigns
 
 
@@ -92,12 +90,20 @@ class TestCompareCampaigns:
         assert delta["pct_change"] == 0  # Division by zero guarded
 
     def test_nested_metrics(self):
-        a = [{"model": "m", "engine": "e", "results": [
-            {"test_name": "t", "metrics": {"ttft_ms": {"avg": 40.0}}}
-        ]}]
-        b = [{"model": "m", "engine": "e", "results": [
-            {"test_name": "t", "metrics": {"ttft_ms": {"avg": 50.0}}}
-        ]}]
+        a = [
+            {
+                "model": "m",
+                "engine": "e",
+                "results": [{"test_name": "t", "metrics": {"ttft_ms": {"avg": 40.0}}}],
+            }
+        ]
+        b = [
+            {
+                "model": "m",
+                "engine": "e",
+                "results": [{"test_name": "t", "metrics": {"ttft_ms": {"avg": 50.0}}}],
+            }
+        ]
 
         result = compare_campaigns(a, b)
         assert "t.ttft_ms.avg" in result["m|e"]["deltas"]

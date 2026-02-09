@@ -1,7 +1,7 @@
 """Single benchmark test runner."""
 
 import logging
-from typing import Any, Dict
+from typing import Any
 
 from kitt.benchmarks.base import BenchmarkResult, LLMBenchmark
 from kitt.engines.base import InferenceEngine
@@ -16,7 +16,7 @@ class SingleTestRunner:
         self.engine = engine
         self.benchmark = benchmark
 
-    def run(self, config: Dict[str, Any]) -> BenchmarkResult:
+    def run(self, config: dict[str, Any]) -> BenchmarkResult:
         """Execute the benchmark.
 
         Args:
@@ -27,9 +27,7 @@ class SingleTestRunner:
         """
         # Validate config
         if not self.benchmark.validate_config(config):
-            missing = [
-                k for k in self.benchmark.required_config() if k not in config
-            ]
+            missing = [k for k in self.benchmark.required_config() if k not in config]
             logger.error(f"Missing required config keys: {missing}")
             return BenchmarkResult(
                 test_name=self.benchmark.name,
@@ -48,9 +46,7 @@ class SingleTestRunner:
         result = self.benchmark.run(self.engine, config)
 
         if result.passed:
-            logger.info(
-                f"Benchmark '{self.benchmark.name}' completed successfully"
-            )
+            logger.info(f"Benchmark '{self.benchmark.name}' completed successfully")
         else:
             logger.warning(
                 f"Benchmark '{self.benchmark.name}' completed with "

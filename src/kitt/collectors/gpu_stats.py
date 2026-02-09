@@ -5,7 +5,6 @@ import logging
 import threading
 import time
 from dataclasses import dataclass
-from typing import List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +59,7 @@ class GPUMonitor:
         except Exception:
             return 0
 
-    def get_memory_stats(self, gpu_index: int = 0) -> Optional[GPUMemoryStats]:
+    def get_memory_stats(self, gpu_index: int = 0) -> GPUMemoryStats | None:
         """Get current GPU memory statistics.
 
         Args:
@@ -86,7 +85,9 @@ class GPUMonitor:
             except pynvml.NVMLError:
                 # Return None if we can't get memory info - that's the core data we need
                 if not GPUMonitor._stats_warned:
-                    logger.debug("GPU memory info not supported (unified memory system?)")
+                    logger.debug(
+                        "GPU memory info not supported (unified memory system?)"
+                    )
                     GPUMonitor._stats_warned = True
                 return None
 
@@ -110,7 +111,7 @@ class GPUMonitor:
                 GPUMonitor._stats_warned = True
             return None
 
-    def get_all_gpus_stats(self) -> List[GPUMemoryStats]:
+    def get_all_gpus_stats(self) -> list[GPUMemoryStats]:
         """Get memory stats for all GPUs."""
         if not self._initialized:
             return []
@@ -137,9 +138,9 @@ class GPUMemoryTracker:
         self.gpu_index = gpu_index
         self.sample_interval_ms = sample_interval_ms
         self.monitor = GPUMonitor()
-        self.samples: List[GPUMemoryStats] = []
-        self._stop_event: Optional[threading.Event] = None
-        self._thread: Optional[threading.Thread] = None
+        self.samples: list[GPUMemoryStats] = []
+        self._stop_event: threading.Event | None = None
+        self._thread: threading.Thread | None = None
 
     def __enter__(self) -> "GPUMemoryTracker":
         """Start monitoring."""
@@ -149,7 +150,7 @@ class GPUMemoryTracker:
         self._stop_event = threading.Event()
 
         def sample_loop() -> None:
-            while not self._stop_event.is_set():
+            while self._stop_event is not None and not self._stop_event.is_set():
                 stats = self.monitor.get_memory_stats(self.gpu_index)
                 if stats:
                     self.samples.append(stats)

@@ -1,6 +1,6 @@
 """Pydantic models for KITT configuration."""
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -25,10 +25,10 @@ class SamplingParams(BaseModel):
 class DatasetConfig(BaseModel):
     """Dataset source configuration."""
 
-    source: Optional[str] = None  # HuggingFace dataset ID or None
-    local_path: Optional[str] = None  # Local directory path
+    source: str | None = None  # HuggingFace dataset ID or None
+    local_path: str | None = None  # Local directory path
     split: str = "test"
-    sample_size: Optional[int] = None  # None = use all samples
+    sample_size: int | None = None  # None = use all samples
 
 
 class PromptConfig(BaseModel):
@@ -42,8 +42,8 @@ class PromptConfig(BaseModel):
 class EvaluationConfig(BaseModel):
     """Evaluation metrics configuration."""
 
-    metrics: List[str] = Field(default_factory=list)
-    answer_extraction: Dict[str, str] = Field(default_factory=dict)
+    metrics: list[str] = Field(default_factory=list)
+    answer_extraction: dict[str, str] = Field(default_factory=dict)
 
 
 class PerformanceCollectionConfig(BaseModel):
@@ -68,7 +68,7 @@ class TestConfig(BaseModel):
     performance_collection: PerformanceCollectionConfig = Field(
         default_factory=PerformanceCollectionConfig
     )
-    test_config: Dict[str, Any] = Field(default_factory=dict)
+    test_config: dict[str, Any] = Field(default_factory=dict)
 
 
 class EngineConfig(BaseModel):
@@ -76,15 +76,15 @@ class EngineConfig(BaseModel):
 
     name: str
     model_path: str = ""
-    parameters: Dict[str, Any] = Field(default_factory=dict)
+    parameters: dict[str, Any] = Field(default_factory=dict)
 
 
 class SuiteOverrides(BaseModel):
     """Per-test overrides within a suite."""
 
-    warmup: Optional[WarmupConfig] = None
-    sampling: Optional[SamplingParams] = None
-    runs: Optional[int] = None
+    warmup: WarmupConfig | None = None
+    sampling: SamplingParams | None = None
+    runs: int | None = None
 
 
 class SuiteConfig(BaseModel):
@@ -93,7 +93,7 @@ class SuiteConfig(BaseModel):
     suite_name: str
     version: str = "1.0.0"
     description: str = ""
-    tests: List[str] = Field(default_factory=list)
-    global_config: Dict[str, Any] = Field(default_factory=dict)
-    sampling_overrides: Optional[SamplingParams] = None
-    test_overrides: Dict[str, SuiteOverrides] = Field(default_factory=dict)
+    tests: list[str] = Field(default_factory=list)
+    global_config: dict[str, Any] = Field(default_factory=dict)
+    sampling_overrides: SamplingParams | None = None
+    test_overrides: dict[str, SuiteOverrides] = Field(default_factory=dict)

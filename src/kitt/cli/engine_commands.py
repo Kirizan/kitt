@@ -62,7 +62,7 @@ def check_engine(engine_name):
         engine_cls = EngineRegistry.get_engine(engine_name)
     except ValueError as e:
         console.print(f"[red]{e}[/red]")
-        raise SystemExit(1)
+        raise SystemExit(1) from e
 
     diag = engine_cls.diagnose()
 
@@ -83,11 +83,13 @@ def check_engine(engine_name):
 @engines.command("setup")
 @click.argument("engine_name")
 @click.option("--dry-run", is_flag=True, help="Show commands without executing them")
-@click.option("--force-rebuild", is_flag=True, help="Rebuild even if image already exists")
+@click.option(
+    "--force-rebuild", is_flag=True, help="Rebuild even if image already exists"
+)
 def setup_engine(engine_name, dry_run, force_rebuild):
     """Pull or build the Docker image for an engine."""
     from kitt.engines.docker_manager import DockerManager
-    from kitt.engines.image_resolver import get_build_recipe, is_kitt_managed_image
+    from kitt.engines.image_resolver import get_build_recipe
     from kitt.engines.registry import EngineRegistry
 
     EngineRegistry.auto_discover()
@@ -96,7 +98,7 @@ def setup_engine(engine_name, dry_run, force_rebuild):
         engine_cls = EngineRegistry.get_engine(engine_name)
     except ValueError as e:
         console.print(f"[red]{e}[/red]")
-        raise SystemExit(1)
+        raise SystemExit(1) from e
 
     image = engine_cls.resolved_image()
 
@@ -121,18 +123,26 @@ def setup_engine(engine_name, dry_run, force_rebuild):
             cmd_parts.append(context_dir)
             console.print(f"  [dim]would run:[/dim] {' '.join(cmd_parts)}")
             if recipe.experimental:
-                console.print("  [yellow]WARNING: This is an experimental build.[/yellow]")
+                console.print(
+                    "  [yellow]WARNING: This is an experimental build.[/yellow]"
+                )
             console.print("\n[yellow]Dry run — no commands were executed.[/yellow]")
             return
 
         if not force_rebuild and DockerManager.image_exists(image):
-            console.print(f"Image {image} already exists. Use --force-rebuild to rebuild.")
+            console.print(
+                f"Image {image} already exists. Use --force-rebuild to rebuild."
+            )
             return
 
         if recipe.experimental:
-            console.print(f"[yellow]WARNING: {image} is an experimental build.[/yellow]")
+            console.print(
+                f"[yellow]WARNING: {image} is an experimental build.[/yellow]"
+            )
 
-        console.print(f"Building {image} (this may take 10-60 minutes for CUDA builds)...")
+        console.print(
+            f"Building {image} (this may take 10-60 minutes for CUDA builds)..."
+        )
         try:
             DockerManager.build_image(
                 image=image,
@@ -143,7 +153,7 @@ def setup_engine(engine_name, dry_run, force_rebuild):
             )
         except RuntimeError as e:
             console.print(f"[red]{e}[/red]")
-            raise SystemExit(1)
+            raise SystemExit(1) from e
     else:
         # Registry image — pull
         if dry_run:
@@ -156,6 +166,6 @@ def setup_engine(engine_name, dry_run, force_rebuild):
             DockerManager.pull_image(image)
         except RuntimeError as e:
             console.print(f"[red]{e}[/red]")
-            raise SystemExit(1)
+            raise SystemExit(1) from e
 
     console.print(f"[green]{engine_name} ready.[/green]")

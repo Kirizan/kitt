@@ -17,12 +17,24 @@ def ci():
 
 
 @ci.command()
-@click.option("--results-dir", type=click.Path(exists=True), required=True, help="Results directory")
-@click.option("--baseline-dir", type=click.Path(exists=True), default=None, help="Baseline results for comparison")
+@click.option(
+    "--results-dir",
+    type=click.Path(exists=True),
+    required=True,
+    help="Results directory",
+)
+@click.option(
+    "--baseline-dir",
+    type=click.Path(exists=True),
+    default=None,
+    help="Baseline results for comparison",
+)
 @click.option("--github-token", default=None, help="GitHub API token")
 @click.option("--repo", default=None, help="GitHub repo (owner/repo)")
 @click.option("--pr", type=int, default=None, help="Pull request number")
-@click.option("--output", "-o", default=None, help="Write report to file instead of posting")
+@click.option(
+    "--output", "-o", default=None, help="Write report to file instead of posting"
+)
 def report(results_dir, baseline_dir, github_token, repo, pr, output):
     """Generate CI report from benchmark results."""
     from kitt.ci.report_formatter import CIReportFormatter
@@ -50,6 +62,7 @@ def report(results_dir, baseline_dir, github_token, repo, pr, output):
         console.print(f"Report saved to [green]{output}[/green]")
     elif github_token and repo and pr:
         from kitt.ci.github import GitHubReporter
+
         reporter = GitHubReporter(token=github_token, repo=repo, pr_number=pr)
         if reporter.update_or_create_comment(report_md):
             console.print("[green]Report posted to PR.[/green]")

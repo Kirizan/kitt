@@ -2,7 +2,7 @@
 
 import logging
 import re
-from typing import Any, Dict, List
+from typing import Any
 
 from kitt.benchmarks.base import BenchmarkResult, LLMBenchmark
 from kitt.benchmarks.registry import register_benchmark
@@ -29,7 +29,7 @@ class GSM8KBenchmark(LLMBenchmark):
     category = "quality_standard"
     description = "GSM8K - Grade school math reasoning with step-by-step solutions"
 
-    def _execute(self, engine, config: Dict[str, Any]) -> BenchmarkResult:
+    def _execute(self, engine, config: dict[str, Any]) -> BenchmarkResult:
         """Run GSM8K evaluation."""
         sampling = config.get("sampling", {})
         max_tokens = sampling.get("max_tokens", 512)
@@ -50,8 +50,8 @@ class GSM8KBenchmark(LLMBenchmark):
                 errors=["No questions loaded - dataset may not be available"],
             )
 
-        outputs: List[Dict[str, Any]] = []
-        errors: List[str] = []
+        outputs: list[dict[str, Any]] = []
+        errors: list[str] = []
         correct = 0
         total = 0
 
@@ -75,17 +75,19 @@ class GSM8KBenchmark(LLMBenchmark):
                     correct += 1
                 total += 1
 
-                outputs.append({
-                    "index": i,
-                    "predicted": predicted,
-                    "expected": expected,
-                    "correct": is_correct,
-                    "raw_output": result.output[:500],
-                    "metrics": {
-                        "tps": result.metrics.tps,
-                        "total_latency_ms": result.metrics.total_latency_ms,
-                    },
-                })
+                outputs.append(
+                    {
+                        "index": i,
+                        "predicted": predicted,
+                        "expected": expected,
+                        "correct": is_correct,
+                        "raw_output": result.output[:500],
+                        "metrics": {
+                            "tps": result.metrics.tps,
+                            "total_latency_ms": result.metrics.total_latency_ms,
+                        },
+                    }
+                )
 
             except Exception as e:
                 error_msg = f"Error on question {i}: {str(e)}"
@@ -111,7 +113,7 @@ class GSM8KBenchmark(LLMBenchmark):
             errors=errors,
         )
 
-    def _load_questions(self, config: Dict[str, Any]) -> List[Dict[str, Any]]:
+    def _load_questions(self, config: dict[str, Any]) -> list[dict[str, Any]]:
         """Load GSM8K questions."""
         dataset_config = config.get("dataset", {})
         source = dataset_config.get("source")
@@ -121,6 +123,7 @@ class GSM8KBenchmark(LLMBenchmark):
         if source:
             try:
                 from kitt.benchmarks.dataset_manager import DatasetManager
+
                 raw = DatasetManager.load_from_huggingface(
                     source,
                     split=dataset_config.get("split", "test"),
@@ -134,7 +137,9 @@ class GSM8KBenchmark(LLMBenchmark):
         if local_path:
             try:
                 from pathlib import Path
+
                 from kitt.benchmarks.dataset_manager import DatasetManager
+
                 raw = DatasetManager.load_from_directory(
                     Path(local_path), sample_size=sample_size
                 )
@@ -145,7 +150,7 @@ class GSM8KBenchmark(LLMBenchmark):
 
         return []
 
-    def _parse_raw(self, raw_items: List[Any]) -> List[Dict[str, Any]]:
+    def _parse_raw(self, raw_items: list[Any]) -> list[dict[str, Any]]:
         """Parse raw items into question dicts."""
         questions = []
         for item in raw_items:
@@ -164,12 +169,12 @@ class GSM8KBenchmark(LLMBenchmark):
         text = text.strip()
 
         # Look for #### delimiter (GSM8K format)
-        match = re.search(r'####\s*([\-\d,\.]+)', text)
+        match = re.search(r"####\s*([\-\d,\.]+)", text)
         if match:
             return match.group(1).replace(",", "").strip()
 
         # Fallback: find last number in text
-        numbers = re.findall(r'[\-]?\d[\d,]*\.?\d*', text)
+        numbers = re.findall(r"[\-]?\d[\d,]*\.?\d*", text)
         if numbers:
             return numbers[-1].replace(",", "")
 

@@ -5,10 +5,14 @@ import logging
 import sqlite3
 import uuid
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from .base import ResultStore
-from .migrations import get_current_version_sqlite, run_migrations_sqlite, set_version_sqlite
+from .migrations import (
+    get_current_version_sqlite,
+    run_migrations_sqlite,
+    set_version_sqlite,
+)
 from .schema import SCHEMA_VERSION, SQLITE_SCHEMA
 
 logger = logging.getLogger(__name__)
@@ -19,10 +23,10 @@ DEFAULT_DB_PATH = Path.home() / ".kitt" / "kitt.db"
 class SQLiteStore(ResultStore):
     """Result store backed by a SQLite database."""
 
-    def __init__(self, db_path: Optional[Path] = None) -> None:
+    def __init__(self, db_path: Path | None = None) -> None:
         self.db_path = db_path or DEFAULT_DB_PATH
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
-        self._conn: Optional[sqlite3.Connection] = None
+        self._conn: sqlite3.Connection | None = None
         self._ensure_schema()
 
     def _get_conn(self) -> sqlite3.Connection:
@@ -43,7 +47,7 @@ class SQLiteStore(ResultStore):
         elif current < SCHEMA_VERSION:
             run_migrations_sqlite(conn, current)
 
-    def save_result(self, result_data: Dict[str, Any]) -> str:
+    def save_result(self, result_data: dict[str, Any]) -> str:
         conn = self._get_conn()
         run_id = uuid.uuid4().hex[:16]
 
@@ -119,7 +123,7 @@ class SQLiteStore(ResultStore):
         conn.commit()
         return run_id
 
-    def get_result(self, result_id: str) -> Optional[Dict[str, Any]]:
+    def get_result(self, result_id: str) -> dict[str, Any] | None:
         conn = self._get_conn()
         row = conn.execute(
             "SELECT raw_json FROM runs WHERE id = ?", (result_id,)
@@ -130,18 +134,24 @@ class SQLiteStore(ResultStore):
 
     def query(
         self,
-        filters: Optional[Dict[str, Any]] = None,
-        order_by: Optional[str] = None,
-        limit: Optional[int] = None,
+        filters: dict[str, Any] | None = None,
+        order_by: str | None = None,
+        limit: int | None = None,
         offset: int = 0,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         conn = self._get_conn()
         sql = "SELECT raw_json FROM runs"
-        params: List[Any] = []
+        params: list[Any] = []
 
         if filters:
             clauses = []
-            allowed_columns = {"model", "engine", "suite_name", "passed", "kitt_version"}
+            allowed_columns = {
+                "model",
+                "engine",
+                "suite_name",
+                "passed",
+                "kitt_version",
+            }
             for key, value in filters.items():
                 if key not in allowed_columns:
                     continue
@@ -157,7 +167,13 @@ class SQLiteStore(ResultStore):
         if order_by:
             desc = order_by.startswith("-")
             col = order_by.lstrip("-")
-            allowed_order = {"timestamp", "model", "engine", "total_time_seconds", "suite_name"}
+            allowed_order = {
+                "timestamp",
+                "model",
+                "engine",
+                "total_time_seconds",
+                "suite_name",
+            }
             if col in allowed_order:
                 sql += f" ORDER BY {col} {'DESC' if desc else 'ASC'}"
 
@@ -174,7 +190,7 @@ class SQLiteStore(ResultStore):
         rows = conn.execute(sql, params).fetchall()
         return [json.loads(row["raw_json"]) for row in rows]
 
-    def list_results(self) -> List[Dict[str, Any]]:
+    def list_results(self) -> list[dict[str, Any]]:
         conn = self._get_conn()
         rows = conn.execute(
             """SELECT id, model, engine, suite_name, timestamp, passed
@@ -195,8 +211,8 @@ class SQLiteStore(ResultStore):
     def aggregate(
         self,
         group_by: str,
-        metrics: Optional[List[str]] = None,
-    ) -> List[Dict[str, Any]]:
+        metrics: list[str] | None = None,
+    ) -> list[dict[str, Any]]:
         conn = self._get_conn()
         allowed = {"model", "engine", "suite_name"}
         if group_by not in allowed:
@@ -204,7 +220,7 @@ class SQLiteStore(ResultStore):
 
         if metrics:
             # Join with benchmarks and metrics tables
-            results: Dict[str, Dict[str, Any]] = {}
+            results: dict[str, dict[str, Any]] = {}
             rows = conn.execute(
                 f"SELECT {group_by}, COUNT(*) as count FROM runs GROUP BY {group_by}"
             ).fetchall()
@@ -233,10 +249,7 @@ class SQLiteStore(ResultStore):
             rows = conn.execute(
                 f"SELECT {group_by}, COUNT(*) as count FROM runs GROUP BY {group_by}"
             ).fetchall()
-            return [
-                {group_by: row[group_by], "count": row["count"]}
-                for row in rows
-            ]
+            return [{group_by: row[group_by], "count": row["count"]} for row in rows]
 
     def delete_result(self, result_id: str) -> bool:
         conn = self._get_conn()
@@ -244,10 +257,10 @@ class SQLiteStore(ResultStore):
         conn.commit()
         return cursor.rowcount > 0
 
-    def count(self, filters: Optional[Dict[str, Any]] = None) -> int:
+    def count(self, filters: dict[str, Any] | None = None) -> int:
         conn = self._get_conn()
         sql = "SELECT COUNT(*) as cnt FROM runs"
-        params: List[Any] = []
+        params: list[Any] = []
 
         if filters:
             clauses = []
@@ -292,7 +305,7 @@ class SQLiteStore(ResultStore):
                 logger.warning(f"Failed to import {metrics_file}: {e}")
         return count
 
-    def export_result(self, result_id: str, output_path: Path) -> Optional[Path]:
+    def export_result(self, result_id: str, output_path: Path) -> Path | None:
         """Export a result to a JSON file.
 
         Returns:

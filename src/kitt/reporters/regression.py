@@ -2,7 +2,7 @@
 
 import logging
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -31,24 +31,36 @@ class RegressionDetector:
         self,
         warning_threshold_pct: float = 10.0,
         critical_threshold_pct: float = 25.0,
-        higher_is_better: Optional[List[str]] = None,
-        lower_is_better: Optional[List[str]] = None,
+        higher_is_better: list[str] | None = None,
+        lower_is_better: list[str] | None = None,
     ) -> None:
         self.warning_threshold = warning_threshold_pct
         self.critical_threshold = critical_threshold_pct
-        self.higher_is_better = set(higher_is_better or [
-            "avg_tps", "accuracy", "max_tps", "min_tps",
-        ])
-        self.lower_is_better = set(lower_is_better or [
-            "avg_latency_ms", "p99_latency_ms", "p95_latency_ms",
-            "total_latency_ms", "ttft_ms",
-        ])
+        self.higher_is_better = set(
+            higher_is_better
+            or [
+                "avg_tps",
+                "accuracy",
+                "max_tps",
+                "min_tps",
+            ]
+        )
+        self.lower_is_better = set(
+            lower_is_better
+            or [
+                "avg_latency_ms",
+                "p99_latency_ms",
+                "p95_latency_ms",
+                "total_latency_ms",
+                "ttft_ms",
+            ]
+        )
 
     def detect(
         self,
-        baseline: Dict[str, Any],
-        current: Dict[str, Any],
-    ) -> List[RegressionAlert]:
+        baseline: dict[str, Any],
+        current: dict[str, Any],
+    ) -> list[RegressionAlert]:
         """Compare current results against baseline and return regressions.
 
         Args:
@@ -60,7 +72,7 @@ class RegressionDetector:
         """
         model = current.get("model", "unknown")
         engine = current.get("engine", "unknown")
-        alerts: List[RegressionAlert] = []
+        alerts: list[RegressionAlert] = []
 
         baseline_metrics = self._collect_metrics(baseline)
         current_metrics = self._collect_metrics(current)
@@ -85,19 +97,21 @@ class RegressionDetector:
 
             severity = self._classify_severity(abs(delta_pct))
             if severity:
-                alerts.append(RegressionAlert(
-                    metric=metric,
-                    model=model,
-                    engine=engine,
-                    baseline_value=baseline_val,
-                    current_value=current_val,
-                    delta_pct=round(delta_pct, 2),
-                    severity=severity,
-                ))
+                alerts.append(
+                    RegressionAlert(
+                        metric=metric,
+                        model=model,
+                        engine=engine,
+                        baseline_value=baseline_val,
+                        current_value=current_val,
+                        delta_pct=round(delta_pct, 2),
+                        severity=severity,
+                    )
+                )
 
         return sorted(alerts, key=lambda a: a.delta_pct, reverse=True)
 
-    def _classify_severity(self, delta_pct: float) -> Optional[str]:
+    def _classify_severity(self, delta_pct: float) -> str | None:
         """Classify regression severity based on threshold."""
         if delta_pct >= self.critical_threshold:
             return "critical"
@@ -105,9 +119,7 @@ class RegressionDetector:
             return "warning"
         return None
 
-    def _collect_metrics(
-        self, result: Dict[str, Any]
-    ) -> Dict[str, float]:
+    def _collect_metrics(self, result: dict[str, Any]) -> dict[str, float]:
         """Collect all flat numeric metrics from a result."""
         metrics = {}
         for bench in result.get("results", []):

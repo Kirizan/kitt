@@ -2,7 +2,7 @@
 
 import logging
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -40,8 +40,8 @@ class QuantCurveGenerator:
 
     def gather_data(
         self,
-        model_family: Optional[str] = None,
-    ) -> List[Dict[str, Any]]:
+        model_family: str | None = None,
+    ) -> list[dict[str, Any]]:
         """Gather quant curve data from results.
 
         Args:
@@ -77,22 +77,24 @@ class QuantCurveGenerator:
             accuracy = metrics.get("accuracy", 0)
             throughput = metrics.get("avg_tps", 0)
 
-            points.append({
-                "model": r.get("model", ""),
-                "engine": r.get("engine", ""),
-                "quant": quant,
-                "bpp": bpp,
-                "accuracy": accuracy,
-                "throughput": throughput,
-            })
+            points.append(
+                {
+                    "model": r.get("model", ""),
+                    "engine": r.get("engine", ""),
+                    "quant": quant,
+                    "bpp": bpp,
+                    "accuracy": accuracy,
+                    "throughput": throughput,
+                }
+            )
 
         return points
 
     def generate_curve(
         self,
-        model_family: Optional[str] = None,
-        output_path: Optional[str] = None,
-    ) -> Optional[str]:
+        model_family: str | None = None,
+        output_path: str | None = None,
+    ) -> str | None:
         """Generate a quality-vs-size curve chart.
 
         Args:
@@ -109,6 +111,7 @@ class QuantCurveGenerator:
 
         try:
             import matplotlib
+
             matplotlib.use("Agg")  # Non-interactive backend
             import matplotlib.pyplot as plt
         except ImportError:
@@ -118,7 +121,7 @@ class QuantCurveGenerator:
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
 
         # Group by model
-        models = {}
+        models: dict[str, Any] = {}
         for p in data:
             key = p["model"]
             if key not in models:
@@ -146,7 +149,9 @@ class QuantCurveGenerator:
         ax2.legend(fontsize=8)
         ax2.grid(True, alpha=0.3)
 
-        fig.suptitle(f"Quantization Tradeoff Curves{' — ' + model_family if model_family else ''}")
+        fig.suptitle(
+            f"Quantization Tradeoff Curves{' — ' + model_family if model_family else ''}"
+        )
         plt.tight_layout()
 
         if output_path:
@@ -160,9 +165,9 @@ class QuantCurveGenerator:
 
     def compare_model_families(
         self,
-        families: List[str],
-        output_path: Optional[str] = None,
-    ) -> Optional[str]:
+        families: list[str],
+        output_path: str | None = None,
+    ) -> str | None:
         """Compare quant curves across model families.
 
         Args:
@@ -183,6 +188,7 @@ class QuantCurveGenerator:
 
         try:
             import matplotlib
+
             matplotlib.use("Agg")
             import matplotlib.pyplot as plt
         except ImportError:
@@ -191,7 +197,7 @@ class QuantCurveGenerator:
 
         fig, ax = plt.subplots(figsize=(10, 6))
 
-        models = {}
+        models: dict[str, Any] = {}
         for p in all_data:
             key = p["model"]
             if key not in models:
@@ -222,7 +228,7 @@ class QuantCurveGenerator:
 
     def export_csv(
         self,
-        model_family: Optional[str] = None,
+        model_family: str | None = None,
         output_path: str = "quant_curves.csv",
     ) -> str:
         """Export curve data as CSV.

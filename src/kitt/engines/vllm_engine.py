@@ -3,7 +3,7 @@
 import logging
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from .base import GenerationResult, InferenceEngine
 from .registry import register_engine
@@ -19,7 +19,7 @@ class VLLMEngine(InferenceEngine):
     """
 
     def __init__(self) -> None:
-        self._container_id: Optional[str] = None
+        self._container_id: str | None = None  # type: ignore[assignment]
         self._base_url: str = ""
         self._model_name: str = ""
 
@@ -28,7 +28,7 @@ class VLLMEngine(InferenceEngine):
         return "vllm"
 
     @classmethod
-    def supported_formats(cls) -> List[str]:
+    def supported_formats(cls) -> list[str]:
         return ["safetensors", "pytorch"]
 
     @classmethod
@@ -50,7 +50,7 @@ class VLLMEngine(InferenceEngine):
     # NGC images use a wrapper entrypoint and need explicit 'vllm serve'
     _NGC_PREFIX = "nvcr.io/"
 
-    def initialize(self, model_path: str, config: Dict[str, Any]) -> None:
+    def initialize(self, model_path: str, config: dict[str, Any]) -> None:
         """Start vLLM container and wait for healthy."""
         from .docker_manager import ContainerConfig, DockerManager
 
@@ -65,7 +65,9 @@ class VLLMEngine(InferenceEngine):
         # and pass the model as a positional arg instead of --model.
         if image.startswith(self._NGC_PREFIX):
             cmd_args = [
-                "vllm", "serve", self._model_name,
+                "vllm",
+                "serve",
+                self._model_name,
             ]
         else:
             cmd_args = ["--model", self._model_name]

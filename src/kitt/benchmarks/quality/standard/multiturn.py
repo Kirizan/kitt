@@ -1,7 +1,7 @@
 """Multi-turn conversation benchmark."""
 
 import logging
-from typing import Any, Dict, List
+from typing import Any
 
 from kitt.benchmarks.base import BenchmarkResult, LLMBenchmark
 from kitt.benchmarks.registry import register_benchmark
@@ -49,13 +49,13 @@ class MultiTurnBenchmark(LLMBenchmark):
     category = "quality_standard"
     description = "Evaluate multi-turn conversation consistency"
 
-    def _execute(self, engine, config: Dict[str, Any]) -> BenchmarkResult:
+    def _execute(self, engine, config: dict[str, Any]) -> BenchmarkResult:
         conversations = config.get("conversations", DEFAULT_CONVERSATIONS)
         max_tokens = config.get("max_tokens", 256)
         temperature = config.get("temperature", 0.0)
 
-        outputs: List[Dict[str, Any]] = []
-        errors: List[str] = []
+        outputs: list[dict[str, Any]] = []
+        errors: list[str] = []
 
         for conv in conversations:
             conv_name = conv.get("name", "unnamed")
@@ -78,12 +78,14 @@ class MultiTurnBenchmark(LLMBenchmark):
                     )
 
                     response = result.output.strip()
-                    turn_outputs.append({
-                        "turn": turn_idx,
-                        "user": user_msg,
-                        "assistant": response[:500],
-                        "tokens": result.completion_tokens,
-                    })
+                    turn_outputs.append(
+                        {
+                            "turn": turn_idx,
+                            "user": user_msg,
+                            "assistant": response[:500],
+                            "tokens": result.completion_tokens,
+                        }
+                    )
 
                     # Append to history
                     history = f"{prompt} {response}"
@@ -95,13 +97,15 @@ class MultiTurnBenchmark(LLMBenchmark):
             # Score: did we get all turns completed?
             completion_rate = len(turn_outputs) / len(turns) if turns else 0
 
-            outputs.append({
-                "conversation": conv_name,
-                "turns_total": len(turns),
-                "turns_completed": len(turn_outputs),
-                "completion_rate": completion_rate,
-                "turn_details": turn_outputs,
-            })
+            outputs.append(
+                {
+                    "conversation": conv_name,
+                    "turns_total": len(turns),
+                    "turns_completed": len(turn_outputs),
+                    "completion_rate": completion_rate,
+                    "turn_details": turn_outputs,
+                }
+            )
 
         metrics = self._aggregate_metrics(outputs)
 
@@ -114,7 +118,7 @@ class MultiTurnBenchmark(LLMBenchmark):
             errors=errors,
         )
 
-    def _aggregate_metrics(self, outputs: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _aggregate_metrics(self, outputs: list[dict[str, Any]]) -> dict[str, Any]:
         if not outputs:
             return {}
 

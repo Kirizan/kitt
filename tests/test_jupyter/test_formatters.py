@@ -1,7 +1,5 @@
 """Tests for Jupyter notebook formatters."""
 
-import pytest
-
 from kitt.jupyter.formatters import NotebookFormatter
 
 
@@ -30,8 +28,18 @@ class TestFormatResultsTable:
 
     def test_includes_pass_fail_colors(self):
         results = [
-            {"model": "m1", "engine": "e1", "passed": True, "timestamp": "2025-01-15T12:00:00Z"},
-            {"model": "m2", "engine": "e2", "passed": False, "timestamp": "2025-01-15T12:00:00Z"},
+            {
+                "model": "m1",
+                "engine": "e1",
+                "passed": True,
+                "timestamp": "2025-01-15T12:00:00Z",
+            },
+            {
+                "model": "m2",
+                "engine": "e2",
+                "passed": False,
+                "timestamp": "2025-01-15T12:00:00Z",
+            },
         ]
         html = self.formatter.format_results_table(results)
         assert "color: green" in html
@@ -39,7 +47,12 @@ class TestFormatResultsTable:
 
     def test_includes_header_row(self):
         results = [
-            {"model": "m1", "engine": "e1", "passed": True, "timestamp": "2025-01-15T12:00:00Z"},
+            {
+                "model": "m1",
+                "engine": "e1",
+                "passed": True,
+                "timestamp": "2025-01-15T12:00:00Z",
+            },
         ]
         html = self.formatter.format_results_table(results)
         assert "<th>Model</th>" in html
@@ -55,12 +68,18 @@ class TestFormatComparison:
     def test_with_matching_benchmarks(self):
         current = {
             "results": [
-                {"test_name": "mmlu", "metrics": {"accuracy": 0.85, "throughput": 50.0}},
+                {
+                    "test_name": "mmlu",
+                    "metrics": {"accuracy": 0.85, "throughput": 50.0},
+                },
             ]
         }
         baseline = {
             "results": [
-                {"test_name": "mmlu", "metrics": {"accuracy": 0.80, "throughput": 45.0}},
+                {
+                    "test_name": "mmlu",
+                    "metrics": {"accuracy": 0.80, "throughput": 45.0},
+                },
             ]
         }
         html = self.formatter.format_comparison(current, baseline)
@@ -120,7 +139,10 @@ class TestFormatMetricsSummary:
             "engine": "vllm",
             "passed": True,
             "results": [
-                {"test_name": "mmlu", "metrics": {"accuracy": 0.85, "throughput": 50.0}},
+                {
+                    "test_name": "mmlu",
+                    "metrics": {"accuracy": 0.85, "throughput": 50.0},
+                },
                 {"test_name": "gsm8k", "metrics": {"accuracy": 0.72}},
             ],
         }

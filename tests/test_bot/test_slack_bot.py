@@ -9,11 +9,14 @@ import pytest
 class TestSlackBotImportError:
     def test_import_error_when_slack_bolt_not_available(self):
         # Temporarily remove slack_bolt from sys.modules if present
-        with patch.dict("sys.modules", {"slack_bolt": None, "slack_bolt.adapter.socket_mode": None}):
+        with patch.dict(
+            "sys.modules", {"slack_bolt": None, "slack_bolt.adapter.socket_mode": None}
+        ):
             # Force re-import
             if "kitt.bot.slack_bot" in sys.modules:
                 del sys.modules["kitt.bot.slack_bot"]
             from kitt.bot.slack_bot import SlackBot
+
             with pytest.raises(ImportError, match="slack-bolt"):
                 SlackBot(token="xoxb-test", app_token="xapp-test")
 
@@ -32,14 +35,18 @@ def _make_slack_bot():
     mock_socket_mode = MagicMock()
     mock_socket_mode.SocketModeHandler = mock_handler_cls
 
-    with patch.dict("sys.modules", {
-        "slack_bolt": mock_slack_bolt,
-        "slack_bolt.adapter": MagicMock(),
-        "slack_bolt.adapter.socket_mode": mock_socket_mode,
-    }):
+    with patch.dict(
+        "sys.modules",
+        {
+            "slack_bolt": mock_slack_bolt,
+            "slack_bolt.adapter": MagicMock(),
+            "slack_bolt.adapter.socket_mode": mock_socket_mode,
+        },
+    ):
         if "kitt.bot.slack_bot" in sys.modules:
             del sys.modules["kitt.bot.slack_bot"]
         from kitt.bot.slack_bot import SlackBot
+
         bot = SlackBot(token="xoxb-test", app_token="xapp-test")
 
     return bot, mock_app, mock_handler, mock_app_cls, mock_handler_cls

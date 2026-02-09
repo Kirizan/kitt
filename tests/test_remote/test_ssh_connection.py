@@ -3,8 +3,6 @@
 import subprocess
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from kitt.remote.ssh_connection import SSHConnection
 
 
@@ -56,9 +54,7 @@ class TestSSHBaseArgs:
 class TestCheckConnection:
     @patch("kitt.remote.ssh_connection.subprocess.run")
     def test_success(self, mock_run):
-        mock_run.return_value = MagicMock(
-            returncode=0, stdout="kitt-ok\n", stderr=""
-        )
+        mock_run.return_value = MagicMock(returncode=0, stdout="kitt-ok\n", stderr="")
         conn = SSHConnection(host="gpu-server", user="kitt")
         assert conn.check_connection() is True
         cmd = mock_run.call_args[0][0]

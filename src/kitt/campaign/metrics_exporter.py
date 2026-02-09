@@ -4,14 +4,12 @@ Provides a Prometheus-compatible metrics endpoint and writes results
 to InfluxDB in line protocol format for historical tracking.
 """
 
-import json
 import logging
 import time
-import urllib.request
 import urllib.error
-from http.server import HTTPServer, BaseHTTPRequestHandler
+import urllib.request
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from threading import Thread
-from typing import Any, Dict, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -26,8 +24,8 @@ class CampaignMetricsExporter:
     def __init__(
         self,
         prometheus_port: int = 9100,
-        influxdb_url: Optional[str] = None,
-        influxdb_token: Optional[str] = None,
+        influxdb_url: str | None = None,
+        influxdb_token: str | None = None,
         influxdb_org: str = "kitt",
         influxdb_bucket: str = "benchmarks",
     ) -> None:
@@ -38,7 +36,7 @@ class CampaignMetricsExporter:
         self.influxdb_bucket = influxdb_bucket
 
         # Current state for Prometheus
-        self._metrics: Dict[str, float] = {
+        self._metrics: dict[str, float] = {
             "kitt_campaign_runs_total": 0,
             "kitt_campaign_runs_succeeded_total": 0,
             "kitt_campaign_runs_failed_total": 0,
@@ -48,8 +46,8 @@ class CampaignMetricsExporter:
         }
         self._labeled_metrics: list = []
 
-        self._server: Optional[HTTPServer] = None
-        self._thread: Optional[Thread] = None
+        self._server: HTTPServer | None = None
+        self._thread: Thread | None = None
 
     def start(self) -> None:
         """Start the Prometheus metrics HTTP server."""
@@ -107,16 +105,22 @@ class CampaignMetricsExporter:
         model: str,
         engine: str,
         benchmark: str,
-        metrics: Dict[str, float],
+        metrics: dict[str, float],
     ) -> None:
         """Record a benchmark result for both Prometheus and InfluxDB."""
         # Update labeled metrics for Prometheus
         for key, value in metrics.items():
-            self._labeled_metrics.append({
-                "name": f"kitt_benchmark_{key}",
-                "labels": {"model": model, "engine": engine, "benchmark": benchmark},
-                "value": value,
-            })
+            self._labeled_metrics.append(
+                {
+                    "name": f"kitt_benchmark_{key}",
+                    "labels": {
+                        "model": model,
+                        "engine": engine,
+                        "benchmark": benchmark,
+                    },
+                    "value": value,
+                }
+            )
 
         # Write to InfluxDB
         self._write_influxdb(model, engine, benchmark, metrics)
@@ -131,9 +135,7 @@ class CampaignMetricsExporter:
 
         # Labeled metrics
         for m in self._labeled_metrics:
-            label_str = ",".join(
-                f'{k}="{v}"' for k, v in m["labels"].items()
-            )
+            label_str = ",".join(f'{k}="{v}"' for k, v in m["labels"].items())
             lines.append(f"{m['name']}{{{label_str}}} {m['value']}")
 
         lines.append("")
@@ -144,7 +146,7 @@ class CampaignMetricsExporter:
         model: str,
         engine: str,
         benchmark: str,
-        metrics: Dict[str, float],
+        metrics: dict[str, float],
     ) -> None:
         """Write a result point to InfluxDB using line protocol."""
         if not metrics:
@@ -153,7 +155,8 @@ class CampaignMetricsExporter:
         # Build line protocol
         tags = f"model={_escape_tag(model)},engine={_escape_tag(engine)},benchmark={_escape_tag(benchmark)}"
         fields = ",".join(
-            f"{_escape_field_key(k)}={v}" for k, v in metrics.items()
+            f"{_escape_field_key(k)}={v}"
+            for k, v in metrics.items()
             if isinstance(v, (int, float))
         )
 

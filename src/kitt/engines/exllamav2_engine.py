@@ -3,7 +3,7 @@
 import logging
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from .base import GenerationResult, InferenceEngine
 from .registry import register_engine
@@ -19,7 +19,7 @@ class ExLlamaV2Engine(InferenceEngine):
     """
 
     def __init__(self) -> None:
-        self._container_id: Optional[str] = None
+        self._container_id: str | None = None  # type: ignore[assignment]
         self._base_url: str = ""
         self._model_name: str = ""
 
@@ -28,7 +28,7 @@ class ExLlamaV2Engine(InferenceEngine):
         return "exllamav2"
 
     @classmethod
-    def supported_formats(cls) -> List[str]:
+    def supported_formats(cls) -> list[str]:
         return ["gptq", "exl2", "gguf"]
 
     @classmethod
@@ -47,7 +47,7 @@ class ExLlamaV2Engine(InferenceEngine):
     def health_endpoint(cls) -> str:
         return "/health"
 
-    def initialize(self, model_path: str, config: Dict[str, Any]) -> None:
+    def initialize(self, model_path: str, config: dict[str, Any]) -> None:
         """Start ExLlamaV2 container and wait for healthy."""
         from .docker_manager import ContainerConfig, DockerManager
 
@@ -57,9 +57,12 @@ class ExLlamaV2Engine(InferenceEngine):
         port = config.get("port", self.default_port())
 
         cmd_args = [
-            "--model-dir", self._model_name,
-            "--host", "0.0.0.0",
-            "--port", str(self.container_port()),
+            "--model-dir",
+            self._model_name,
+            "--host",
+            "0.0.0.0",
+            "--port",
+            str(self.container_port()),
         ]
 
         if "max_seq_len" in config:
@@ -77,7 +80,8 @@ class ExLlamaV2Engine(InferenceEngine):
             container_port=self.container_port(),
             volumes={
                 model_abs if is_directory else model_dir: "/models"
-                if is_directory else "/models"
+                if is_directory
+                else "/models"
             },
             env=config.get("env", {}),
             extra_args=config.get("extra_args", []),

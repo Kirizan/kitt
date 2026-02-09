@@ -2,7 +2,7 @@
 
 import logging
 import re
-from typing import Any, Dict, List
+from typing import Any
 
 from kitt.benchmarks.base import BenchmarkResult, LLMBenchmark
 from kitt.benchmarks.registry import register_benchmark
@@ -36,9 +36,9 @@ class MMLUBenchmark(LLMBenchmark):
     category = "quality_standard"
     description = "MMLU - 57 subjects across STEM, humanities, social sciences"
 
-    def _execute(self, engine, config: Dict[str, Any]) -> BenchmarkResult:
+    def _execute(self, engine, config: dict[str, Any]) -> BenchmarkResult:
         """Run MMLU evaluation."""
-        dataset = config.get("dataset", {})
+        config.get("dataset", {})
         prompts_config = config.get("prompts", {})
         eval_config = config.get("evaluation", {})
         sampling = config.get("sampling", {})
@@ -47,9 +47,9 @@ class MMLUBenchmark(LLMBenchmark):
         max_tokens = sampling.get("max_tokens", 10)
         temperature = sampling.get("temperature", 0.0)
 
-        extraction_method = eval_config.get(
-            "answer_extraction", {}
-        ).get("method", "first_letter")
+        extraction_method = eval_config.get("answer_extraction", {}).get(
+            "method", "first_letter"
+        )
 
         # Load questions (from dataset manager or inline)
         questions = self._load_questions(config)
@@ -64,11 +64,11 @@ class MMLUBenchmark(LLMBenchmark):
                 errors=["No questions loaded - dataset may not be available"],
             )
 
-        outputs: List[Dict[str, Any]] = []
-        errors: List[str] = []
+        outputs: list[dict[str, Any]] = []
+        errors: list[str] = []
         correct = 0
         total = 0
-        per_subject: Dict[str, Dict[str, int]] = {}
+        per_subject: dict[str, dict[str, int]] = {}
 
         for i, question in enumerate(questions):
             subject = question.get("subject", "unknown")
@@ -84,9 +84,7 @@ class MMLUBenchmark(LLMBenchmark):
                     max_tokens=max_tokens,
                 )
 
-                predicted = self._extract_answer(
-                    result.output, extraction_method
-                )
+                predicted = self._extract_answer(result.output, extraction_method)
                 expected = question.get("answer", "")
                 if isinstance(expected, int):
                     expected = ANSWER_MAP.get(expected, "")
@@ -98,18 +96,20 @@ class MMLUBenchmark(LLMBenchmark):
                 total += 1
                 per_subject[subject]["total"] += 1
 
-                outputs.append({
-                    "index": i,
-                    "subject": subject,
-                    "predicted": predicted,
-                    "expected": expected,
-                    "correct": is_correct,
-                    "raw_output": result.output[:200],
-                    "metrics": {
-                        "tps": result.metrics.tps,
-                        "total_latency_ms": result.metrics.total_latency_ms,
-                    },
-                })
+                outputs.append(
+                    {
+                        "index": i,
+                        "subject": subject,
+                        "predicted": predicted,
+                        "expected": expected,
+                        "correct": is_correct,
+                        "raw_output": result.output[:200],
+                        "metrics": {
+                            "tps": result.metrics.tps,
+                            "total_latency_ms": result.metrics.total_latency_ms,
+                        },
+                    }
+                )
 
             except Exception as e:
                 error_msg = f"Error on question {i}: {str(e)}"
@@ -143,7 +143,7 @@ class MMLUBenchmark(LLMBenchmark):
             errors=errors,
         )
 
-    def _load_questions(self, config: Dict[str, Any]) -> List[Dict[str, Any]]:
+    def _load_questions(self, config: dict[str, Any]) -> list[dict[str, Any]]:
         """Load MMLU questions from dataset."""
         dataset_config = config.get("dataset", {})
         source = dataset_config.get("source")
@@ -153,6 +153,7 @@ class MMLUBenchmark(LLMBenchmark):
         if source:
             try:
                 from kitt.benchmarks.dataset_manager import DatasetManager
+
                 raw = DatasetManager.load_from_huggingface(
                     source,
                     split=dataset_config.get("split", "test"),
@@ -166,7 +167,9 @@ class MMLUBenchmark(LLMBenchmark):
         if local_path:
             try:
                 from pathlib import Path
+
                 from kitt.benchmarks.dataset_manager import DatasetManager
+
                 raw = DatasetManager.load_from_directory(
                     Path(local_path), sample_size=sample_size
                 )
@@ -177,7 +180,7 @@ class MMLUBenchmark(LLMBenchmark):
 
         return []
 
-    def _parse_raw_dataset(self, raw_items: List[Any]) -> List[Dict[str, Any]]:
+    def _parse_raw_dataset(self, raw_items: list[Any]) -> list[dict[str, Any]]:
         """Parse raw dataset items into question format."""
         questions = []
         for item in raw_items:
@@ -188,7 +191,7 @@ class MMLUBenchmark(LLMBenchmark):
                 questions.append({"question": item, "subject": "unknown"})
         return questions
 
-    def _format_prompt(self, template: str, question: Dict[str, Any]) -> str:
+    def _format_prompt(self, template: str, question: dict[str, Any]) -> str:
         """Format a question into a prompt string."""
         choices = question.get("choices", ["", "", "", ""])
         return template.format(
@@ -208,7 +211,7 @@ class MMLUBenchmark(LLMBenchmark):
 
         if method == "first_letter":
             # Look for first occurrence of A, B, C, or D
-            match = re.search(r'\b([ABCD])\b', output)
+            match = re.search(r"\b([ABCD])\b", output)
             if match:
                 return match.group(1)
             # Fallback: first character

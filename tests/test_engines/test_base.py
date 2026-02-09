@@ -5,7 +5,12 @@ from unittest.mock import patch
 
 import pytest
 
-from kitt.engines.base import EngineDiagnostics, GenerationMetrics, GenerationResult, InferenceEngine
+from kitt.engines.base import (
+    EngineDiagnostics,
+    GenerationMetrics,
+    GenerationResult,
+    InferenceEngine,
+)
 from kitt.engines.image_resolver import clear_cache
 
 
@@ -117,27 +122,39 @@ class TestInferenceEngineABC:
 
     @patch("kitt.engines.image_resolver._detect_cc", return_value=None)
     @patch("kitt.engines.docker_manager.DockerManager.image_exists", return_value=True)
-    @patch("kitt.engines.docker_manager.DockerManager.is_docker_available", return_value=True)
+    @patch(
+        "kitt.engines.docker_manager.DockerManager.is_docker_available",
+        return_value=True,
+    )
     def test_is_available_true(self, mock_avail, mock_exists, mock_cc):
         DummyEngine = _make_concrete_engine()
         assert DummyEngine.is_available() is True
 
     @patch("kitt.engines.image_resolver._detect_cc", return_value=None)
-    @patch("kitt.engines.docker_manager.DockerManager.is_docker_available", return_value=False)
+    @patch(
+        "kitt.engines.docker_manager.DockerManager.is_docker_available",
+        return_value=False,
+    )
     def test_is_available_no_docker(self, mock_avail, mock_cc):
         DummyEngine = _make_concrete_engine()
         assert DummyEngine.is_available() is False
 
     @patch("kitt.engines.image_resolver._detect_cc", return_value=None)
     @patch("kitt.engines.docker_manager.DockerManager.image_exists", return_value=False)
-    @patch("kitt.engines.docker_manager.DockerManager.is_docker_available", return_value=True)
+    @patch(
+        "kitt.engines.docker_manager.DockerManager.is_docker_available",
+        return_value=True,
+    )
     def test_is_available_no_image(self, mock_avail, mock_exists, mock_cc):
         DummyEngine = _make_concrete_engine()
         assert DummyEngine.is_available() is False
 
     @patch("kitt.engines.image_resolver._detect_cc", return_value=None)
     @patch("kitt.engines.docker_manager.DockerManager.image_exists", return_value=True)
-    @patch("kitt.engines.docker_manager.DockerManager.is_docker_available", return_value=True)
+    @patch(
+        "kitt.engines.docker_manager.DockerManager.is_docker_available",
+        return_value=True,
+    )
     def test_diagnose_available(self, mock_avail, mock_exists, mock_cc):
         DummyEngine = _make_concrete_engine()
         diag = DummyEngine.diagnose()
@@ -146,7 +163,10 @@ class TestInferenceEngineABC:
         assert diag.error is None
 
     @patch("kitt.engines.image_resolver._detect_cc", return_value=None)
-    @patch("kitt.engines.docker_manager.DockerManager.is_docker_available", return_value=False)
+    @patch(
+        "kitt.engines.docker_manager.DockerManager.is_docker_available",
+        return_value=False,
+    )
     def test_diagnose_no_docker(self, mock_avail, mock_cc):
         DummyEngine = _make_concrete_engine()
         diag = DummyEngine.diagnose()
@@ -156,7 +176,10 @@ class TestInferenceEngineABC:
 
     @patch("kitt.engines.image_resolver._detect_cc", return_value=None)
     @patch("kitt.engines.docker_manager.DockerManager.image_exists", return_value=False)
-    @patch("kitt.engines.docker_manager.DockerManager.is_docker_available", return_value=True)
+    @patch(
+        "kitt.engines.docker_manager.DockerManager.is_docker_available",
+        return_value=True,
+    )
     def test_diagnose_no_image(self, mock_avail, mock_exists, mock_cc):
         DummyEngine = _make_concrete_engine()
         diag = DummyEngine.diagnose()

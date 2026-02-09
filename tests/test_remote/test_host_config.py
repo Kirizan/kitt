@@ -1,7 +1,5 @@
 """Tests for HostConfig and HostManager — uses tmp_path for filesystem."""
 
-import pytest
-
 from kitt.remote.host_config import HostConfig, HostManager
 
 

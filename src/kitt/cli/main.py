@@ -72,9 +72,13 @@ def fingerprint(verbose):
             )
         else:
             console.print("  GPU: [yellow]None detected[/yellow]")
-        console.print(f"  CPU: {info.cpu.model} ({info.cpu.cores}c/{info.cpu.threads}t)")
+        console.print(
+            f"  CPU: {info.cpu.model} ({info.cpu.cores}c/{info.cpu.threads}t)"
+        )
         console.print(f"  RAM: {info.ram_gb}GB {info.ram_type}")
-        console.print(f"  Storage: {info.storage.brand} {info.storage.model} ({info.storage.type})")
+        console.print(
+            f"  Storage: {info.storage.brand} {info.storage.model} ({info.storage.type})"
+        )
         if info.cuda_version:
             console.print(f"  CUDA: {info.cuda_version}")
         if info.driver_version:
@@ -115,9 +119,9 @@ def web(port, host, results_dir, debug):
     except ImportError:
         console.print("[red]Flask is not installed.[/red]")
         console.print("Install with: pip install kitt[web]")
-        raise SystemExit(1)
+        raise SystemExit(1) from None
 
-    console.print(f"[bold]KITT Web Dashboard[/bold]")
+    console.print("[bold]KITT Web Dashboard[/bold]")
     console.print(f"  URL: http://{host}:{port}")
     console.print(f"  Results: {results_dir or 'current directory'}")
     console.print()

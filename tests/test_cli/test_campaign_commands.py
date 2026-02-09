@@ -1,7 +1,6 @@
 """Tests for campaign CLI commands."""
 
 import json
-from pathlib import Path
 
 import pytest
 from click.testing import CliRunner
@@ -33,6 +32,7 @@ def sample_config(tmp_path):
     config_path = tmp_path / "campaign.yaml"
 
     import yaml
+
     config_path.write_text(yaml.dump(config))
     return config_path
 
@@ -49,8 +49,12 @@ class TestCampaignRun:
         result = runner.invoke(
             cli,
             [
-                "campaign", "run", str(sample_config),
-                "--dry-run", "--campaign-id", "test-123",
+                "campaign",
+                "run",
+                str(sample_config),
+                "--dry-run",
+                "--campaign-id",
+                "test-123",
             ],
         )
         assert result.exit_code == 0
@@ -112,9 +116,12 @@ class TestCampaignCreate:
         result = runner.invoke(
             cli,
             [
-                "campaign", "create",
-                "--from-results", str(results_dir),
-                "-o", str(output_file),
+                "campaign",
+                "create",
+                "--from-results",
+                str(results_dir),
+                "-o",
+                str(output_file),
             ],
         )
         assert result.exit_code == 0

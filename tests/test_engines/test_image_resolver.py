@@ -3,7 +3,6 @@
 from unittest.mock import patch
 
 from kitt.engines.image_resolver import (
-    BuildRecipe,
     clear_cache,
     get_build_recipe,
     get_supported_engines,
@@ -88,17 +87,13 @@ class TestResolveImage:
 class TestClearCache:
     def test_clear_allows_redetection(self):
         """After clear, the next call re-detects compute capability."""
-        with patch(
-            "kitt.engines.image_resolver._detect_cc", return_value=(12, 1)
-        ):
+        with patch("kitt.engines.image_resolver._detect_cc", return_value=(12, 1)):
             result1 = resolve_image("vllm", "vllm/vllm-openai:latest")
             assert result1 == "nvcr.io/nvidia/vllm:26.01-py3"
 
         clear_cache()
 
-        with patch(
-            "kitt.engines.image_resolver._detect_cc", return_value=None
-        ):
+        with patch("kitt.engines.image_resolver._detect_cc", return_value=None):
             result2 = resolve_image("vllm", "vllm/vllm-openai:latest")
             assert result2 == "vllm/vllm-openai:latest"
 

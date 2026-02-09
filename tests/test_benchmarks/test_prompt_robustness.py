@@ -69,8 +69,10 @@ class TestPromptRobustnessBenchmark:
 
     def test_low_consistency_different_outputs(self, bench, engine):
         outputs = iter(["Paris is the capital.", "London is big.", "Tokyo is nice."])
+
         def side_effect(**kwargs):
             return MockResult(output=next(outputs))
+
         engine.generate.side_effect = side_effect
 
         config = {

@@ -2,12 +2,11 @@
 
 import logging
 import subprocess
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
 
-def get_git_user_name() -> Optional[str]:
+def get_git_user_name() -> str | None:
     """Get configured Git user name."""
     try:
         result = subprocess.run(
@@ -22,7 +21,7 @@ def get_git_user_name() -> Optional[str]:
     return None
 
 
-def get_git_user_email() -> Optional[str]:
+def get_git_user_email() -> str | None:
     """Get configured Git user email."""
     try:
         result = subprocess.run(

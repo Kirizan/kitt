@@ -1,8 +1,7 @@
 """Throughput benchmark implementation."""
 
 import logging
-import time
-from typing import Any, Dict, List
+from typing import Any
 
 from kitt.benchmarks.base import BenchmarkResult, LLMBenchmark
 from kitt.benchmarks.registry import register_benchmark
@@ -27,15 +26,15 @@ class ThroughputBenchmark(LLMBenchmark):
     category = "performance"
     description = "Measure inference throughput across multiple prompts"
 
-    def _execute(self, engine, config: Dict[str, Any]) -> BenchmarkResult:
+    def _execute(self, engine, config: dict[str, Any]) -> BenchmarkResult:
         """Run throughput benchmark."""
         prompts = self._load_prompts(config)
         max_tokens = config.get("max_tokens", 256)
         temperature = config.get("temperature", 0.0)
         iterations = config.get("iterations", len(prompts))
 
-        outputs: List[Dict[str, Any]] = []
-        errors: List[str] = []
+        outputs: list[dict[str, Any]] = []
+        errors: list[str] = []
 
         for i in range(iterations):
             prompt = prompts[i % len(prompts)]
@@ -46,19 +45,21 @@ class ThroughputBenchmark(LLMBenchmark):
                     max_tokens=max_tokens,
                 )
 
-                outputs.append({
-                    "iteration": i,
-                    "prompt": prompt[:100],  # Truncate for storage
-                    "output_length": len(result.output),
-                    "metrics": {
-                        "tps": result.metrics.tps,
-                        "total_latency_ms": result.metrics.total_latency_ms,
-                        "ttft_ms": result.metrics.ttft_ms,
-                        "prompt_tokens": result.prompt_tokens,
-                        "completion_tokens": result.completion_tokens,
-                        "gpu_memory_peak_gb": result.metrics.gpu_memory_peak_gb,
-                    },
-                })
+                outputs.append(
+                    {
+                        "iteration": i,
+                        "prompt": prompt[:100],  # Truncate for storage
+                        "output_length": len(result.output),
+                        "metrics": {
+                            "tps": result.metrics.tps,
+                            "total_latency_ms": result.metrics.total_latency_ms,
+                            "ttft_ms": result.metrics.ttft_ms,
+                            "prompt_tokens": result.prompt_tokens,
+                            "completion_tokens": result.completion_tokens,
+                            "gpu_memory_peak_gb": result.metrics.gpu_memory_peak_gb,
+                        },
+                    }
+                )
 
             except Exception as e:
                 error_msg = f"Error on iteration {i}: {str(e)}"
@@ -77,10 +78,11 @@ class ThroughputBenchmark(LLMBenchmark):
             errors=errors,
         )
 
-    def _load_prompts(self, config: Dict[str, Any]) -> List[str]:
+    def _load_prompts(self, config: dict[str, Any]) -> list[str]:
         """Load prompts from config, dataset_path, or defaults."""
         if "dataset_path" in config:
             from pathlib import Path
+
             dataset_path = Path(config["dataset_path"])
             if dataset_path.exists():
                 lines = [
@@ -94,7 +96,7 @@ class ThroughputBenchmark(LLMBenchmark):
             logger.warning(f"Dataset file not found: {dataset_path}, using defaults")
         return config.get("prompts", DEFAULT_PROMPTS)
 
-    def _aggregate_metrics(self, outputs: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _aggregate_metrics(self, outputs: list[dict[str, Any]]) -> dict[str, Any]:
         """Aggregate per-iteration metrics."""
         if not outputs:
             return {}

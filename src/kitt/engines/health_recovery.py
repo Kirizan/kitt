@@ -2,7 +2,7 @@
 
 import logging
 import time
-from typing import Any, Optional
+from typing import Any
 
 from .base import GenerationResult, InferenceEngine
 
@@ -50,7 +50,7 @@ class HealthRecoveryManager:
         Raises:
             RuntimeError: If all retries are exhausted.
         """
-        last_error: Optional[Exception] = None
+        last_error: Exception | None = None
 
         for attempt in range(self.max_retries + 1):
             try:
@@ -101,7 +101,7 @@ class HealthRecoveryManager:
         import urllib.error
         import urllib.request
 
-        if not hasattr(self.engine, '_base_url'):
+        if not hasattr(self.engine, "_base_url"):
             return True
 
         health_url = f"{self.engine._base_url}{self.engine.health_endpoint()}"

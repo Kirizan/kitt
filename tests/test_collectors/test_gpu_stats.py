@@ -1,7 +1,6 @@
 """Tests for GPU stats collection (mocked since no GPU on dev machine)."""
 
-import pytest
-from unittest.mock import MagicMock, patch, PropertyMock
+from unittest.mock import MagicMock, patch
 
 from kitt.collectors.gpu_stats import (
     GPUMemoryStats,
@@ -52,9 +51,15 @@ class TestGPUMemoryTracker:
         """Test tracker calculations with injected samples."""
         tracker = GPUMemoryTracker()
         tracker.samples = [
-            GPUMemoryStats(used_mb=1000, free_mb=3000, total_mb=4000, utilization_percent=25),
-            GPUMemoryStats(used_mb=2000, free_mb=2000, total_mb=4000, utilization_percent=50),
-            GPUMemoryStats(used_mb=1500, free_mb=2500, total_mb=4000, utilization_percent=37),
+            GPUMemoryStats(
+                used_mb=1000, free_mb=3000, total_mb=4000, utilization_percent=25
+            ),
+            GPUMemoryStats(
+                used_mb=2000, free_mb=2000, total_mb=4000, utilization_percent=50
+            ),
+            GPUMemoryStats(
+                used_mb=1500, free_mb=2500, total_mb=4000, utilization_percent=37
+            ),
         ]
         assert tracker.get_peak_memory_mb() == 2000.0
         assert tracker.get_min_memory_mb() == 1000.0
@@ -75,6 +80,7 @@ class TestHardwareCompatibility:
     def test_unified_memory_system_memory_not_supported(self):
         """Test graceful handling when memory info is not supported (e.g., GB10)."""
         import sys
+
         mock_pynvml = MagicMock()
         mock_pynvml.nvmlInit.return_value = None
         mock_pynvml.nvmlDeviceGetHandleByIndex.return_value = MagicMock()
@@ -90,6 +96,7 @@ class TestHardwareCompatibility:
     def test_utilization_not_supported_fallback(self):
         """Test fallback when utilization is not supported but memory is."""
         import sys
+
         mock_pynvml = MagicMock()
         mock_pynvml.nvmlInit.return_value = None
         mock_handle = MagicMock()
@@ -104,7 +111,9 @@ class TestHardwareCompatibility:
 
         # Utilization fails
         mock_pynvml.NVMLError = Exception
-        mock_pynvml.nvmlDeviceGetUtilizationRates.side_effect = Exception("Not Supported")
+        mock_pynvml.nvmlDeviceGetUtilizationRates.side_effect = Exception(
+            "Not Supported"
+        )
 
         with patch.dict(sys.modules, {"pynvml": mock_pynvml}):
             monitor = GPUMonitor()
@@ -117,6 +126,7 @@ class TestHardwareCompatibility:
     def test_warning_only_logged_once(self):
         """Verify warning is only logged once per session (class-level flag)."""
         import sys
+
         mock_pynvml = MagicMock()
         mock_pynvml.nvmlInit.return_value = None
         mock_pynvml.nvmlDeviceGetHandleByIndex.return_value = MagicMock()
@@ -141,6 +151,7 @@ class TestHardwareCompatibility:
     def test_complete_nvml_success(self):
         """Test successful path with all NVML calls working."""
         import sys
+
         mock_pynvml = MagicMock()
         mock_pynvml.nvmlInit.return_value = None
         mock_handle = MagicMock()
@@ -192,6 +203,7 @@ class TestMultiGPUCompatibility:
     def test_multi_gpu_all_working(self):
         """Test get_all_gpus_stats with multiple working GPUs."""
         import sys
+
         mock_pynvml = MagicMock()
         mock_pynvml.nvmlInit.return_value = None
         mock_pynvml.nvmlDeviceGetCount.return_value = 2
@@ -200,8 +212,8 @@ class TestMultiGPUCompatibility:
         mock_handles = [MagicMock(), MagicMock()]
         mock_pynvml.nvmlDeviceGetHandleByIndex.side_effect = mock_handles
 
-        mock_mem1 = MagicMock(used=4*1024**3, free=4*1024**3, total=8*1024**3)
-        mock_mem2 = MagicMock(used=6*1024**3, free=2*1024**3, total=8*1024**3)
+        mock_mem1 = MagicMock(used=4 * 1024**3, free=4 * 1024**3, total=8 * 1024**3)
+        mock_mem2 = MagicMock(used=6 * 1024**3, free=2 * 1024**3, total=8 * 1024**3)
         mock_pynvml.nvmlDeviceGetMemoryInfo.side_effect = [mock_mem1, mock_mem2]
 
         mock_util = MagicMock(gpu=50)
@@ -218,6 +230,7 @@ class TestMultiGPUCompatibility:
     def test_multi_gpu_partial_failure(self):
         """Test handling when some GPUs fail but others work."""
         import sys
+
         mock_pynvml = MagicMock()
         mock_pynvml.nvmlInit.return_value = None
         mock_pynvml.nvmlDeviceGetCount.return_value = 2
@@ -227,10 +240,10 @@ class TestMultiGPUCompatibility:
         mock_pynvml.nvmlDeviceGetHandleByIndex.side_effect = mock_handles
 
         # First GPU works, second fails
-        mock_mem = MagicMock(used=4*1024**3, free=4*1024**3, total=8*1024**3)
+        mock_mem = MagicMock(used=4 * 1024**3, free=4 * 1024**3, total=8 * 1024**3)
         mock_pynvml.nvmlDeviceGetMemoryInfo.side_effect = [
             mock_mem,
-            Exception("GPU 1 failed")
+            Exception("GPU 1 failed"),
         ]
         mock_pynvml.nvmlDeviceGetUtilizationRates.return_value = MagicMock(gpu=50)
 

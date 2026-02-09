@@ -27,11 +27,13 @@ class TestStreamingLatencyBenchmark:
 
     @patch("kitt.engines.openai_compat.openai_generate_stream")
     def test_successful_streaming(self, mock_stream, benchmark):
-        mock_stream.return_value = iter([
-            StreamChunk(token="Hello", timestamp_ms=50.0),
-            StreamChunk(token=" world", timestamp_ms=80.0),
-            StreamChunk(token="!", timestamp_ms=100.0),
-        ])
+        mock_stream.return_value = iter(
+            [
+                StreamChunk(token="Hello", timestamp_ms=50.0),
+                StreamChunk(token=" world", timestamp_ms=80.0),
+                StreamChunk(token="!", timestamp_ms=100.0),
+            ]
+        )
 
         engine = MagicMock()
         engine._base_url = "http://localhost:8000"

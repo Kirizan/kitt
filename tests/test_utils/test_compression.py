@@ -1,8 +1,5 @@
 """Tests for compression utilities."""
 
-import json
-import pytest
-
 from kitt.utils.compression import ResultCompression
 
 
@@ -32,9 +29,7 @@ class TestResultCompression:
 
         base_path = tmp_path / "chunked"
         # Very small chunk size to force chunking
-        files = ResultCompression.save_outputs(
-            outputs, base_path, chunk_size_mb=0.001
-        )
+        files = ResultCompression.save_outputs(outputs, base_path, chunk_size_mb=0.001)
 
         assert len(files) > 1
 

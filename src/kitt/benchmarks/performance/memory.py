@@ -1,7 +1,7 @@
 """Memory profiling benchmark implementation."""
 
 import logging
-from typing import Any, Dict, List
+from typing import Any
 
 from kitt.benchmarks.base import BenchmarkResult, LLMBenchmark
 from kitt.benchmarks.registry import register_benchmark
@@ -36,18 +36,21 @@ class MemoryBenchmark(LLMBenchmark):
     category = "performance"
     description = "Profile GPU memory usage during inference"
 
-    def _execute(self, engine, config: Dict[str, Any]) -> BenchmarkResult:
+    def _execute(self, engine, config: dict[str, Any]) -> BenchmarkResult:
         """Run memory profiling benchmark."""
         temperature = config.get("temperature", 0.0)
         output_lengths = config.get("output_lengths", [32, 128, 512])
-        prompt_configs = config.get("prompt_configs", [
-            {"name": "short", "prompt": SHORT_PROMPT},
-            {"name": "medium", "prompt": MEDIUM_PROMPT},
-            {"name": "long", "prompt": LONG_PROMPT},
-        ])
+        prompt_configs = config.get(
+            "prompt_configs",
+            [
+                {"name": "short", "prompt": SHORT_PROMPT},
+                {"name": "medium", "prompt": MEDIUM_PROMPT},
+                {"name": "long", "prompt": LONG_PROMPT},
+            ],
+        )
 
-        outputs: List[Dict[str, Any]] = []
-        errors: List[str] = []
+        outputs: list[dict[str, Any]] = []
+        errors: list[str] = []
 
         for prompt_config in prompt_configs:
             prompt_name = prompt_config.get("name", "unknown")
@@ -61,18 +64,20 @@ class MemoryBenchmark(LLMBenchmark):
                         max_tokens=max_tokens,
                     )
 
-                    outputs.append({
-                        "prompt_name": prompt_name,
-                        "prompt_length_chars": len(prompt),
-                        "max_tokens": max_tokens,
-                        "actual_completion_tokens": result.completion_tokens,
-                        "metrics": {
-                            "gpu_memory_peak_gb": result.metrics.gpu_memory_peak_gb,
-                            "gpu_memory_avg_gb": result.metrics.gpu_memory_avg_gb,
-                            "total_latency_ms": result.metrics.total_latency_ms,
-                            "tps": result.metrics.tps,
-                        },
-                    })
+                    outputs.append(
+                        {
+                            "prompt_name": prompt_name,
+                            "prompt_length_chars": len(prompt),
+                            "max_tokens": max_tokens,
+                            "actual_completion_tokens": result.completion_tokens,
+                            "metrics": {
+                                "gpu_memory_peak_gb": result.metrics.gpu_memory_peak_gb,
+                                "gpu_memory_avg_gb": result.metrics.gpu_memory_avg_gb,
+                                "total_latency_ms": result.metrics.total_latency_ms,
+                                "tps": result.metrics.tps,
+                            },
+                        }
+                    )
 
                 except Exception as e:
                     error_msg = (
@@ -92,7 +97,7 @@ class MemoryBenchmark(LLMBenchmark):
             errors=errors,
         )
 
-    def _aggregate_metrics(self, outputs: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _aggregate_metrics(self, outputs: list[dict[str, Any]]) -> dict[str, Any]:
         """Aggregate memory metrics."""
         if not outputs:
             return {}
@@ -101,7 +106,7 @@ class MemoryBenchmark(LLMBenchmark):
         avg_values = [o["metrics"]["gpu_memory_avg_gb"] for o in outputs]
 
         # Group by prompt length
-        by_prompt: Dict[str, List[Dict]] = {}
+        by_prompt: dict[str, list[dict]] = {}
         for o in outputs:
             name = o["prompt_name"]
             if name not in by_prompt:
@@ -115,10 +120,14 @@ class MemoryBenchmark(LLMBenchmark):
 
         return {
             "total_measurements": len(outputs),
-            "overall_peak_gpu_memory_gb": round(max(peak_values), 3) if peak_values else 0,
+            "overall_peak_gpu_memory_gb": round(max(peak_values), 3)
+            if peak_values
+            else 0,
             "overall_avg_gpu_memory_gb": (
                 round(sum(avg_values) / len(avg_values), 3) if avg_values else 0
             ),
             "per_prompt_peak_gb": {k: round(v, 3) for k, v in per_prompt_peaks.items()},
-            "memory_range_gb": round(max(peak_values) - min(peak_values), 3) if peak_values else 0,
+            "memory_range_gb": round(max(peak_values) - min(peak_values), 3)
+            if peak_values
+            else 0,
         }

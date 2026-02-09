@@ -8,10 +8,14 @@ import pytest
 
 class TestDiscordBotImportError:
     def test_import_error_when_discord_not_available(self):
-        with patch.dict("sys.modules", {"discord": None, "discord.ext": None, "discord.ext.commands": None}):
+        with patch.dict(
+            "sys.modules",
+            {"discord": None, "discord.ext": None, "discord.ext.commands": None},
+        ):
             if "kitt.bot.discord_bot" in sys.modules:
                 del sys.modules["kitt.bot.discord_bot"]
             from kitt.bot.discord_bot import DiscordBot
+
             with pytest.raises(ImportError, match="discord.py"):
                 DiscordBot(token="discord-test-token")
 
@@ -30,14 +34,18 @@ def _make_discord_bot():
     mock_ext = MagicMock()
     mock_ext.commands = mock_commands
 
-    with patch.dict("sys.modules", {
-        "discord": mock_discord,
-        "discord.ext": mock_ext,
-        "discord.ext.commands": mock_commands,
-    }):
+    with patch.dict(
+        "sys.modules",
+        {
+            "discord": mock_discord,
+            "discord.ext": mock_ext,
+            "discord.ext.commands": mock_commands,
+        },
+    ):
         if "kitt.bot.discord_bot" in sys.modules:
             del sys.modules["kitt.bot.discord_bot"]
         from kitt.bot.discord_bot import DiscordBot
+
         bot = DiscordBot(token="discord-test-token")
 
     return bot, mock_bot, mock_discord, mock_commands

@@ -52,9 +52,7 @@ class TestDynamicCampaignBuilder:
         mock_store.query.return_value = [
             {"model": "TestModel", "engine": "tgi"},
         ]
-        config = builder.build_from_query(
-            filters={}, campaign_name="my-campaign"
-        )
+        config = builder.build_from_query(filters={}, campaign_name="my-campaign")
         assert config.campaign_name == "my-campaign"
 
     def test_build_from_query_auto_name(self, builder, mock_store):

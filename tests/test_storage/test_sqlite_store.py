@@ -1,7 +1,6 @@
 """Tests for SQLite result store."""
 
 import json
-from pathlib import Path
 
 import pytest
 

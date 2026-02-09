@@ -1,7 +1,7 @@
 """Prompt robustness benchmark — measure consistency across paraphrases."""
 
 import logging
-from typing import Any, Dict, List
+from typing import Any
 
 from kitt.benchmarks.base import BenchmarkResult, LLMBenchmark
 from kitt.benchmarks.registry import register_benchmark
@@ -46,21 +46,21 @@ class PromptRobustnessBenchmark(LLMBenchmark):
     category = "quality_standard"
     description = "Evaluate consistency of outputs across prompt paraphrases"
 
-    def _execute(self, engine, config: Dict[str, Any]) -> BenchmarkResult:
+    def _execute(self, engine, config: dict[str, Any]) -> BenchmarkResult:
         prompt_groups = config.get("prompt_groups", DEFAULT_PROMPT_GROUPS)
         max_tokens = config.get("max_tokens", 256)
         temperature = config.get("temperature", 0.0)
 
-        outputs: List[Dict[str, Any]] = []
-        errors: List[str] = []
-        consistency_scores: List[float] = []
+        outputs: list[dict[str, Any]] = []
+        errors: list[str] = []
+        consistency_scores: list[float] = []
 
         for group_idx, group in enumerate(prompt_groups):
             canonical = group["canonical"]
             variants = group.get("variants", [])
             all_prompts = [canonical] + variants
 
-            group_outputs: List[str] = []
+            group_outputs: list[str] = []
 
             for prompt in all_prompts:
                 try:
@@ -78,18 +78,21 @@ class PromptRobustnessBenchmark(LLMBenchmark):
             score = self._compute_consistency(group_outputs)
             consistency_scores.append(score)
 
-            outputs.append({
-                "group_index": group_idx,
-                "canonical": canonical,
-                "num_variants": len(variants),
-                "consistency_score": round(score, 4),
-                "outputs": [o[:200] for o in group_outputs],
-            })
+            outputs.append(
+                {
+                    "group_index": group_idx,
+                    "canonical": canonical,
+                    "num_variants": len(variants),
+                    "consistency_score": round(score, 4),
+                    "outputs": [o[:200] for o in group_outputs],
+                }
+            )
 
         # Aggregate
         avg_consistency = (
             sum(consistency_scores) / len(consistency_scores)
-            if consistency_scores else 0
+            if consistency_scores
+            else 0
         )
         worst = min(consistency_scores) if consistency_scores else 0
 
@@ -98,10 +101,7 @@ class PromptRobustnessBenchmark(LLMBenchmark):
             "semantic_stability": round(avg_consistency, 4),
             "worst_case_divergence": round(1 - worst, 4),
             "num_groups": len(prompt_groups),
-            "total_prompts": sum(
-                1 + len(g.get("variants", []))
-                for g in prompt_groups
-            ),
+            "total_prompts": sum(1 + len(g.get("variants", [])) for g in prompt_groups),
         }
 
         return BenchmarkResult(
@@ -113,7 +113,7 @@ class PromptRobustnessBenchmark(LLMBenchmark):
             errors=errors,
         )
 
-    def _compute_consistency(self, outputs: List[str]) -> float:
+    def _compute_consistency(self, outputs: list[str]) -> float:
         """Compute word-overlap-based consistency score.
 
         Uses Jaccard similarity between word sets of all output pairs.

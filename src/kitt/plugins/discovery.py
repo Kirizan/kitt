@@ -1,7 +1,7 @@
 """Plugin discovery via Python entry points."""
 
 import logging
-from typing import Any, Dict, List, Optional, Type
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -11,7 +11,7 @@ BENCHMARK_GROUP = "kitt.benchmarks"
 REPORTER_GROUP = "kitt.reporters"
 
 
-def _load_entry_points(group: str) -> List[Any]:
+def _load_entry_points(group: str) -> list[Any]:
     """Load entry points for a given group.
 
     Uses importlib.metadata (Python 3.10+).
@@ -29,7 +29,7 @@ def _load_entry_points(group: str) -> List[Any]:
         return []
 
 
-def discover_external_engines() -> List[Type]:
+def discover_external_engines() -> list[type]:
     """Discover and load external engine plugins.
 
     Returns:
@@ -46,7 +46,7 @@ def discover_external_engines() -> List[Type]:
     return engines
 
 
-def discover_external_benchmarks() -> List[Type]:
+def discover_external_benchmarks() -> list[type]:
     """Discover and load external benchmark plugins.
 
     Returns:
@@ -63,7 +63,7 @@ def discover_external_benchmarks() -> List[Type]:
     return benchmarks
 
 
-def discover_external_reporters() -> List[Type]:
+def discover_external_reporters() -> list[type]:
     """Discover and load external reporter plugins.
 
     Returns:
@@ -80,7 +80,7 @@ def discover_external_reporters() -> List[Type]:
     return reporters
 
 
-def discover_plugins() -> Dict[str, List[Type]]:
+def discover_plugins() -> dict[str, list[type]]:
     """Discover all external plugins across all groups.
 
     Returns:

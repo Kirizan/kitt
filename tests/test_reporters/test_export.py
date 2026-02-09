@@ -1,8 +1,6 @@
 """Tests for CSV and Parquet export."""
 
 import csv
-import json
-from pathlib import Path
 
 import pytest
 

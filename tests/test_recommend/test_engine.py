@@ -2,10 +2,8 @@
 
 from unittest.mock import MagicMock
 
-import pytest
-
-from kitt.recommend.engine import ModelRecommender
 from kitt.recommend.constraints import HardwareConstraints
+from kitt.recommend.engine import ModelRecommender
 
 
 def _make_result(model, engine, accuracy=0.8, avg_tps=50.0, peak_vram_gb=8.0):
@@ -47,8 +45,12 @@ class TestRecommend:
     def test_filters_by_constraints(self):
         store = MagicMock()
         store.query.return_value = [
-            _make_result("small-model", "vllm", accuracy=0.7, avg_tps=60, peak_vram_gb=4.0),
-            _make_result("large-model", "vllm", accuracy=0.9, avg_tps=30, peak_vram_gb=20.0),
+            _make_result(
+                "small-model", "vllm", accuracy=0.7, avg_tps=60, peak_vram_gb=4.0
+            ),
+            _make_result(
+                "large-model", "vllm", accuracy=0.9, avg_tps=30, peak_vram_gb=20.0
+            ),
         ]
         recommender = ModelRecommender(result_store=store)
         constraints = HardwareConstraints(max_vram_gb=10.0)

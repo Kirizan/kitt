@@ -2,14 +2,13 @@
 
 import json
 import logging
-from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
 def generate_campaign_rollup(
-    results: List[Dict[str, Any]],
+    results: list[dict[str, Any]],
     output_format: str = "markdown",
 ) -> str:
     """Generate an aggregated rollup of campaign results.
@@ -25,7 +24,7 @@ def generate_campaign_rollup(
         return "No results to aggregate."
 
     # Group by model × engine
-    groups: Dict[str, Dict[str, Any]] = {}
+    groups: dict[str, dict[str, Any]] = {}
     for r in results:
         model = r.get("model", "unknown")
         engine = r.get("engine", "unknown")
@@ -64,7 +63,7 @@ def generate_campaign_rollup(
     return _to_markdown(groups)
 
 
-def _to_markdown(groups: Dict[str, Dict[str, Any]]) -> str:
+def _to_markdown(groups: dict[str, dict[str, Any]]) -> str:
     """Generate Markdown rollup table."""
     lines = ["# Campaign Results Rollup", ""]
 
@@ -108,8 +107,7 @@ def _to_markdown(groups: Dict[str, Dict[str, Any]]) -> str:
     # Focus on throughput and accuracy
     highlight_patterns = ["avg_tps", "accuracy", "avg_latency_ms"]
     highlighted = sorted(
-        k for k in all_metric_keys
-        if any(p in k for p in highlight_patterns)
+        k for k in all_metric_keys if any(p in k for p in highlight_patterns)
     )
 
     if highlighted:
@@ -128,16 +126,13 @@ def _to_markdown(groups: Dict[str, Dict[str, Any]]) -> str:
                     vals.append(f"{avg:.2f}")
                 else:
                     vals.append("-")
-            lines.append(
-                f"| {g['model']} | {g['engine']} | "
-                + " | ".join(vals) + " |"
-            )
+            lines.append(f"| {g['model']} | {g['engine']} | " + " | ".join(vals) + " |")
 
     lines.append("")
     return "\n".join(lines)
 
 
-def _to_json(groups: Dict[str, Dict[str, Any]]) -> str:
+def _to_json(groups: dict[str, dict[str, Any]]) -> str:
     """Generate JSON rollup."""
     output = {}
     for key, g in groups.items():

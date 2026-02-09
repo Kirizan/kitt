@@ -16,9 +16,7 @@ def profile_mgr(tmp_path):
     (profiles_dir / "llama_cpp-high-ctx.yaml").write_text(
         "n_gpu_layers: -1\nn_ctx: 32768\n"
     )
-    (profiles_dir / "vllm-default.yaml").write_text(
-        "tensor_parallel_size: 1\n"
-    )
+    (profiles_dir / "vllm-default.yaml").write_text("tensor_parallel_size: 1\n")
 
     return EngineProfileManager(profiles_dir=profiles_dir)
 

@@ -1,7 +1,7 @@
 """Long-context benchmark — quality at varying context lengths."""
 
 import logging
-from typing import Any, Dict, List
+from typing import Any
 
 from kitt.benchmarks.base import BenchmarkResult, LLMBenchmark
 from kitt.benchmarks.registry import register_benchmark
@@ -35,7 +35,7 @@ class LongContextBenchmark(LLMBenchmark):
     category = "performance"
     description = "Test quality at long context lengths (needle-in-haystack)"
 
-    def _execute(self, engine, config: Dict[str, Any]) -> BenchmarkResult:
+    def _execute(self, engine, config: dict[str, Any]) -> BenchmarkResult:
         needle = config.get("needle", _DEFAULT_NEEDLE)
         question = config.get("question", _DEFAULT_QUESTION)
         context_lengths = config.get("context_lengths", [4096, 8192, 16384, 32768])
@@ -43,8 +43,8 @@ class LongContextBenchmark(LLMBenchmark):
         max_tokens = config.get("max_tokens", 128)
         temperature = config.get("temperature", 0.0)
 
-        outputs: List[Dict[str, Any]] = []
-        errors: List[str] = []
+        outputs: list[dict[str, Any]] = []
+        errors: list[str] = []
 
         for target_length in context_lengths:
             for position in needle_positions:
@@ -60,22 +60,24 @@ class LongContextBenchmark(LLMBenchmark):
                     )
 
                     response = result.output.strip()
-                    found = needle.lower() in response.lower() or \
-                        "kitt-42" in response.lower()
+                    found = (
+                        needle.lower() in response.lower()
+                        or "kitt-42" in response.lower()
+                    )
 
-                    outputs.append({
-                        "context_length": target_length,
-                        "needle_position": position,
-                        "prompt_tokens": result.prompt_tokens,
-                        "found_needle": found,
-                        "response_preview": response[:200],
-                        "latency_ms": result.metrics.total_latency_ms,
-                    })
+                    outputs.append(
+                        {
+                            "context_length": target_length,
+                            "needle_position": position,
+                            "prompt_tokens": result.prompt_tokens,
+                            "found_needle": found,
+                            "response_preview": response[:200],
+                            "latency_ms": result.metrics.total_latency_ms,
+                        }
+                    )
 
                 except Exception as e:
-                    error_msg = (
-                        f"Error at length={target_length}, pos={position}: {e}"
-                    )
+                    error_msg = f"Error at length={target_length}, pos={position}: {e}"
                     logger.error(error_msg)
                     errors.append(error_msg)
 
@@ -107,7 +109,9 @@ class LongContextBenchmark(LLMBenchmark):
         needle_index = int(num_sentences * position)
 
         parts = []
-        parts.append("Read the following text carefully and answer the question at the end.\n\n")
+        parts.append(
+            "Read the following text carefully and answer the question at the end.\n\n"
+        )
         for i in range(num_sentences):
             if i == needle_index:
                 parts.append(f"{needle} ")
@@ -116,7 +120,7 @@ class LongContextBenchmark(LLMBenchmark):
         parts.append(f"\n\nQuestion: {question}\nAnswer:")
         return "".join(parts)
 
-    def _aggregate_metrics(self, outputs: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _aggregate_metrics(self, outputs: list[dict[str, Any]]) -> dict[str, Any]:
         if not outputs:
             return {}
 
@@ -125,7 +129,7 @@ class LongContextBenchmark(LLMBenchmark):
         overall_accuracy = found / total if total > 0 else 0
 
         # Accuracy by context length
-        by_length: Dict[int, List[bool]] = {}
+        by_length: dict[int, list[bool]] = {}
         for o in outputs:
             length = o["context_length"]
             by_length.setdefault(length, []).append(o["found_needle"])

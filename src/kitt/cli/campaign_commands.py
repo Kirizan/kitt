@@ -24,7 +24,6 @@ def campaign():
 @click.option("--campaign-id", default=None, help="Explicit campaign ID (for resume)")
 def run(config_path, resume, dry_run, campaign_id):
     """Run a benchmark campaign from a YAML config file."""
-    from kitt.campaign.models import CampaignConfig
     from kitt.campaign.runner import CampaignRunner
     from kitt.config.loader import load_campaign_config
 
@@ -59,8 +58,7 @@ def run(config_path, resume, dry_run, campaign_id):
         for r in result.runs:
             if r.status == "failed":
                 console.print(
-                    f"  {r.model_name} / {r.engine_name} / {r.quant}: "
-                    f"{r.error[:100]}"
+                    f"  {r.model_name} / {r.engine_name} / {r.quant}: {r.error[:100]}"
                 )
 
 
@@ -186,14 +184,8 @@ def create(from_results, output):
     config_data = {
         "campaign_name": f"replay-{results_dir.name}",
         "description": f"Generated from results in {results_dir}",
-        "models": [
-            {"name": m["name"], "params": m["params"]}
-            for m in models.values()
-        ],
-        "engines": [
-            {"name": e, "suite": "standard"}
-            for e in sorted(engines)
-        ],
+        "models": [{"name": m["name"], "params": m["params"]} for m in models.values()],
+        "engines": [{"name": e, "suite": "standard"} for e in sorted(engines)],
         "disk": {"reserve_gb": 100.0, "cleanup_after_run": True},
     }
 
@@ -251,7 +243,10 @@ def wizard():
         console.print(yaml_str)
 
         import click as clk
-        save_path = clk.prompt("Save to file? (blank to skip)", default="", show_default=False)
+
+        save_path = clk.prompt(
+            "Save to file? (blank to skip)", default="", show_default=False
+        )
         if save_path:
             builder.save(save_path)
             console.print(f"[green]Saved to {save_path}[/green]")

@@ -135,7 +135,11 @@ class TestBatchInferenceBenchmark:
     def test_run_concurrent_with_failures(self, bench, engine):
         engine.generate.side_effect = Exception("fail")
         results = bench._run_concurrent(
-            engine, ["p"], concurrency=1, num_requests=2,
-            max_tokens=128, temperature=0.0,
+            engine,
+            ["p"],
+            concurrency=1,
+            num_requests=2,
+            max_tokens=128,
+            temperature=0.0,
         )
         assert all(not r["success"] for r in results)

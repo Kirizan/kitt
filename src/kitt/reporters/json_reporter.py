@@ -4,9 +4,8 @@ import json
 from dataclasses import asdict
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
-from kitt.benchmarks.base import BenchmarkResult
 from kitt.hardware.fingerprint import SystemInfo
 from kitt.runners.suite import SuiteResult
 
@@ -20,10 +19,10 @@ def _default_serializer(obj: Any) -> Any:
 
 def suite_result_to_dict(
     suite_result: SuiteResult,
-    system_info: Optional[SystemInfo] = None,
+    system_info: SystemInfo | None = None,
     engine_name: str = "unknown",
     model_name: str = "unknown",
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Convert suite result to a JSON-serializable dict.
 
     Args:
@@ -35,7 +34,7 @@ def suite_result_to_dict(
     Returns:
         Dictionary suitable for JSON serialization.
     """
-    data: Dict[str, Any] = {
+    data: dict[str, Any] = {
         "kitt_version": "1.1.0",
         "suite_name": suite_result.suite_name,
         "timestamp": suite_result.timestamp.isoformat(),
@@ -71,10 +70,10 @@ def suite_result_to_dict(
 def save_json_report(
     suite_result: SuiteResult,
     output_path: Path,
-    system_info: Optional[SystemInfo] = None,
+    system_info: SystemInfo | None = None,
     engine_name: str = "unknown",
     model_name: str = "unknown",
-    result_store: Optional[Any] = None,
+    result_store: Any | None = None,
 ) -> Path:
     """Save suite results as JSON.
 
@@ -91,9 +90,7 @@ def save_json_report(
     """
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    data = suite_result_to_dict(
-        suite_result, system_info, engine_name, model_name
-    )
+    data = suite_result_to_dict(suite_result, system_info, engine_name, model_name)
 
     with open(output_path, "w") as f:
         json.dump(data, f, indent=2, default=_default_serializer)
@@ -104,6 +101,7 @@ def save_json_report(
             result_store.save_result(data)
         except Exception:
             import logging
+
             logging.getLogger(__name__).warning(
                 "Failed to save result to storage backend"
             )

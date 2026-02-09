@@ -22,9 +22,7 @@ class TestOpenaiGenerate:
         mock_response.__exit__ = MagicMock(return_value=False)
         mock_urlopen.return_value = mock_response
 
-        result = openai_generate(
-            "http://localhost:8000", "test prompt", model="llama"
-        )
+        result = openai_generate("http://localhost:8000", "test prompt", model="llama")
 
         assert result["choices"][0]["text"] == "Hello world"
         assert result["usage"]["prompt_tokens"] == 5

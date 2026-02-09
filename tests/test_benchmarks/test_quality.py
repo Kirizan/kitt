@@ -1,14 +1,12 @@
 """Tests for quality benchmark implementations."""
 
-from unittest.mock import MagicMock
 from datetime import datetime
+from unittest.mock import MagicMock
 
-import pytest
-
-from kitt.benchmarks.quality.standard.mmlu import MMLUBenchmark
 from kitt.benchmarks.quality.standard.gsm8k import GSM8KBenchmark
-from kitt.benchmarks.quality.standard.truthfulqa import TruthfulQABenchmark
 from kitt.benchmarks.quality.standard.hellaswag import HellaSwagBenchmark
+from kitt.benchmarks.quality.standard.mmlu import MMLUBenchmark
+from kitt.benchmarks.quality.standard.truthfulqa import TruthfulQABenchmark
 from kitt.engines.base import GenerationMetrics, GenerationResult
 
 
@@ -108,7 +106,10 @@ class TestGSM8KBenchmark:
         engine = _mock_engine("Let me solve this step by step.\n\n#### 42")
 
         questions = [
-            {"question": "If John has 20 apples and gets 22 more, how many?", "answer": "#### 42"},
+            {
+                "question": "If John has 20 apples and gets 22 more, how many?",
+                "answer": "#### 42",
+            },
         ]
         bench._load_questions = lambda c: questions
 
@@ -133,11 +134,19 @@ class TestTruthfulQABenchmark:
             "choices": ["Paris", "London", "Berlin"],
             "labels": [1, 0, 0],
         }
-        assert TruthfulQABenchmark._evaluate_mc1("Paris is the capital", mc1_targets) is True
-        assert TruthfulQABenchmark._evaluate_mc1("London is great", mc1_targets) is False
+        assert (
+            TruthfulQABenchmark._evaluate_mc1("Paris is the capital", mc1_targets)
+            is True
+        )
+        assert (
+            TruthfulQABenchmark._evaluate_mc1("London is great", mc1_targets) is False
+        )
 
     def test_evaluate_open(self):
-        assert TruthfulQABenchmark._evaluate_open("Yes, Paris is the capital", "Paris") is True
+        assert (
+            TruthfulQABenchmark._evaluate_open("Yes, Paris is the capital", "Paris")
+            is True
+        )
         assert TruthfulQABenchmark._evaluate_open("Berlin is nice", "Paris") is False
 
 

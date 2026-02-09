@@ -2,7 +2,7 @@
 
 import logging
 import re
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -13,7 +13,7 @@ class QueryBuilder:
     # Supported operators
     _OPERATORS = {"=", "!=", "LIKE", "like"}
 
-    def parse(self, expression: str) -> Dict[str, Any]:
+    def parse(self, expression: str) -> dict[str, Any]:
         """Parse a WHERE-style expression into query filters.
 
         Supported syntax:
@@ -26,13 +26,13 @@ class QueryBuilder:
         Returns:
             Dict of filter key-value pairs for ResultStore.query().
         """
-        filters: Dict[str, Any] = {}
+        filters: dict[str, Any] = {}
 
         if not expression or not expression.strip():
             return filters
 
         # Split on AND (case-insensitive)
-        parts = re.split(r'\s+AND\s+', expression, flags=re.IGNORECASE)
+        parts = re.split(r"\s+AND\s+", expression, flags=re.IGNORECASE)
 
         for part in parts:
             part = part.strip()
@@ -45,7 +45,7 @@ class QueryBuilder:
 
         return filters
 
-    def _parse_condition(self, condition: str) -> Tuple[Optional[str], Any]:
+    def _parse_condition(self, condition: str) -> tuple[str | None, Any]:
         """Parse a single condition like 'engine=vllm' or 'passed=true'."""
         # Try LIKE pattern
         like_match = re.match(

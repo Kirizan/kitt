@@ -1,7 +1,7 @@
 """Tests for benchmark base classes."""
 
-from unittest.mock import MagicMock
 from datetime import datetime
+from unittest.mock import MagicMock
 
 from kitt.benchmarks.base import BenchmarkResult, LLMBenchmark, WarmupConfig
 from kitt.engines.base import GenerationMetrics, GenerationResult

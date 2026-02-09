@@ -1,7 +1,6 @@
 """Markdown summary report generation."""
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional
 
 from kitt.benchmarks.base import BenchmarkResult
 from kitt.hardware.fingerprint import SystemInfo
@@ -10,7 +9,7 @@ from kitt.runners.suite import SuiteResult
 
 def generate_summary(
     suite_result: SuiteResult,
-    system_info: Optional[SystemInfo] = None,
+    system_info: SystemInfo | None = None,
     engine_name: str = "unknown",
     model_name: str = "unknown",
 ) -> str:
@@ -35,9 +34,7 @@ def generate_summary(
         f"**Status**: {'PASSED' if suite_result.passed else 'FAILED'} "
         f"({suite_result.passed_count}/{suite_result.total_benchmarks})"
     )
-    lines.append(
-        f"**Total Time**: {suite_result.total_time_seconds:.1f}s"
-    )
+    lines.append(f"**Total Time**: {suite_result.total_time_seconds:.1f}s")
     lines.append("")
 
     # System info
@@ -52,7 +49,9 @@ def generate_summary(
                 f"- **GPU**: {gpu.model} ({gpu.vram_gb}GB)"
                 + (f" x{gpu.count}" if gpu.count > 1 else "")
             )
-        lines.append(f"- **CPU**: {system_info.cpu.model} ({system_info.cpu.cores}c/{system_info.cpu.threads}t)")
+        lines.append(
+            f"- **CPU**: {system_info.cpu.model} ({system_info.cpu.cores}c/{system_info.cpu.threads}t)"
+        )
         lines.append(f"- **RAM**: {system_info.ram_gb}GB {system_info.ram_type}")
         if system_info.cuda_version:
             lines.append(f"- **CUDA**: {system_info.cuda_version}")
@@ -83,7 +82,9 @@ def generate_summary(
 
         if result.warmup_times:
             avg_warmup = sum(result.warmup_times) / len(result.warmup_times)
-            lines.append(f"- **Warmup**: {len(result.warmup_times)} iterations, avg {avg_warmup:.3f}s")
+            lines.append(
+                f"- **Warmup**: {len(result.warmup_times)} iterations, avg {avg_warmup:.3f}s"
+            )
 
         for key, value in result.metrics.items():
             if isinstance(value, float):

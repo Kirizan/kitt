@@ -2,7 +2,7 @@
 
 import logging
 import re
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from kitt.benchmarks.base import BenchmarkResult, LLMBenchmark
 from kitt.benchmarks.registry import register_benchmark
@@ -48,7 +48,7 @@ class CodingBenchmark(LLMBenchmark):
     category = "quality_standard"
     description = "Code generation benchmark with test execution"
 
-    def _execute(self, engine, config: Dict[str, Any]) -> BenchmarkResult:
+    def _execute(self, engine, config: dict[str, Any]) -> BenchmarkResult:
         problems = config.get("problems", BUILT_IN_PROBLEMS)
         max_tokens = config.get("max_tokens", 512)
         temperature = config.get("temperature", 0.0)
@@ -58,9 +58,9 @@ class CodingBenchmark(LLMBenchmark):
         if sample_size and sample_size < len(problems):
             problems = problems[:sample_size]
 
-        outputs: List[Dict[str, Any]] = []
-        errors: List[str] = []
-        total_pass: Dict[int, int] = {k: 0 for k in k_values}
+        outputs: list[dict[str, Any]] = []
+        errors: list[str] = []
+        total_pass: dict[int, int] = {k: 0 for k in k_values}
         total_problems = len(problems)
         syntax_errors = 0
 
@@ -68,7 +68,7 @@ class CodingBenchmark(LLMBenchmark):
             prompt = self._build_prompt(problem["prompt"])
 
             # Generate k samples
-            samples: List[str] = []
+            samples: list[str] = []
             max_k = max(k_values)
             for _ in range(max_k):
                 try:
@@ -102,17 +102,23 @@ class CodingBenchmark(LLMBenchmark):
                 if any(pass_results[:k]):
                     total_pass[k] += 1
 
-            outputs.append({
-                "index": i,
-                "entry_point": problem.get("entry_point", ""),
-                "pass_results": pass_results,
-                "pass_at_1": pass_results[0] if pass_results else False,
-                "code_sample": samples[0][:300] if samples else "",
-            })
+            outputs.append(
+                {
+                    "index": i,
+                    "entry_point": problem.get("entry_point", ""),
+                    "pass_results": pass_results,
+                    "pass_at_1": pass_results[0] if pass_results else False,
+                    "code_sample": samples[0][:300] if samples else "",
+                }
+            )
 
-        metrics: Dict[str, Any] = {
+        metrics: dict[str, Any] = {
             "total": total_problems,
-            "syntax_error_rate": round(syntax_errors / (total_problems * max(k_values)), 4) if total_problems else 0,
+            "syntax_error_rate": round(
+                syntax_errors / (total_problems * max(k_values)), 4
+            )
+            if total_problems
+            else 0,
         }
         for k in k_values:
             rate = total_pass[k] / total_problems if total_problems else 0
@@ -140,9 +146,7 @@ class CodingBenchmark(LLMBenchmark):
     def _extract_code(self, output: str) -> str:
         """Extract Python code from model output."""
         # Try to find code block
-        code_match = re.search(
-            r"```(?:python)?\s*\n(.*?)```", output, re.DOTALL
-        )
+        code_match = re.search(r"```(?:python)?\s*\n(.*?)```", output, re.DOTALL)
         if code_match:
             return code_match.group(1).strip()
 
@@ -164,7 +168,7 @@ class CodingBenchmark(LLMBenchmark):
             return False, True
 
         try:
-            namespace: Dict[str, Any] = {}
+            namespace: dict[str, Any] = {}
             exec(code, namespace)
             exec(test_code, namespace)
             return True, False

@@ -8,9 +8,10 @@ import json
 import logging
 import time
 import urllib.request
+from collections.abc import Generator
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Dict, Generator, List
+from typing import Any
 
 from .base import GenerationMetrics, GenerationResult
 
@@ -25,7 +26,7 @@ def openai_generate(
     top_p: float = 1.0,
     top_k: int = 50,
     max_tokens: int = 2048,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Send a completion request to an OpenAI-compatible endpoint.
 
     Args:
@@ -64,17 +65,13 @@ def openai_generate(
             return json.loads(response.read())
     except urllib.error.HTTPError as e:
         body = e.read().decode("utf-8", errors="replace")
-        raise RuntimeError(
-            f"OpenAI API request failed ({e.code}): {body}"
-        )
+        raise RuntimeError(f"OpenAI API request failed ({e.code}): {body}") from e
     except urllib.error.URLError as e:
-        raise RuntimeError(
-            f"Cannot connect to engine at {base_url}: {e}"
-        )
+        raise RuntimeError(f"Cannot connect to engine at {base_url}: {e}") from e
 
 
 def parse_openai_result(
-    response: Dict[str, Any],
+    response: dict[str, Any],
     total_latency_ms: float,
     gpu_tracker: Any,
 ) -> GenerationResult:
@@ -170,7 +167,6 @@ def openai_generate_stream(
 
     try:
         with urllib.request.urlopen(req) as response:
-            buffer = ""
             for raw_line in response:
                 line = raw_line.decode("utf-8", errors="replace").strip()
                 if not line or line.startswith(":"):
@@ -194,6 +190,6 @@ def openai_generate_stream(
                     continue
     except urllib.error.HTTPError as e:
         body = e.read().decode("utf-8", errors="replace")
-        raise RuntimeError(f"Streaming request failed ({e.code}): {body}")
+        raise RuntimeError(f"Streaming request failed ({e.code}): {body}") from e
     except urllib.error.URLError as e:
-        raise RuntimeError(f"Cannot connect for streaming at {base_url}: {e}")
+        raise RuntimeError(f"Cannot connect for streaming at {base_url}: {e}") from e

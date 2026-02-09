@@ -1,7 +1,6 @@
 """Plugin compatibility validation."""
 
 import logging
-from typing import Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -9,7 +8,7 @@ logger = logging.getLogger(__name__)
 class PluginValidator:
     """Validate plugin compatibility and requirements."""
 
-    def validate_manifest(self, manifest_data: Dict) -> Tuple[bool, List[str]]:
+    def validate_manifest(self, manifest_data: dict) -> tuple[bool, list[str]]:
         """Validate a plugin manifest has required fields.
 
         Returns:
@@ -25,18 +24,21 @@ class PluginValidator:
         valid_types = {"engine", "benchmark", "reporter"}
         ptype = manifest_data.get("plugin_type", "")
         if ptype and ptype not in valid_types:
-            errors.append(f"Invalid plugin_type: {ptype}. Must be one of: {valid_types}")
+            errors.append(
+                f"Invalid plugin_type: {ptype}. Must be one of: {valid_types}"
+            )
 
         return len(errors) == 0, errors
 
-    def check_dependencies(self, package_name: str) -> Tuple[bool, List[str]]:
+    def check_dependencies(self, package_name: str) -> tuple[bool, list[str]]:
         """Check if a plugin's dependencies are satisfiable.
 
         Returns:
             Tuple of (all_satisfied, list_of_missing).
         """
         try:
-            from importlib.metadata import distribution, PackageNotFoundError
+            from importlib.metadata import distribution
+
             dist = distribution(package_name)
             requires = dist.requires or []
         except Exception:
@@ -45,9 +47,17 @@ class PluginValidator:
         missing = []
         for req in requires:
             # Strip extras and version constraints for basic check
-            pkg = req.split(";")[0].split("[")[0].split(">=")[0].split("<=")[0].split("==")[0].strip()
+            pkg = (
+                req.split(";")[0]
+                .split("[")[0]
+                .split(">=")[0]
+                .split("<=")[0]
+                .split("==")[0]
+                .strip()
+            )
             try:
                 from importlib.metadata import distribution as dist_fn
+
                 dist_fn(pkg)
             except Exception:
                 missing.append(pkg)
@@ -70,6 +80,7 @@ class PluginValidator:
                 return False
 
             import importlib
+
             mod = importlib.import_module(module_path)
             return hasattr(mod, attr_name)
         except Exception:

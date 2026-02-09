@@ -32,18 +32,14 @@ class TestSchedule:
         assert data["enabled"] is True
 
     def test_invalid_cron_returns_false(self, scheduler):
-        result = scheduler.schedule(
-            "/path/to/campaign.yaml", "not-a-cron"
-        )
+        result = scheduler.schedule("/path/to/campaign.yaml", "not-a-cron")
         assert result is False
 
     @patch("subprocess.run")
     def test_registers_in_crontab(self, mock_run, scheduler):
         mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
 
-        scheduler.schedule(
-            "/path/to/campaign.yaml", "30 1 * * 0", campaign_id="weekly"
-        )
+        scheduler.schedule("/path/to/campaign.yaml", "30 1 * * 0", campaign_id="weekly")
 
         # First call: crontab -l, Second call: crontab -
         assert mock_run.call_count == 2

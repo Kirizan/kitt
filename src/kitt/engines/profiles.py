@@ -2,14 +2,19 @@
 
 import logging
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import yaml
 
 logger = logging.getLogger(__name__)
 
 # Default profiles directory
-_PROFILES_DIR = Path(__file__).resolve().parent.parent.parent.parent / "configs" / "engines" / "profiles"
+_PROFILES_DIR = (
+    Path(__file__).resolve().parent.parent.parent.parent
+    / "configs"
+    / "engines"
+    / "profiles"
+)
 
 
 class EngineProfileManager:
@@ -19,10 +24,10 @@ class EngineProfileManager:
     named engine configurations (e.g., llama_cpp-high-ctx.yaml).
     """
 
-    def __init__(self, profiles_dir: Optional[Path] = None) -> None:
+    def __init__(self, profiles_dir: Path | None = None) -> None:
         self.profiles_dir = profiles_dir or _PROFILES_DIR
 
-    def list_profiles(self, engine_name: Optional[str] = None) -> List[str]:
+    def list_profiles(self, engine_name: str | None = None) -> list[str]:
         """List available profile names.
 
         Args:
@@ -41,7 +46,7 @@ class EngineProfileManager:
                 profiles.append(name)
         return profiles
 
-    def load_profile(self, profile_name: str) -> Dict[str, Any]:
+    def load_profile(self, profile_name: str) -> dict[str, Any]:
         """Load a profile by name.
 
         Args:
@@ -56,8 +61,7 @@ class EngineProfileManager:
         profile_path = self.profiles_dir / f"{profile_name}.yaml"
         if not profile_path.exists():
             raise FileNotFoundError(
-                f"Profile not found: {profile_name} "
-                f"(looked in {self.profiles_dir})"
+                f"Profile not found: {profile_name} (looked in {self.profiles_dir})"
             )
 
         with open(profile_path) as f:
@@ -66,9 +70,9 @@ class EngineProfileManager:
 
     def merge_with_profile(
         self,
-        base_config: Dict[str, Any],
+        base_config: dict[str, Any],
         profile_name: str,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Merge a profile's config into a base config.
 
         Profile values are applied first, then base_config overrides.

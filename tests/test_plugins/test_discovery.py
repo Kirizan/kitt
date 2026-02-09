@@ -2,8 +2,6 @@
 
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from kitt.plugins.discovery import (
     _load_entry_points,
     discover_external_benchmarks,
@@ -93,10 +91,21 @@ class TestDiscoverPlugins:
         mock_engine = type("E", (), {})
         mock_bench = type("B", (), {})
 
-        with patch("kitt.plugins.discovery.discover_external_engines", return_value=[mock_engine]):
-            with patch("kitt.plugins.discovery.discover_external_benchmarks", return_value=[mock_bench]):
-                with patch("kitt.plugins.discovery.discover_external_reporters", return_value=[]):
-                    result = discover_plugins()
-                    assert len(result["engines"]) == 1
-                    assert len(result["benchmarks"]) == 1
-                    assert len(result["reporters"]) == 0
+        with (
+            patch(
+                "kitt.plugins.discovery.discover_external_engines",
+                return_value=[mock_engine],
+            ),
+            patch(
+                "kitt.plugins.discovery.discover_external_benchmarks",
+                return_value=[mock_bench],
+            ),
+            patch(
+                "kitt.plugins.discovery.discover_external_reporters",
+                return_value=[],
+            ),
+        ):
+            result = discover_plugins()
+            assert len(result["engines"]) == 1
+            assert len(result["benchmarks"]) == 1
+            assert len(result["reporters"]) == 0

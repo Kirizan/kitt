@@ -1,7 +1,6 @@
 """IPython magic commands for KITT."""
 
 import logging
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -35,16 +34,18 @@ class KITTMagics:
         if self._store is None:
             try:
                 from kitt.storage.sqlite_store import SQLiteStore
+
                 self._store = SQLiteStore()
             except Exception:
                 try:
                     from kitt.storage.json_store import JsonStore
+
                     self._store = JsonStore()
                 except Exception:
                     pass
         return self._store
 
-    def kitt(self, line: str) -> Optional[str]:
+    def kitt(self, line: str) -> str | None:
         """Line magic: %kitt <command> [args]."""
         parts = line.strip().split()
         cmd = parts[0] if parts else "help"
@@ -63,7 +64,7 @@ class KITTMagics:
         else:
             return f"Unknown command: {cmd}. Use %kitt help for options."
 
-    def kitt_cell(self, line: str, cell: str) -> Optional[str]:
+    def kitt_cell(self, line: str, cell: str) -> str | None:
         """Cell magic: %%kitt run."""
         if line.strip() == "run":
             return self._run_campaign(cell)
@@ -102,6 +103,7 @@ class KITTMagics:
     def _status(self) -> str:
         try:
             from kitt.campaign.state_manager import CampaignStateManager
+
             mgr = CampaignStateManager()
             campaigns = mgr.list_campaigns()
             if not campaigns:
@@ -125,16 +127,19 @@ class KITTMagics:
             return "No storage backend available."
 
         from kitt.bot.commands import BotCommandHandler
+
         handler = BotCommandHandler(result_store=store)
         return handler.handle_compare(args[0], args[1])
 
     def _fingerprint(self) -> str:
         from kitt.hardware.fingerprint import HardwareFingerprint
+
         return HardwareFingerprint.generate()
 
     def _run_campaign(self, yaml_text: str) -> str:
         try:
             import yaml
+
             config_data = yaml.safe_load(yaml_text)
             return f"Campaign config parsed: {config_data.get('campaign_name', 'unnamed')}\n(Dry run only in notebook mode)"
         except Exception as e:

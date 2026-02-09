@@ -2,11 +2,9 @@
 
 import logging
 import shutil
-import time
-from concurrent.futures import ThreadPoolExecutor, Future
+from concurrent.futures import Future, ThreadPoolExecutor
 from pathlib import Path
 from threading import Lock
-from typing import List, Optional
 
 from .models import CampaignConfig, CampaignRunSpec
 from .result import CampaignResult, CampaignRunResult
@@ -30,7 +28,7 @@ class ParallelCampaignRunner:
     def __init__(
         self,
         config: CampaignConfig,
-        state_manager: Optional[CampaignStateManager] = None,
+        state_manager: CampaignStateManager | None = None,
         dry_run: bool = False,
         max_download_workers: int = 1,
     ) -> None:
@@ -52,21 +50,19 @@ class ParallelCampaignRunner:
 
     def run(
         self,
-        campaign_id: Optional[str] = None,
+        campaign_id: str | None = None,
         resume: bool = False,
     ) -> CampaignResult:
         """Execute the campaign with parallel download/benchmark overlap."""
         campaign_id = campaign_id or self._runner._generate_id()
 
         # Load or create state
-        state: Optional[CampaignState] = None
+        state: CampaignState | None = None
         if resume:
             state = self.state_manager.load(campaign_id)
 
         if state is None:
-            state = self.state_manager.create(
-                campaign_id, self.config.campaign_name
-            )
+            state = self.state_manager.create(campaign_id, self.config.campaign_name)
 
         # Plan and expand
         planned = self._runner.scheduler.plan_runs(self.config)
@@ -75,8 +71,7 @@ class ParallelCampaignRunner:
         self.state_manager.save(state)
 
         remaining = [
-            r for r in expanded
-            if not self.state_manager.is_run_done(state, r.key)
+            r for r in expanded if not self.state_manager.is_run_done(state, r.key)
         ]
 
         logger.info(
@@ -96,7 +91,7 @@ class ParallelCampaignRunner:
             thread_name_prefix="kitt-download",
         ) as download_pool:
             # Submit first download
-            pending_download: Optional[Future] = None
+            pending_download: Future | None = None
             if len(remaining) > 0:
                 pending_download = download_pool.submit(
                     self._safe_download, remaining[0]
@@ -123,9 +118,7 @@ class ParallelCampaignRunner:
                     pending_download = None
 
                 # Execute benchmark (sequential — GPU bound)
-                run_result = self._execute_with_cached_download(
-                    run_spec, state
-                )
+                run_result = self._execute_with_cached_download(run_spec, state)
                 result.runs.append(run_result)
 
                 # Update metrics exporter if present
@@ -162,13 +155,11 @@ class ParallelCampaignRunner:
             f"Skipped: {result.skipped}"
         )
         logger.info(f"Parallel campaign complete: {summary}")
-        self._runner.notifier.notify_complete(
-            self.config.campaign_name, summary
-        )
+        self._runner.notifier.notify_complete(self.config.campaign_name, summary)
 
         return result
 
-    def _safe_download(self, run_spec: CampaignRunSpec) -> Optional[str]:
+    def _safe_download(self, run_spec: CampaignRunSpec) -> str | None:
         """Download model with error handling (runs in download thread)."""
         try:
             return self._runner._download_model(run_spec)

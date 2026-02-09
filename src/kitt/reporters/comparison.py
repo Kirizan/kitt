@@ -1,12 +1,12 @@
 """Compare benchmark results across runs."""
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 def compare_metrics(
-    results: List[Dict[str, Any]],
-    metric_keys: Optional[List[str]] = None,
-) -> Dict[str, Dict[str, Any]]:
+    results: list[dict[str, Any]],
+    metric_keys: list[str] | None = None,
+) -> dict[str, dict[str, Any]]:
     """Compare metrics across multiple result sets.
 
     Args:
@@ -20,17 +20,18 @@ def compare_metrics(
         return {}
 
     # Collect all metrics from all results
-    all_metrics: Dict[str, List[float]] = {}
+    all_metrics: dict[str, list[float]] = {}
 
     for result in results:
         for bench_result in result.get("results", []):
             metrics = bench_result.get("metrics", {})
             for key, value in metrics.items():
-                if isinstance(value, (int, float)):
-                    if metric_keys is None or key in metric_keys:
-                        if key not in all_metrics:
-                            all_metrics[key] = []
-                        all_metrics[key].append(float(value))
+                if isinstance(value, (int, float)) and (
+                    metric_keys is None or key in metric_keys
+                ):
+                    if key not in all_metrics:
+                        all_metrics[key] = []
+                    all_metrics[key].append(float(value))
 
     # Calculate comparison stats
     comparison = {}
@@ -45,7 +46,7 @@ def compare_metrics(
         if len(values) > 1:
             avg = comparison[key]["avg"]
             variance = sum((v - avg) ** 2 for v in values) / len(values)
-            comparison[key]["std_dev"] = variance ** 0.5
+            comparison[key]["std_dev"] = variance**0.5
             comparison[key]["cv_percent"] = (
                 (comparison[key]["std_dev"] / avg * 100) if avg != 0 else 0
             )

@@ -1,14 +1,14 @@
 """Simple version-based migration runner for KITT storage."""
 
 import logging
-from typing import Any, Callable, Dict, List, Tuple
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 # Each migration is (version, description, up_sql)
-Migration = Tuple[int, str, str]
+Migration = tuple[int, str, str]
 
-MIGRATIONS: List[Migration] = [
+MIGRATIONS: list[Migration] = [
     # Version 1 is the initial schema — applied via schema.py.
     # Future migrations go here:
     # (2, "Add campaigns table", "CREATE TABLE IF NOT EXISTS campaigns (...)"),
@@ -18,9 +18,7 @@ MIGRATIONS: List[Migration] = [
 def get_current_version_sqlite(conn: Any) -> int:
     """Get current schema version from SQLite database."""
     try:
-        cursor = conn.execute(
-            "SELECT MAX(version) FROM schema_version"
-        )
+        cursor = conn.execute("SELECT MAX(version) FROM schema_version")
         row = cursor.fetchone()
         return row[0] if row and row[0] is not None else 0
     except Exception:

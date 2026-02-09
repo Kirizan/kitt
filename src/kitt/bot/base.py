@@ -1,7 +1,6 @@
 """Base class for chat bot integrations."""
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Optional
 
 
 class BotInterface(ABC):

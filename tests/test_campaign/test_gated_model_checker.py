@@ -39,6 +39,7 @@ class TestIsGated:
 
     def test_model_not_found(self, checker):
         import urllib.error
+
         with patch("urllib.request.urlopen") as mock_urlopen:
             mock_urlopen.side_effect = urllib.error.HTTPError(
                 url="", code=404, msg="Not Found", hdrs=None, fp=None
@@ -82,8 +83,7 @@ class TestCheckAccess:
 class TestFilterAccessible:
     def test_all_accessible(self, checker):
         with patch.object(
-            checker, "check_access",
-            return_value={"accessible": True, "gated": False}
+            checker, "check_access", return_value={"accessible": True, "gated": False}
         ):
             accessible, inaccessible = checker.filter_accessible(["a", "b"])
             assert len(accessible) == 2
@@ -123,6 +123,7 @@ class TestFetchModelInfo:
 
     def test_handles_401(self, checker):
         import urllib.error
+
         with patch("urllib.request.urlopen") as mock_urlopen:
             mock_urlopen.side_effect = urllib.error.HTTPError(
                 url="", code=401, msg="Unauthorized", hdrs=None, fp=None

@@ -3,9 +3,14 @@
 import logging
 import time
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
-from .base import EngineDiagnostics, GenerationMetrics, GenerationResult, InferenceEngine
+from .base import (
+    EngineDiagnostics,
+    GenerationMetrics,
+    GenerationResult,
+    InferenceEngine,
+)
 from .registry import register_engine
 
 logger = logging.getLogger(__name__)
@@ -37,7 +42,7 @@ class MLXEngine(InferenceEngine):
         return "mlx"
 
     @classmethod
-    def supported_formats(cls) -> List[str]:
+    def supported_formats(cls) -> list[str]:
         return ["mlx", "safetensors"]
 
     @classmethod
@@ -81,7 +86,7 @@ class MLXEngine(InferenceEngine):
             )
         return EngineDiagnostics(available=True)
 
-    def initialize(self, model_path: str, config: Dict[str, Any]) -> None:
+    def initialize(self, model_path: str, config: dict[str, Any]) -> None:
         """Load model into memory using mlx-lm."""
         if not MLX_AVAILABLE:
             raise RuntimeError(

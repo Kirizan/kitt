@@ -5,7 +5,6 @@ import logging
 from dataclasses import asdict
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 import click
 from rich.console import Console
@@ -17,22 +16,26 @@ logger = logging.getLogger(__name__)
 
 @click.command()
 @click.option(
-    "--model", "-m",
+    "--model",
+    "-m",
     required=True,
     help="Path to model or model identifier",
 )
 @click.option(
-    "--engine", "-e",
+    "--engine",
+    "-e",
     required=True,
     help="Inference engine to use (vllm, tgi, llama_cpp, ollama)",
 )
 @click.option(
-    "--suite", "-s",
+    "--suite",
+    "-s",
     default="quick",
     help="Test suite to run (quick, standard, performance)",
 )
 @click.option(
-    "--output", "-o",
+    "--output",
+    "-o",
     type=click.Path(),
     help="Output directory for results",
 )
@@ -83,16 +86,14 @@ def run(model, engine, suite, output, skip_warmup, runs, config, store_karr):
     engine_cls = EngineRegistry.get_engine(engine)
     if not engine_cls.is_available():
         diag = engine_cls.diagnose()
-        console.print(
-            f"[red]Engine '{engine}' is not available.[/red]"
-        )
+        console.print(f"[red]Engine '{engine}' is not available.[/red]")
         if diag.error:
             console.print(f"  {diag.error}")
         if diag.guidance:
             console.print(f"  Fix: {diag.guidance}")
         raise SystemExit(1)
 
-    console.print(f"[bold]KITT Benchmark Runner[/bold]")
+    console.print("[bold]KITT Benchmark Runner[/bold]")
     console.print(f"  Model:  {model}")
     console.print(f"  Engine: {engine}")
     console.print(f"  Suite:  {suite}")
@@ -105,11 +106,14 @@ def run(model, engine, suite, output, skip_warmup, runs, config, store_karr):
         suite_cfg = load_suite_config(suite_config_path)
         console.print(f"  Loaded suite: {suite_cfg.suite_name} v{suite_cfg.version}")
     else:
-        console.print(f"[yellow]Suite config '{suite}' not found, using defaults[/yellow]")
+        console.print(
+            f"[yellow]Suite config '{suite}' not found, using defaults[/yellow]"
+        )
 
     # Detect hardware
     with Progress(
-        SpinnerColumn(), TextColumn("[progress.description]{task.description}"),
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
         console=console,
     ) as progress:
         task = progress.add_task("Detecting hardware...", total=None)
@@ -131,7 +135,7 @@ def run(model, engine, suite, output, skip_warmup, runs, config, store_karr):
         engine_instance.initialize(model, engine_config)
     except Exception as e:
         console.print(f"[red]Failed to initialize engine: {e}[/red]")
-        raise SystemExit(1)
+        raise SystemExit(1) from e
 
     # Load benchmarks
     BenchmarkRegistry.auto_discover()
@@ -143,7 +147,9 @@ def run(model, engine, suite, output, skip_warmup, runs, config, store_karr):
                 bench_cls = BenchmarkRegistry.get_benchmark(test_name)
                 benchmarks.append(bench_cls())
             except ValueError:
-                console.print(f"[yellow]Benchmark '{test_name}' not found, skipping[/yellow]")
+                console.print(
+                    f"[yellow]Benchmark '{test_name}' not found, skipping[/yellow]"
+                )
     else:
         # Default: run throughput only
         bench_cls = BenchmarkRegistry.get_benchmark("throughput")
@@ -162,7 +168,9 @@ def run(model, engine, suite, output, skip_warmup, runs, config, store_karr):
         global_config["runs"] = runs
 
     # Run suite
-    console.print(f"\n[bold green]Running {len(benchmarks)} benchmark(s)...[/bold green]\n")
+    console.print(
+        f"\n[bold green]Running {len(benchmarks)} benchmark(s)...[/bold green]\n"
+    )
     runner = SuiteRunner(engine_instance)
 
     suite_result = runner.run(
@@ -178,14 +186,16 @@ def run(model, engine, suite, output, skip_warmup, runs, config, store_karr):
     timestamp = datetime.now().strftime("%Y-%m-%d_%H%M%S")
     model_name_clean = Path(model).name if "/" in model or "\\" in model else model
     output_dir = (
-        Path(output) if output
+        Path(output)
+        if output
         else Path(f"kitt-results/{model_name_clean}/{engine}/{timestamp}")
     )
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Save JSON metrics report
     save_json_report(
-        suite_result, output_dir / "metrics.json",
+        suite_result,
+        output_dir / "metrics.json",
         system_info=system_info,
         engine_name=engine,
         model_name=model,
@@ -222,11 +232,13 @@ def run(model, engine, suite, output, skip_warmup, runs, config, store_karr):
     all_outputs = []
     for result in suite_result.results:
         for output_item in result.outputs:
-            all_outputs.append({
-                "benchmark": result.test_name,
-                "run_number": result.run_number,
-                **output_item,
-            })
+            all_outputs.append(
+                {
+                    "benchmark": result.test_name,
+                    "run_number": result.run_number,
+                    **output_item,
+                }
+            )
 
     if all_outputs:
         outputs_dir = output_dir / "outputs"
@@ -238,13 +250,15 @@ def run(model, engine, suite, output, skip_warmup, runs, config, store_karr):
 
     # Store in KARR repo if requested
     if store_karr:
-        _store_in_karr(
-            output_dir, fingerprint, model_name_clean, engine, timestamp
-        )
+        _store_in_karr(output_dir, fingerprint, model_name_clean, engine, timestamp)
 
     # Print summary
     console.print(f"\n{'=' * 60}")
-    status = "[bold green]PASSED[/bold green]" if suite_result.passed else "[bold red]FAILED[/bold red]"
+    status = (
+        "[bold green]PASSED[/bold green]"
+        if suite_result.passed
+        else "[bold red]FAILED[/bold red]"
+    )
     console.print(f"Status: {status}")
     console.print(
         f"Results: {suite_result.passed_count}/{suite_result.total_benchmarks} passed"
@@ -270,7 +284,7 @@ def _store_in_karr(
         KARRRepoManager.create_results_repo(karr_path, fingerprint)
 
     # Read all files from output_dir
-    files = {}
+    files: dict[str, str | bytes] = {}
     for file_path in output_dir.rglob("*"):
         if file_path.is_file():
             rel_path = str(file_path.relative_to(output_dir))
@@ -279,18 +293,19 @@ def _store_in_karr(
             else:
                 files[rel_path] = file_path.read_text()
 
-    KARRRepoManager.store_results(
-        karr_path, model_name, engine_name, timestamp, files
-    )
+    KARRRepoManager.store_results(karr_path, model_name, engine_name, timestamp, files)
     console.print(f"[green]Results stored in KARR: {karr_path}[/green]")
 
 
-def _find_suite_config(suite_name: str) -> Optional[Path]:
+def _find_suite_config(suite_name: str) -> Path | None:
     """Find suite configuration file."""
     # Check standard locations
     search_paths = [
         Path("configs/suites") / f"{suite_name}.yaml",
-        Path(__file__).parent.parent.parent.parent / "configs" / "suites" / f"{suite_name}.yaml",
+        Path(__file__).parent.parent.parent.parent
+        / "configs"
+        / "suites"
+        / f"{suite_name}.yaml",
     ]
 
     for path in search_paths:

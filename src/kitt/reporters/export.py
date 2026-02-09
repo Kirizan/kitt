@@ -1,15 +1,14 @@
 """Export results to CSV and Parquet formats."""
 
 import csv
-import json
 import logging
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
-def flatten_result(result_data: Dict[str, Any]) -> List[Dict[str, Any]]:
+def flatten_result(result_data: dict[str, Any]) -> list[dict[str, Any]]:
     """Flatten a KITT result JSON into rows suitable for tabular export.
 
     Each benchmark run becomes one row. Nested metrics are flattened
@@ -52,7 +51,7 @@ def flatten_result(result_data: Dict[str, Any]) -> List[Dict[str, Any]]:
 
 
 def export_to_csv(
-    result_data: List[Dict[str, Any]],
+    result_data: list[dict[str, Any]],
     output_path: Path,
 ) -> Path:
     """Export results to CSV.
@@ -72,9 +71,7 @@ def export_to_csv(
         raise ValueError("No data to export")
 
     # Collect all column names
-    columns = list(dict.fromkeys(
-        col for row in all_rows for col in row.keys()
-    ))
+    columns = list(dict.fromkeys(col for row in all_rows for col in row))
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -88,7 +85,7 @@ def export_to_csv(
 
 
 def export_to_parquet(
-    result_data: List[Dict[str, Any]],
+    result_data: list[dict[str, Any]],
     output_path: Path,
 ) -> Path:
     """Export results to Parquet format.
@@ -107,9 +104,8 @@ def export_to_parquet(
         import pyarrow.parquet as pq
     except ImportError:
         raise ImportError(
-            "pyarrow is required for Parquet export. "
-            "Install with: pip install pyarrow"
-        )
+            "pyarrow is required for Parquet export. Install with: pip install pyarrow"
+        ) from None
 
     all_rows = []
     for data in result_data:
@@ -119,9 +115,7 @@ def export_to_parquet(
         raise ValueError("No data to export")
 
     # Convert to columnar format
-    columns = list(dict.fromkeys(
-        col for row in all_rows for col in row.keys()
-    ))
+    columns = list(dict.fromkeys(col for row in all_rows for col in row))
 
     arrays = {}
     for col in columns:

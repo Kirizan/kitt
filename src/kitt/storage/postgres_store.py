@@ -3,7 +3,7 @@
 import json
 import logging
 import uuid
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from .base import ResultStore
 from .migrations import (
@@ -34,7 +34,7 @@ class PostgresStore(ResultStore):
             raise ImportError(
                 "psycopg2 is required for PostgreSQL storage. "
                 "Install with: pip install psycopg2-binary"
-            )
+            ) from None
 
         self._conn = psycopg2.connect(dsn)
         self._conn.autocommit = False
@@ -51,7 +51,7 @@ class PostgresStore(ResultStore):
         elif current < SCHEMA_VERSION:
             run_migrations_postgres(self._conn, current)
 
-    def save_result(self, result_data: Dict[str, Any]) -> str:
+    def save_result(self, result_data: dict[str, Any]) -> str:
         run_id = uuid.uuid4().hex[:16]
         cursor = self._conn.cursor()
 
@@ -125,7 +125,7 @@ class PostgresStore(ResultStore):
         self._conn.commit()
         return run_id
 
-    def get_result(self, result_id: str) -> Optional[Dict[str, Any]]:
+    def get_result(self, result_id: str) -> dict[str, Any] | None:
         cursor = self._conn.cursor()
         cursor.execute("SELECT raw_json FROM runs WHERE id = %s", (result_id,))
         row = cursor.fetchone()
@@ -135,14 +135,14 @@ class PostgresStore(ResultStore):
 
     def query(
         self,
-        filters: Optional[Dict[str, Any]] = None,
-        order_by: Optional[str] = None,
-        limit: Optional[int] = None,
+        filters: dict[str, Any] | None = None,
+        order_by: str | None = None,
+        limit: int | None = None,
         offset: int = 0,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         cursor = self._conn.cursor()
         sql = "SELECT raw_json FROM runs"
-        params: List[Any] = []
+        params: list[Any] = []
 
         if filters:
             clauses = []
@@ -158,7 +158,13 @@ class PostgresStore(ResultStore):
         if order_by:
             desc = order_by.startswith("-")
             col = order_by.lstrip("-")
-            allowed_order = {"timestamp", "model", "engine", "total_time_seconds", "suite_name"}
+            allowed_order = {
+                "timestamp",
+                "model",
+                "engine",
+                "total_time_seconds",
+                "suite_name",
+            }
             if col in allowed_order:
                 sql += f" ORDER BY {col} {'DESC' if desc else 'ASC'}"
 
@@ -173,7 +179,7 @@ class PostgresStore(ResultStore):
         cursor.execute(sql, params)
         return [json.loads(row[0]) for row in cursor.fetchall()]
 
-    def list_results(self) -> List[Dict[str, Any]]:
+    def list_results(self) -> list[dict[str, Any]]:
         cursor = self._conn.cursor()
         cursor.execute(
             "SELECT id, model, engine, suite_name, timestamp, passed FROM runs ORDER BY timestamp DESC"
@@ -193,18 +199,16 @@ class PostgresStore(ResultStore):
     def aggregate(
         self,
         group_by: str,
-        metrics: Optional[List[str]] = None,
-    ) -> List[Dict[str, Any]]:
+        metrics: list[str] | None = None,
+    ) -> list[dict[str, Any]]:
         cursor = self._conn.cursor()
         allowed = {"model", "engine", "suite_name"}
         if group_by not in allowed:
             raise ValueError(f"group_by must be one of {allowed}")
 
         if metrics:
-            results: Dict[str, Dict[str, Any]] = {}
-            cursor.execute(
-                f"SELECT {group_by}, COUNT(*) FROM runs GROUP BY {group_by}"
-            )
+            results: dict[str, dict[str, Any]] = {}
+            cursor.execute(f"SELECT {group_by}, COUNT(*) FROM runs GROUP BY {group_by}")
             for row in cursor.fetchall():
                 results[row[0]] = {group_by: row[0], "count": row[1]}
 
@@ -224,13 +228,8 @@ class PostgresStore(ResultStore):
 
             return list(results.values())
         else:
-            cursor.execute(
-                f"SELECT {group_by}, COUNT(*) FROM runs GROUP BY {group_by}"
-            )
-            return [
-                {group_by: row[0], "count": row[1]}
-                for row in cursor.fetchall()
-            ]
+            cursor.execute(f"SELECT {group_by}, COUNT(*) FROM runs GROUP BY {group_by}")
+            return [{group_by: row[0], "count": row[1]} for row in cursor.fetchall()]
 
     def delete_result(self, result_id: str) -> bool:
         cursor = self._conn.cursor()
@@ -238,10 +237,10 @@ class PostgresStore(ResultStore):
         self._conn.commit()
         return cursor.rowcount > 0
 
-    def count(self, filters: Optional[Dict[str, Any]] = None) -> int:
+    def count(self, filters: dict[str, Any] | None = None) -> int:
         cursor = self._conn.cursor()
         sql = "SELECT COUNT(*) FROM runs"
-        params: List[Any] = []
+        params: list[Any] = []
 
         if filters:
             clauses = []

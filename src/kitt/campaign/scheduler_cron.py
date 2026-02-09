@@ -4,9 +4,8 @@ import logging
 import re
 import subprocess
 import sys
-import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +21,7 @@ class CronScheduler:
         r"(\*|[0-9,\-/]+)$"
     )
 
-    def __init__(self, config_dir: Optional[Path] = None) -> None:
+    def __init__(self, config_dir: Path | None = None) -> None:
         self.config_dir = config_dir or Path.home() / ".kitt" / "schedules"
         self.config_dir.mkdir(parents=True, exist_ok=True)
 
@@ -30,7 +29,7 @@ class CronScheduler:
         self,
         campaign_config_path: str,
         cron_expr: str,
-        campaign_id: Optional[str] = None,
+        campaign_id: str | None = None,
     ) -> bool:
         """Register a campaign on a cron schedule.
 
@@ -50,6 +49,7 @@ class CronScheduler:
 
         # Save schedule config
         import json
+
         schedule_file = self.config_dir / f"{schedule_id}.json"
         schedule_data = {
             "campaign_config": campaign_config_path,
@@ -64,22 +64,23 @@ class CronScheduler:
         cron_line = f"{cron_expr} {kitt_cmd} # kitt-schedule:{schedule_id}"
 
         try:
-            result = subprocess.run(
-                ["crontab", "-l"], capture_output=True, text=True
-            )
+            result = subprocess.run(["crontab", "-l"], capture_output=True, text=True)
             existing = result.stdout if result.returncode == 0 else ""
 
             # Remove old entry if exists
             lines = [
-                l for l in existing.splitlines()
-                if f"kitt-schedule:{schedule_id}" not in l
+                line
+                for line in existing.splitlines()
+                if f"kitt-schedule:{schedule_id}" not in line
             ]
             lines.append(cron_line)
 
             new_crontab = "\n".join(lines) + "\n"
             proc = subprocess.run(
-                ["crontab", "-"], input=new_crontab,
-                capture_output=True, text=True,
+                ["crontab", "-"],
+                input=new_crontab,
+                capture_output=True,
+                text=True,
             )
             if proc.returncode != 0:
                 logger.error(f"Failed to set crontab: {proc.stderr}")
@@ -105,18 +106,19 @@ class CronScheduler:
 
         # Remove from crontab
         try:
-            result = subprocess.run(
-                ["crontab", "-l"], capture_output=True, text=True
-            )
+            result = subprocess.run(["crontab", "-l"], capture_output=True, text=True)
             if result.returncode == 0:
                 lines = [
-                    l for l in result.stdout.splitlines()
-                    if f"kitt-schedule:{schedule_id}" not in l
+                    line
+                    for line in result.stdout.splitlines()
+                    if f"kitt-schedule:{schedule_id}" not in line
                 ]
                 new_crontab = "\n".join(lines) + "\n"
                 subprocess.run(
-                    ["crontab", "-"], input=new_crontab,
-                    capture_output=True, text=True,
+                    ["crontab", "-"],
+                    input=new_crontab,
+                    capture_output=True,
+                    text=True,
                 )
         except FileNotFoundError:
             pass
@@ -124,9 +126,10 @@ class CronScheduler:
         logger.info(f"Unscheduled {schedule_id}")
         return True
 
-    def list_scheduled(self) -> List[Dict[str, Any]]:
+    def list_scheduled(self) -> list[dict[str, Any]]:
         """List all scheduled campaigns."""
         import json
+
         schedules = []
         for f in sorted(self.config_dir.glob("*.json")):
             try:

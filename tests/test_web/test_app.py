@@ -1,18 +1,21 @@
 """Tests for the Flask web application."""
 
 import json
-from pathlib import Path
 
 import pytest
 
-from kitt.web.app import create_app, _scan_results
+from kitt.web.app import FLASK_AVAILABLE, _scan_results, create_app
+
+pytestmark = pytest.mark.skipif(not FLASK_AVAILABLE, reason="flask not installed")
 
 
 @pytest.fixture
 def app(tmp_path):
     """Create a test Flask app with sample results."""
     # Create sample results
-    results_dir = tmp_path / "kitt-results" / "test-model" / "ollama" / "2025-01-01_120000"
+    results_dir = (
+        tmp_path / "kitt-results" / "test-model" / "ollama" / "2025-01-01_120000"
+    )
     results_dir.mkdir(parents=True)
 
     metrics = {

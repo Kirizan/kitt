@@ -4,7 +4,7 @@ import hashlib
 import json
 import logging
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from .base import ResultStore
 
@@ -18,24 +18,22 @@ class JsonStore(ResultStore):
     behind the ResultStore interface.
     """
 
-    def __init__(self, base_dir: Optional[Path] = None) -> None:
+    def __init__(self, base_dir: Path | None = None) -> None:
         self.base_dir = base_dir or Path.cwd()
-        self._cache: Optional[List[Dict[str, Any]]] = None
+        self._cache: list[dict[str, Any]] | None = None
 
     def _invalidate_cache(self) -> None:
         self._cache = None
 
-    def _scan_results(self) -> List[Dict[str, Any]]:
+    def _scan_results(self) -> list[dict[str, Any]]:
         """Scan for result files in kitt-results/ and karr-* directories."""
         if self._cache is not None:
             return self._cache
 
-        results: List[Dict[str, Any]] = []
+        results: list[dict[str, Any]] = []
 
         # kitt-results/
-        for metrics_file in sorted(
-            self.base_dir.glob("kitt-results/**/metrics.json")
-        ):
+        for metrics_file in sorted(self.base_dir.glob("kitt-results/**/metrics.json")):
             data = self._load_json(metrics_file)
             if data:
                 data["_source_path"] = str(metrics_file)
@@ -45,9 +43,7 @@ class JsonStore(ResultStore):
         # karr-*/
         for karr_dir in sorted(self.base_dir.glob("karr-*")):
             if karr_dir.is_dir():
-                for metrics_file in sorted(
-                    karr_dir.glob("**/metrics.json")
-                ):
+                for metrics_file in sorted(karr_dir.glob("**/metrics.json")):
                     data = self._load_json(metrics_file)
                     if data:
                         data["_source_path"] = str(metrics_file)
@@ -57,7 +53,7 @@ class JsonStore(ResultStore):
         self._cache = results
         return results
 
-    def save_result(self, result_data: Dict[str, Any]) -> str:
+    def save_result(self, result_data: dict[str, Any]) -> str:
         """Save result data as a JSON file in kitt-results/."""
         import uuid
 
@@ -66,7 +62,9 @@ class JsonStore(ResultStore):
         timestamp = result_data.get("timestamp", "unknown")[:19].replace(":", "-")
         uid = uuid.uuid4().hex[:8]
 
-        output_dir = self.base_dir / "kitt-results" / model / engine / f"{timestamp}_{uid}"
+        output_dir = (
+            self.base_dir / "kitt-results" / model / engine / f"{timestamp}_{uid}"
+        )
         output_dir.mkdir(parents=True, exist_ok=True)
 
         output_path = output_dir / "metrics.json"
@@ -76,7 +74,7 @@ class JsonStore(ResultStore):
         self._invalidate_cache()
         return self._make_id(output_path)
 
-    def get_result(self, result_id: str) -> Optional[Dict[str, Any]]:
+    def get_result(self, result_id: str) -> dict[str, Any] | None:
         results = self._scan_results()
         for r in results:
             if r.get("_id") == result_id:
@@ -85,17 +83,16 @@ class JsonStore(ResultStore):
 
     def query(
         self,
-        filters: Optional[Dict[str, Any]] = None,
-        order_by: Optional[str] = None,
-        limit: Optional[int] = None,
+        filters: dict[str, Any] | None = None,
+        order_by: str | None = None,
+        limit: int | None = None,
         offset: int = 0,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         results = self._scan_results()
 
         if filters:
             results = [
-                r for r in results
-                if all(r.get(k) == v for k, v in filters.items())
+                r for r in results if all(r.get(k) == v for k, v in filters.items())
             ]
 
         if order_by:
@@ -112,12 +109,9 @@ class JsonStore(ResultStore):
             results = results[:limit]
 
         # Strip internal fields
-        return [
-            {k: v for k, v in r.items() if not k.startswith("_")}
-            for r in results
-        ]
+        return [{k: v for k, v in r.items() if not k.startswith("_")} for r in results]
 
-    def list_results(self) -> List[Dict[str, Any]]:
+    def list_results(self) -> list[dict[str, Any]]:
         results = self._scan_results()
         return [
             {
@@ -134,10 +128,10 @@ class JsonStore(ResultStore):
     def aggregate(
         self,
         group_by: str,
-        metrics: Optional[List[str]] = None,
-    ) -> List[Dict[str, Any]]:
+        metrics: list[str] | None = None,
+    ) -> list[dict[str, Any]]:
         results = self._scan_results()
-        groups: Dict[str, Dict[str, Any]] = {}
+        groups: dict[str, dict[str, Any]] = {}
 
         for r in results:
             key = str(r.get(group_by, "unknown"))
@@ -160,10 +154,7 @@ class JsonStore(ResultStore):
         # Compute averages
         output = []
         for group in groups.values():
-            row = {
-                k: v for k, v in group.items()
-                if not k.endswith("_values")
-            }
+            row = {k: v for k, v in group.items() if not k.endswith("_values")}
             if metrics:
                 for m in metrics:
                     values = group.get(f"{m}_values", [])
@@ -186,17 +177,16 @@ class JsonStore(ResultStore):
                     return True
         return False
 
-    def count(self, filters: Optional[Dict[str, Any]] = None) -> int:
+    def count(self, filters: dict[str, Any] | None = None) -> int:
         results = self._scan_results()
         if filters:
             results = [
-                r for r in results
-                if all(r.get(k) == v for k, v in filters.items())
+                r for r in results if all(r.get(k) == v for k, v in filters.items())
             ]
         return len(results)
 
     @staticmethod
-    def _load_json(path: Path) -> Optional[Dict[str, Any]]:
+    def _load_json(path: Path) -> dict[str, Any] | None:
         try:
             with open(path) as f:
                 return json.load(f)

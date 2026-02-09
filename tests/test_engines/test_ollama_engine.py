@@ -39,13 +39,19 @@ class TestOllamaEngineMetadata:
 class TestOllamaEngineAvailability:
     @patch("kitt.engines.image_resolver._detect_cc", return_value=None)
     @patch("kitt.engines.docker_manager.DockerManager.image_exists", return_value=True)
-    @patch("kitt.engines.docker_manager.DockerManager.is_docker_available", return_value=True)
+    @patch(
+        "kitt.engines.docker_manager.DockerManager.is_docker_available",
+        return_value=True,
+    )
     def test_is_available_true(self, mock_avail, mock_exists, mock_cc):
         assert OllamaEngine.is_available() is True
 
     @patch("kitt.engines.image_resolver._detect_cc", return_value=None)
     @patch("kitt.engines.docker_manager.DockerManager.image_exists", return_value=False)
-    @patch("kitt.engines.docker_manager.DockerManager.is_docker_available", return_value=True)
+    @patch(
+        "kitt.engines.docker_manager.DockerManager.is_docker_available",
+        return_value=True,
+    )
     def test_diagnose_image_not_pulled(self, mock_avail, mock_exists, mock_cc):
         diag = OllamaEngine.diagnose()
         assert diag.available is False
@@ -56,9 +62,16 @@ class TestOllamaEngineAvailability:
 class TestOllamaEngineInitialize:
     @patch("kitt.engines.image_resolver._detect_cc", return_value=None)
     @patch("kitt.engines.docker_manager.DockerManager.exec_in_container")
-    @patch("kitt.engines.docker_manager.DockerManager.wait_for_healthy", return_value=True)
-    @patch("kitt.engines.docker_manager.DockerManager.run_container", return_value="container123")
-    def test_initialize_starts_container_and_pulls_model(self, mock_run, mock_wait, mock_exec, mock_cc):
+    @patch(
+        "kitt.engines.docker_manager.DockerManager.wait_for_healthy", return_value=True
+    )
+    @patch(
+        "kitt.engines.docker_manager.DockerManager.run_container",
+        return_value="container123",
+    )
+    def test_initialize_starts_container_and_pulls_model(
+        self, mock_run, mock_wait, mock_exec, mock_cc
+    ):
         mock_exec.return_value = MagicMock(returncode=0)
 
         engine = OllamaEngine()
@@ -69,14 +82,17 @@ class TestOllamaEngineInitialize:
         assert config.image == "ollama/ollama:latest"
         mock_wait.assert_called_once()
         # Should pull the model inside the container
-        mock_exec.assert_called_once_with(
-            "container123", ["ollama", "pull", "llama3"]
-        )
+        mock_exec.assert_called_once_with("container123", ["ollama", "pull", "llama3"])
 
     @patch("kitt.engines.image_resolver._detect_cc", return_value=None)
     @patch("kitt.engines.docker_manager.DockerManager.exec_in_container")
-    @patch("kitt.engines.docker_manager.DockerManager.wait_for_healthy", return_value=True)
-    @patch("kitt.engines.docker_manager.DockerManager.run_container", return_value="container123")
+    @patch(
+        "kitt.engines.docker_manager.DockerManager.wait_for_healthy", return_value=True
+    )
+    @patch(
+        "kitt.engines.docker_manager.DockerManager.run_container",
+        return_value="container123",
+    )
     def test_initialize_with_custom_port(self, mock_run, mock_wait, mock_exec, mock_cc):
         mock_exec.return_value = MagicMock(returncode=0)
 

@@ -1,6 +1,6 @@
 """Tests for PostgreSQL result store (mocked)."""
 
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -35,6 +35,7 @@ def _make_result(model="llama-3.1", engine="vllm", passed=True):
 def mock_psycopg2():
     with patch.dict("sys.modules", {"psycopg2": MagicMock()}):
         import sys
+
         mock_pg = sys.modules["psycopg2"]
         mock_conn = MagicMock()
         mock_cursor = MagicMock()
@@ -51,12 +52,13 @@ class TestPostgresStoreImport:
     def test_import_error_without_psycopg2(self):
         with patch.dict("sys.modules", {"psycopg2": None}):
             # Clear any cached imports
-            import importlib
             import sys
+
             if "kitt.storage.postgres_store" in sys.modules:
                 del sys.modules["kitt.storage.postgres_store"]
             with pytest.raises(ImportError, match="psycopg2"):
                 from kitt.storage.postgres_store import PostgresStore
+
                 PostgresStore("postgresql://localhost/test")
 
 
@@ -64,12 +66,13 @@ class TestPostgresStoreSaveResult:
     def test_save_calls_insert(self, mock_psycopg2):
         mock_pg, mock_conn, mock_cursor = mock_psycopg2
 
-        import importlib
         import sys
+
         if "kitt.storage.postgres_store" in sys.modules:
             del sys.modules["kitt.storage.postgres_store"]
 
         from kitt.storage.postgres_store import PostgresStore
+
         store = PostgresStore.__new__(PostgresStore)
         store._conn = mock_conn
 
@@ -85,10 +88,12 @@ class TestPostgresStoreSaveResult:
     def test_save_inserts_benchmarks(self, mock_psycopg2):
         mock_pg, mock_conn, mock_cursor = mock_psycopg2
         import sys
+
         if "kitt.storage.postgres_store" in sys.modules:
             del sys.modules["kitt.storage.postgres_store"]
 
         from kitt.storage.postgres_store import PostgresStore
+
         store = PostgresStore.__new__(PostgresStore)
         store._conn = mock_conn
 
@@ -98,7 +103,8 @@ class TestPostgresStoreSaveResult:
 
         # Should have INSERT INTO runs, INSERT INTO benchmarks, INSERT INTO metrics
         insert_calls = [
-            c for c in mock_cursor.execute.call_args_list
+            c
+            for c in mock_cursor.execute.call_args_list
             if isinstance(c[0][0], str) and "INSERT" in c[0][0]
         ]
         assert len(insert_calls) >= 2  # runs + benchmarks + metrics
@@ -109,16 +115,16 @@ class TestPostgresStoreQuery:
         mock_pg, mock_conn, mock_cursor = mock_psycopg2
         import json
         import sys
+
         if "kitt.storage.postgres_store" in sys.modules:
             del sys.modules["kitt.storage.postgres_store"]
 
         from kitt.storage.postgres_store import PostgresStore
+
         store = PostgresStore.__new__(PostgresStore)
         store._conn = mock_conn
 
-        mock_cursor.fetchall.return_value = [
-            (json.dumps(_make_result()),)
-        ]
+        mock_cursor.fetchall.return_value = [(json.dumps(_make_result()),)]
 
         results = store.query()
         assert len(results) == 1
@@ -126,12 +132,13 @@ class TestPostgresStoreQuery:
 
     def test_query_with_filter(self, mock_psycopg2):
         mock_pg, mock_conn, mock_cursor = mock_psycopg2
-        import json
         import sys
+
         if "kitt.storage.postgres_store" in sys.modules:
             del sys.modules["kitt.storage.postgres_store"]
 
         from kitt.storage.postgres_store import PostgresStore
+
         store = PostgresStore.__new__(PostgresStore)
         store._conn = mock_conn
         mock_cursor.fetchall.return_value = []
@@ -144,10 +151,12 @@ class TestPostgresStoreQuery:
     def test_query_with_limit(self, mock_psycopg2):
         mock_pg, mock_conn, mock_cursor = mock_psycopg2
         import sys
+
         if "kitt.storage.postgres_store" in sys.modules:
             del sys.modules["kitt.storage.postgres_store"]
 
         from kitt.storage.postgres_store import PostgresStore
+
         store = PostgresStore.__new__(PostgresStore)
         store._conn = mock_conn
         mock_cursor.fetchall.return_value = []
@@ -161,10 +170,12 @@ class TestPostgresStoreListResults:
     def test_list_results(self, mock_psycopg2):
         mock_pg, mock_conn, mock_cursor = mock_psycopg2
         import sys
+
         if "kitt.storage.postgres_store" in sys.modules:
             del sys.modules["kitt.storage.postgres_store"]
 
         from kitt.storage.postgres_store import PostgresStore
+
         store = PostgresStore.__new__(PostgresStore)
         store._conn = mock_conn
 
@@ -181,16 +192,16 @@ class TestPostgresStoreAggregate:
     def test_aggregate_by_engine(self, mock_psycopg2):
         mock_pg, mock_conn, mock_cursor = mock_psycopg2
         import sys
+
         if "kitt.storage.postgres_store" in sys.modules:
             del sys.modules["kitt.storage.postgres_store"]
 
         from kitt.storage.postgres_store import PostgresStore
+
         store = PostgresStore.__new__(PostgresStore)
         store._conn = mock_conn
 
-        mock_cursor.fetchall.return_value = [
-            ("vllm", 5), ("tgi", 3)
-        ]
+        mock_cursor.fetchall.return_value = [("vllm", 5), ("tgi", 3)]
 
         groups = store.aggregate("engine")
         assert len(groups) == 2
@@ -198,10 +209,12 @@ class TestPostgresStoreAggregate:
     def test_aggregate_invalid_field(self, mock_psycopg2):
         mock_pg, mock_conn, mock_cursor = mock_psycopg2
         import sys
+
         if "kitt.storage.postgres_store" in sys.modules:
             del sys.modules["kitt.storage.postgres_store"]
 
         from kitt.storage.postgres_store import PostgresStore
+
         store = PostgresStore.__new__(PostgresStore)
         store._conn = mock_conn
 
@@ -213,10 +226,12 @@ class TestPostgresStoreDelete:
     def test_delete_result(self, mock_psycopg2):
         mock_pg, mock_conn, mock_cursor = mock_psycopg2
         import sys
+
         if "kitt.storage.postgres_store" in sys.modules:
             del sys.modules["kitt.storage.postgres_store"]
 
         from kitt.storage.postgres_store import PostgresStore
+
         store = PostgresStore.__new__(PostgresStore)
         store._conn = mock_conn
 
@@ -230,10 +245,12 @@ class TestPostgresStoreCount:
     def test_count(self, mock_psycopg2):
         mock_pg, mock_conn, mock_cursor = mock_psycopg2
         import sys
+
         if "kitt.storage.postgres_store" in sys.modules:
             del sys.modules["kitt.storage.postgres_store"]
 
         from kitt.storage.postgres_store import PostgresStore
+
         store = PostgresStore.__new__(PostgresStore)
         store._conn = mock_conn
 
@@ -244,10 +261,12 @@ class TestPostgresStoreCount:
     def test_count_with_filter(self, mock_psycopg2):
         mock_pg, mock_conn, mock_cursor = mock_psycopg2
         import sys
+
         if "kitt.storage.postgres_store" in sys.modules:
             del sys.modules["kitt.storage.postgres_store"]
 
         from kitt.storage.postgres_store import PostgresStore
+
         store = PostgresStore.__new__(PostgresStore)
         store._conn = mock_conn
 
@@ -263,10 +282,12 @@ class TestPostgresStoreClose:
     def test_close(self, mock_psycopg2):
         mock_pg, mock_conn, mock_cursor = mock_psycopg2
         import sys
+
         if "kitt.storage.postgres_store" in sys.modules:
             del sys.modules["kitt.storage.postgres_store"]
 
         from kitt.storage.postgres_store import PostgresStore
+
         store = PostgresStore.__new__(PostgresStore)
         store._conn = mock_conn
 

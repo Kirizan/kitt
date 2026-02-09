@@ -1,7 +1,6 @@
 """Tests for campaign Pydantic models."""
 
 import yaml
-import pytest
 
 from kitt.campaign.models import (
     CampaignConfig,
@@ -102,9 +101,7 @@ class TestCampaignRunSpec:
         assert run.key == "Llama-8B|llama_cpp|Q4_K_M"
 
     def test_defaults(self):
-        run = CampaignRunSpec(
-            model_name="test", engine_name="vllm", quant="bf16"
-        )
+        run = CampaignRunSpec(model_name="test", engine_name="vllm", quant="bf16")
         assert run.suite == "standard"
         assert run.engine_config == {}
 

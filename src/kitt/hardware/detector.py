@@ -5,7 +5,6 @@ import platform
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +14,7 @@ class GPUInfo:
     model: str
     vram_gb: int
     count: int = 1
-    compute_capability: Optional[Tuple[int, int]] = None
+    compute_capability: tuple[int, int] | None = None
 
 
 @dataclass
@@ -76,17 +75,15 @@ def detect_environment_type() -> str:
 
     # Native
     system = platform.system()
-    if system == "Linux":
-        return "native_linux"
-    elif system == "Darwin":
-        return "native_macos"
-    elif system == "Windows":
-        return "native_windows"
-
-    return "unknown"
+    native_env = {
+        "Linux": "native_linux",
+        "Darwin": "native_macos",
+        "Windows": "native_windows",
+    }
+    return native_env.get(system, "unknown")
 
 
-def detect_gpu(environment_type: Optional[str] = None) -> Optional[GPUInfo]:
+def detect_gpu(environment_type: str | None = None) -> GPUInfo | None:
     """Detect GPU with multiple fallback methods.
 
     Method 1: pynvml (most reliable)
@@ -157,7 +154,9 @@ def detect_gpu(environment_type: Optional[str] = None) -> Optional[GPUInfo]:
                     vram_gb = int(mem_str) // 1024
                 except ValueError:
                     vram_gb = 0
-                    logger.debug(f"nvidia-smi reported memory as '{mem_str}' (unified memory?)")
+                    logger.debug(
+                        f"nvidia-smi reported memory as '{mem_str}' (unified memory?)"
+                    )
                 cc = _detect_compute_capability_smi()
                 return GPUInfo(
                     model=name.strip(),
@@ -166,9 +165,13 @@ def detect_gpu(environment_type: Optional[str] = None) -> Optional[GPUInfo]:
                     compute_capability=cc,
                 )
         else:
-            smi_error = result.stderr.strip() if result.stderr else f"exit code {result.returncode}"
+            smi_error = (
+                result.stderr.strip()
+                if result.stderr
+                else f"exit code {result.returncode}"
+            )
     except Exception as e:
-        smi_error = e
+        smi_error = str(e)
         logger.debug(f"nvidia-smi detection failed: {e}")
 
     # Provide environment-aware diagnostics
@@ -185,7 +188,7 @@ def detect_gpu(environment_type: Optional[str] = None) -> Optional[GPUInfo]:
     return None
 
 
-def _detect_compute_capability_smi() -> Optional[Tuple[int, int]]:
+def _detect_compute_capability_smi() -> tuple[int, int] | None:
     """Detect GPU compute capability via nvidia-smi."""
     try:
         result = subprocess.run(
@@ -208,7 +211,7 @@ def _detect_compute_capability_smi() -> Optional[Tuple[int, int]]:
     return None
 
 
-def detect_gpu_compute_capability() -> Optional[Tuple[int, int]]:
+def detect_gpu_compute_capability() -> tuple[int, int] | None:
     """Detect GPU compute capability.
 
     Returns:
@@ -335,7 +338,17 @@ def detect_storage() -> StorageInfo:
 
 def _detect_storage_linux() -> StorageInfo:
     """Detect storage on Linux systems."""
-    known_brands = ["Samsung", "WD", "Western Digital", "Intel", "Crucial", "Kingston", "SK hynix", "Seagate", "Micron"]
+    known_brands = [
+        "Samsung",
+        "WD",
+        "Western Digital",
+        "Intel",
+        "Crucial",
+        "Kingston",
+        "SK hynix",
+        "Seagate",
+        "Micron",
+    ]
 
     # Check /sys/block for NVMe devices
     try:
@@ -404,7 +417,7 @@ def _extract_brand(model: str, known_brands: list) -> str:
     return "Unknown"
 
 
-def detect_cuda_version() -> Optional[str]:
+def detect_cuda_version() -> str | None:
     """Detect CUDA version."""
     try:
         result = subprocess.run(
@@ -425,7 +438,7 @@ def detect_cuda_version() -> Optional[str]:
     return None
 
 
-def detect_driver_version() -> Optional[str]:
+def detect_driver_version() -> str | None:
     """Detect NVIDIA driver version."""
     try:
         result = subprocess.run(
@@ -439,5 +452,3 @@ def detect_driver_version() -> Optional[str]:
     except Exception:
         pass
     return None
-
-

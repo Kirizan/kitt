@@ -3,7 +3,7 @@
 import logging
 import subprocess
 from pathlib import Path
-from typing import Optional
+from typing import Any
 
 import git
 from git import Repo
@@ -36,12 +36,14 @@ class KARRRepoManager:
 
         (repo_path / "hardware_fingerprint.txt").write_text(hardware_fingerprint)
 
-        repo.index.add([
-            ".gitattributes",
-            ".gitignore",
-            "README.md",
-            "hardware_fingerprint.txt",
-        ])
+        repo.index.add(
+            [
+                ".gitattributes",
+                ".gitignore",
+                "README.md",
+                "hardware_fingerprint.txt",
+            ]
+        )
         repo.index.commit("Initial commit: KARR results repository")
 
         return repo
@@ -57,9 +59,7 @@ class KARRRepoManager:
                 capture_output=True,
             )
         except (subprocess.CalledProcessError, FileNotFoundError):
-            logger.warning(
-                "Git LFS initialization failed - LFS may not be installed"
-            )
+            logger.warning("Git LFS initialization failed - LFS may not be installed")
 
     @staticmethod
     def _create_gitattributes(repo_path: Path) -> None:
@@ -153,8 +153,9 @@ See `hardware_fingerprint.txt` for the full system specification.
 
     @staticmethod
     def find_results_repo(
-        fingerprint: str, search_dir: Optional[Path] = None,
-    ) -> Optional[Path]:
+        fingerprint: str,
+        search_dir: Path | None = None,
+    ) -> Path | None:
         """Find existing KARR repo for given fingerprint.
 
         Searches current directory and parent directories. Handles
@@ -178,7 +179,11 @@ See `hardware_fingerprint.txt` for the full system specification.
                 fp_file = path / "hardware_fingerprint.txt"
                 if fp_file.exists():
                     stored_fp = fp_file.read_text().strip()
-                    if stored_fp == fingerprint or fingerprint.startswith(stored_fp) or stored_fp.startswith(fingerprint):
+                    if (
+                        stored_fp == fingerprint
+                        or fingerprint.startswith(stored_fp)
+                        or stored_fp.startswith(fingerprint)
+                    ):
                         return path
 
         # Search parent directories
@@ -224,12 +229,20 @@ See `hardware_fingerprint.txt` for the full system specification.
         try:
             subprocess.run(
                 ["git", "add", rel_dir],
-                cwd=repo_path, check=True, capture_output=True,
+                cwd=repo_path,
+                check=True,
+                capture_output=True,
             )
             subprocess.run(
-                ["git", "commit", "-m",
-                 f"Add results: {model_name}/{engine_name}/{timestamp}"],
-                cwd=repo_path, check=True, capture_output=True,
+                [
+                    "git",
+                    "commit",
+                    "-m",
+                    f"Add results: {model_name}/{engine_name}/{timestamp}",
+                ],
+                cwd=repo_path,
+                check=True,
+                capture_output=True,
             )
             logger.info(f"Results committed in {result_dir}")
         except subprocess.CalledProcessError as e:
@@ -244,7 +257,7 @@ See `hardware_fingerprint.txt` for the full system specification.
         Returns:
             List of dicts with model, engine, timestamp, and path.
         """
-        results = []
+        results: list[dict[str, Any]] = []
         if not repo_path.exists():
             return results
 
@@ -258,11 +271,13 @@ See `hardware_fingerprint.txt` for the full system specification.
                     if not ts_dir.is_dir():
                         continue
                     metrics_file = ts_dir / "metrics.json"
-                    results.append({
-                        "model": model_dir.name,
-                        "engine": engine_dir.name,
-                        "timestamp": ts_dir.name,
-                        "path": ts_dir,
-                        "has_metrics": metrics_file.exists(),
-                    })
+                    results.append(
+                        {
+                            "model": model_dir.name,
+                            "engine": engine_dir.name,
+                            "timestamp": ts_dir.name,
+                            "path": ts_dir,
+                            "has_metrics": metrics_file.exists(),
+                        }
+                    )
         return results

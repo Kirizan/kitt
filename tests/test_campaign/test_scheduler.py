@@ -1,5 +1,7 @@
 """Tests for campaign scheduler."""
 
+from unittest.mock import MagicMock, patch
+
 import pytest
 
 from kitt.campaign.models import (
@@ -68,9 +70,15 @@ class TestCampaignScheduler:
 
     def test_order_by_size(self, scheduler):
         runs = [
-            CampaignRunSpec(model_name="Big", engine_name="e", quant="q", estimated_size_gb=70.0),
-            CampaignRunSpec(model_name="Small", engine_name="e", quant="q", estimated_size_gb=4.0),
-            CampaignRunSpec(model_name="Med", engine_name="e", quant="q", estimated_size_gb=16.0),
+            CampaignRunSpec(
+                model_name="Big", engine_name="e", quant="q", estimated_size_gb=70.0
+            ),
+            CampaignRunSpec(
+                model_name="Small", engine_name="e", quant="q", estimated_size_gb=4.0
+            ),
+            CampaignRunSpec(
+                model_name="Med", engine_name="e", quant="q", estimated_size_gb=16.0
+            ),
         ]
         ordered = scheduler.order_by_size(runs)
         assert ordered[0].model_name == "Small"
@@ -89,18 +97,25 @@ class TestCampaignScheduler:
         assert len(remaining) == 1
         assert remaining[0].model_name == "M2"
 
-    def test_check_disk_space_passes(self, scheduler):
-        """Should pass when disk has plenty of space (checking home dir)."""
+    @patch("shutil.disk_usage")
+    def test_check_disk_space_passes(self, mock_disk, scheduler):
+        """Should pass when disk has plenty of space."""
+        mock_disk.return_value = MagicMock(free=500 * 1024**3)  # 500 GB free
         run = CampaignRunSpec(
-            model_name="test", engine_name="e", quant="q",
+            model_name="test",
+            engine_name="e",
+            quant="q",
             estimated_size_gb=1.0,
         )
-        # This tests against actual disk — should pass in any CI/dev environment
         assert scheduler.check_disk_space(run) is True
 
-    def test_should_skip_returns_false_normally(self, scheduler):
+    @patch("shutil.disk_usage")
+    def test_should_skip_returns_false_normally(self, mock_disk, scheduler):
+        mock_disk.return_value = MagicMock(free=500 * 1024**3)  # 500 GB free
         run = CampaignRunSpec(
-            model_name="test", engine_name="e", quant="q",
+            model_name="test",
+            engine_name="e",
+            quant="q",
             estimated_size_gb=0.1,
         )
         assert scheduler.should_skip(run) is False
@@ -108,7 +123,9 @@ class TestCampaignScheduler:
     def test_should_skip_for_size_no_limit(self, scheduler):
         """With default limit (0), nothing is skipped."""
         run = CampaignRunSpec(
-            model_name="test", engine_name="e", quant="q",
+            model_name="test",
+            engine_name="e",
+            quant="q",
             estimated_size_gb=999.0,
         )
         assert scheduler.should_skip_for_size(run) is False
@@ -119,7 +136,9 @@ class TestCampaignScheduler:
             ResourceLimitsConfig(max_model_size_gb=100.0),
         )
         run = CampaignRunSpec(
-            model_name="test", engine_name="e", quant="q",
+            model_name="test",
+            engine_name="e",
+            quant="q",
             estimated_size_gb=50.0,
         )
         assert sched.should_skip_for_size(run) is False
@@ -130,7 +149,9 @@ class TestCampaignScheduler:
             ResourceLimitsConfig(max_model_size_gb=100.0),
         )
         run = CampaignRunSpec(
-            model_name="test", engine_name="e", quant="fp16",
+            model_name="test",
+            engine_name="e",
+            quant="fp16",
             estimated_size_gb=154.0,
         )
         assert sched.should_skip_for_size(run) is True
@@ -142,7 +163,9 @@ class TestCampaignScheduler:
             ResourceLimitsConfig(max_model_size_gb=100.0),
         )
         run = CampaignRunSpec(
-            model_name="test", engine_name="e", quant="q",
+            model_name="test",
+            engine_name="e",
+            quant="q",
             estimated_size_gb=0.0,
         )
         assert sched.should_skip_for_size(run) is False
@@ -154,7 +177,9 @@ class TestCampaignScheduler:
             ResourceLimitsConfig(max_model_size_gb=100.0),
         )
         run = CampaignRunSpec(
-            model_name="big", engine_name="e", quant="fp16",
+            model_name="big",
+            engine_name="e",
+            quant="fp16",
             estimated_size_gb=150.0,
         )
         assert sched.should_skip(run) is True

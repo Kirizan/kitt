@@ -6,7 +6,6 @@ from unittest.mock import MagicMock
 import pytest
 
 from kitt.benchmarks.quality.standard.vlm_benchmark import (
-    BUILT_IN_VLM_TASKS,
     VLMBenchmark,
 )
 

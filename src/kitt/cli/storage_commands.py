@@ -82,7 +82,8 @@ def import_results(source, db_path):
 @storage.command("export")
 @click.argument("result_id")
 @click.option(
-    "--output", "-o",
+    "--output",
+    "-o",
     type=click.Path(),
     required=True,
     help="Output JSON path",
@@ -162,7 +163,7 @@ def stats(db_path):
     passed = store.count({"passed": True})
     failed = store.count({"passed": False})
 
-    console.print(f"[bold]Storage Statistics[/bold]")
+    console.print("[bold]Storage Statistics[/bold]")
     console.print(f"  Database: {store.db_path}")
     console.print(f"  Total results: {total}")
     console.print(f"  Passed: [green]{passed}[/green]")
@@ -170,7 +171,7 @@ def stats(db_path):
 
     by_engine = store.aggregate("engine")
     if by_engine:
-        console.print(f"\n  [bold]By Engine:[/bold]")
+        console.print("\n  [bold]By Engine:[/bold]")
         for row in by_engine:
             console.print(f"    {row['engine']}: {row['count']} runs")
 

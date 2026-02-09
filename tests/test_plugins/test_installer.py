@@ -2,9 +2,11 @@
 
 from unittest.mock import MagicMock, patch
 
-import pytest
-
-from kitt.plugins.installer import install_plugin, list_installed_plugins, uninstall_plugin
+from kitt.plugins.installer import (
+    install_plugin,
+    list_installed_plugins,
+    uninstall_plugin,
+)
 
 
 class TestInstallPlugin:
@@ -39,6 +41,7 @@ class TestInstallPlugin:
 
     def test_install_timeout(self):
         import subprocess
+
         with patch("subprocess.run") as mock_run:
             mock_run.side_effect = subprocess.TimeoutExpired(cmd="pip", timeout=300)
             result = install_plugin("slow-package")
@@ -92,7 +95,9 @@ class TestListInstalledPlugins:
             "Version": "1.0.0",
         }
 
-        with patch("importlib.metadata.distributions", return_value=[mock_dist, mock_other]):
+        with patch(
+            "importlib.metadata.distributions", return_value=[mock_dist, mock_other]
+        ):
             result = list_installed_plugins()
             assert len(result) == 1
             assert result[0]["name"] == "kitt-plugin-example"

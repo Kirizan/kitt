@@ -6,7 +6,7 @@ import time
 import urllib.error
 import urllib.request
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from .base import GenerationMetrics, GenerationResult, InferenceEngine
 from .registry import register_engine
@@ -23,7 +23,7 @@ class OllamaEngine(InferenceEngine):
     """
 
     def __init__(self) -> None:
-        self._container_id: Optional[str] = None
+        self._container_id: str | None = None  # type: ignore[assignment]
         self._base_url: str = ""
         self._model_name: str = ""
 
@@ -32,7 +32,7 @@ class OllamaEngine(InferenceEngine):
         return "ollama"
 
     @classmethod
-    def supported_formats(cls) -> List[str]:
+    def supported_formats(cls) -> list[str]:
         return ["gguf"]
 
     @classmethod
@@ -51,7 +51,7 @@ class OllamaEngine(InferenceEngine):
     def health_endpoint(cls) -> str:
         return "/api/tags"
 
-    def initialize(self, model_path: str, config: Dict[str, Any]) -> None:
+    def initialize(self, model_path: str, config: dict[str, Any]) -> None:
         """Start Ollama container, wait for healthy, and pull the model."""
         from .docker_manager import ContainerConfig, DockerManager
 

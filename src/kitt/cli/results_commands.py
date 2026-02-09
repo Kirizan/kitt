@@ -2,10 +2,10 @@
 
 import json
 import subprocess
+from pathlib import Path
 
 import click
 from rich.console import Console
-from pathlib import Path
 
 console = Console()
 
@@ -24,10 +24,7 @@ def init_results(path):
 
     fingerprint = HardwareFingerprint.generate()
 
-    if path:
-        repo_path = Path(path)
-    else:
-        repo_path = Path.cwd() / f"karr-{fingerprint[:40]}"
+    repo_path = Path(path) if path else Path.cwd() / f"karr-{fingerprint[:40]}"
 
     if repo_path.exists():
         console.print(f"[yellow]Directory already exists: {repo_path}[/yellow]")
@@ -35,7 +32,7 @@ def init_results(path):
 
     console.print(f"[cyan]Creating KARR repository at {repo_path}...[/cyan]")
     KARRRepoManager.create_results_repo(repo_path, fingerprint)
-    console.print(f"[green]KARR repository created![/green]")
+    console.print("[green]KARR repository created![/green]")
     console.print(f"  Path: {repo_path}")
     console.print(f"  Fingerprint: {fingerprint}")
 
@@ -54,8 +51,10 @@ def submit_results(repo):
         return
 
     console.print("[cyan]Submitting results...[/cyan]")
-    console.print("[yellow]PR submission not yet connected to remote. "
-                  "Commit your changes and push manually.[/yellow]")
+    console.print(
+        "[yellow]PR submission not yet connected to remote. "
+        "Commit your changes and push manually.[/yellow]"
+    )
 
 
 @results.command("list")
@@ -89,6 +88,7 @@ def list_results(model, engine, karr):
         if not karr_path.is_dir():
             continue
         from kitt.git_ops.repo_manager import KARRRepoManager
+
         for entry in KARRRepoManager.list_results(karr_path):
             if model and model not in entry["model"]:
                 continue
@@ -106,8 +106,10 @@ def list_results(model, engine, karr):
                     status = "[yellow]?[/yellow]"
 
             table.add_row(
-                entry["model"], entry["engine"],
-                entry["timestamp"], status,
+                entry["model"],
+                entry["engine"],
+                entry["timestamp"],
+                status,
                 f"karr:{karr_path.name}",
             )
             found += 1
@@ -221,9 +223,7 @@ def import_results(source, karr):
             else:
                 files[rel_path] = file_path.read_text()
 
-    KARRRepoManager.store_results(
-        karr_path, model_name, engine_name, timestamp, files
-    )
+    KARRRepoManager.store_results(karr_path, model_name, engine_name, timestamp, files)
     console.print(f"[green]Results imported into {karr_path}[/green]")
 
 
@@ -244,8 +244,14 @@ def cleanup_lfs(repo, days, dry_run):
     try:
         result = subprocess.run(
             [
-                "git", "lfs", "prune", "--dry-run", "--verbose",
-                "--verify-remote", "--recent", f"--days={days}",
+                "git",
+                "lfs",
+                "prune",
+                "--dry-run",
+                "--verbose",
+                "--verify-remote",
+                "--recent",
+                f"--days={days}",
             ],
             cwd=repo_path,
             capture_output=True,
@@ -253,12 +259,17 @@ def cleanup_lfs(repo, days, dry_run):
         )
         console.print(result.stdout)
 
-        if not dry_run and result.returncode == 0:
+        if not dry_run and result.returncode == 0:  # noqa: SIM102
             if click.confirm("Proceed with cleanup?"):
                 subprocess.run(
                     [
-                        "git", "lfs", "prune", "--verbose",
-                        "--verify-remote", "--recent", f"--days={days}",
+                        "git",
+                        "lfs",
+                        "prune",
+                        "--verbose",
+                        "--verify-remote",
+                        "--recent",
+                        f"--days={days}",
                     ],
                     cwd=repo_path,
                     check=True,
@@ -268,7 +279,9 @@ def cleanup_lfs(repo, days, dry_run):
     except subprocess.CalledProcessError as e:
         console.print(f"[red]Error during cleanup: {e}[/red]")
     except FileNotFoundError:
-        console.print("[red]Git LFS not found. Install from: https://git-lfs.github.com[/red]")
+        console.print(
+            "[red]Git LFS not found. Install from: https://git-lfs.github.com[/red]"
+        )
 
 
 def _parse_metrics(metrics_path, model_filter, engine_filter):

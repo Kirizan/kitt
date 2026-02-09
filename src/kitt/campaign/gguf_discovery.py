@@ -5,7 +5,6 @@ import logging
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -13,11 +12,11 @@ logger = logging.getLogger(__name__)
 # Covers: Q2_K through Q8_0, IQ1_S through IQ4_XS, FP16, BF16, F32,
 # and repacking variants like Q4_0_4_4, Q4_0_4_8, Q4_0_8_8
 _QUANT_PATTERN = re.compile(
-    r'(IQ[1-4]_[A-Za-z]+|[Qq][2-8]_[Kk0](?:_[SMLsml])?(?:_[48]_[48])?|[Ff][Pp]16|[Bb][Ff]16|[Ff]32)'
+    r"(IQ[1-4]_[A-Za-z]+|[Qq][2-8]_[Kk0](?:_[SMLsml])?(?:_[48]_[48])?|[Ff][Pp]16|[Bb][Ff]16|[Ff]32)"
 )
 
 # Shard file pattern: -00001-of-00002.gguf
-_SHARD_PATTERN = re.compile(r'-(\d{5})-of-(\d{5})\.gguf$')
+_SHARD_PATTERN = re.compile(r"-(\d{5})-of-(\d{5})\.gguf$")
 
 
 @dataclass
@@ -25,7 +24,7 @@ class GGUFQuantInfo:
     """Information about a single quantization variant."""
 
     quant_name: str
-    files: List[str] = field(default_factory=list)
+    files: list[str] = field(default_factory=list)
     include_pattern: str = ""
     total_size_bytes: int = 0
 
@@ -60,7 +59,7 @@ def extract_quant_name(filename: str) -> str:
     return match.group(0) if match else name
 
 
-def discover_gguf_quants(repo_id: str) -> List[GGUFQuantInfo]:
+def discover_gguf_quants(repo_id: str) -> list[GGUFQuantInfo]:
     """List available GGUF quantization variants in a HuggingFace repo.
 
     Groups sharded files into single entries and builds appropriate
@@ -74,6 +73,7 @@ def discover_gguf_quants(repo_id: str) -> List[GGUFQuantInfo]:
     """
     try:
         from huggingface_hub import list_repo_files
+
         all_files = list(list_repo_files(repo_id))
         gguf_files = sorted(f for f in all_files if f.endswith(".gguf"))
     except Exception as e:
@@ -84,7 +84,7 @@ def discover_gguf_quants(repo_id: str) -> List[GGUFQuantInfo]:
         return []
 
     # Group files by quant name
-    quant_groups: dict[str, List[str]] = {}
+    quant_groups: dict[str, list[str]] = {}
 
     for filepath in gguf_files:
         # Always extract quant from the filename, not the full path
@@ -93,7 +93,7 @@ def discover_gguf_quants(repo_id: str) -> List[GGUFQuantInfo]:
 
         if shard_match:
             # Shard file — strip shard suffix to get base name
-            base = _SHARD_PATTERN.sub('', filename)
+            base = _SHARD_PATTERN.sub("", filename)
             quant_name = extract_quant_name(base)
         else:
             quant_name = extract_quant_name(filename)
@@ -115,11 +115,13 @@ def discover_gguf_quants(repo_id: str) -> List[GGUFQuantInfo]:
                 prefix = _common_prefix(files)
                 include_pattern = f"{prefix}*.gguf"
 
-        quants.append(GGUFQuantInfo(
-            quant_name=quant_name,
-            files=files,
-            include_pattern=include_pattern,
-        ))
+        quants.append(
+            GGUFQuantInfo(
+                quant_name=quant_name,
+                files=files,
+                include_pattern=include_pattern,
+            )
+        )
 
     logger.info(
         f"Found {len(quants)} GGUF quant variants "
@@ -128,7 +130,7 @@ def discover_gguf_quants(repo_id: str) -> List[GGUFQuantInfo]:
     return quants
 
 
-def discover_ollama_tags(base_tag: str) -> List[str]:
+def discover_ollama_tags(base_tag: str) -> list[str]:
     """Discover available Ollama tags for a model.
 
     Scrapes the Ollama library page and filters to quant variants
@@ -147,15 +149,14 @@ def discover_ollama_tags(base_tag: str) -> List[str]:
 
     try:
         import urllib.request
+
         url = f"https://ollama.com/library/{model_name}/tags"
         req = urllib.request.Request(url, headers={"User-Agent": "kitt/1.1"})
         with urllib.request.urlopen(req, timeout=15) as resp:
             html = resp.read().decode("utf-8", errors="replace")
 
         # Parse tags from href patterns
-        raw_tags = re.findall(
-            rf'/library/{re.escape(model_name)}:([^"&\s]+)', html
-        )
+        raw_tags = re.findall(rf'/library/{re.escape(model_name)}:([^"&\s]+)', html)
 
         # Deduplicate preserving order
         seen = set()
@@ -168,9 +169,12 @@ def discover_ollama_tags(base_tag: str) -> List[str]:
         if unique_tags:
             filtered = []
             for tag in unique_tags:
-                if target_size and target_size != "latest":
-                    if not tag.startswith(target_size):
-                        continue
+                if (
+                    target_size
+                    and target_size != "latest"
+                    and not tag.startswith(target_size)
+                ):
+                    continue
                 if "-text-" in tag or tag.endswith("-text"):
                     continue
                 filtered.append(f"{model_name}:{tag}")
@@ -188,9 +192,9 @@ def discover_ollama_tags(base_tag: str) -> List[str]:
 
 def find_model_path(
     repo_id: str,
-    gguf_relative_path: Optional[str] = None,
-    storage_root: Optional[Path] = None,
-) -> Optional[str]:
+    gguf_relative_path: str | None = None,
+    storage_root: Path | None = None,
+) -> str | None:
     """Find the local path for a downloaded model.
 
     Args:
@@ -230,9 +234,7 @@ def find_model_path(
         if first_shard:
             return str(first_shard)
 
-        logger.warning(
-            f"GGUF file not found: {gguf_relative_path} in {base}"
-        )
+        logger.warning(f"GGUF file not found: {gguf_relative_path} in {base}")
         return None
 
     # For safetensors: return the directory
@@ -240,10 +242,10 @@ def find_model_path(
 
 
 def filter_quants(
-    quants: List[GGUFQuantInfo],
-    skip_patterns: Optional[List[str]] = None,
-    include_only: Optional[List[str]] = None,
-) -> List[GGUFQuantInfo]:
+    quants: list[GGUFQuantInfo],
+    skip_patterns: list[str] | None = None,
+    include_only: list[str] | None = None,
+) -> list[GGUFQuantInfo]:
     """Filter quantization variants by name patterns.
 
     Args:
@@ -258,20 +260,22 @@ def filter_quants(
 
     if skip_patterns:
         result = [
-            q for q in result
+            q
+            for q in result
             if not any(fnmatch.fnmatch(q.quant_name, pat) for pat in skip_patterns)
         ]
 
     if include_only:
         result = [
-            q for q in result
+            q
+            for q in result
             if any(fnmatch.fnmatch(q.quant_name, pat) for pat in include_only)
         ]
 
     return result
 
 
-def _find_first_shard(gguf_files: List[Path], quant: str) -> Optional[Path]:
+def _find_first_shard(gguf_files: list[Path], quant: str) -> Path | None:
     """Find the first shard file for a given quant among GGUF files.
 
     Looks for files matching the quant name that contain '-00001-of-'
@@ -292,7 +296,7 @@ def _find_first_shard(gguf_files: List[Path], quant: str) -> Optional[Path]:
     return None
 
 
-def _common_prefix(strings: List[str]) -> str:
+def _common_prefix(strings: list[str]) -> str:
     """Find the longest common prefix of a list of strings."""
     if not strings:
         return ""

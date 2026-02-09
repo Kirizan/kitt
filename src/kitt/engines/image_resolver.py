@@ -22,7 +22,6 @@ When adding new overrides:
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -42,8 +41,8 @@ class BuildRecipe:
     """
 
     dockerfile: str
-    target: Optional[str] = None
-    build_args: Dict[str, str] = field(default_factory=dict)
+    target: str | None = None
+    build_args: dict[str, str] = field(default_factory=dict)
     experimental: bool = False
 
     @property
@@ -54,7 +53,7 @@ class BuildRecipe:
 
 # Build recipes keyed by KITT-managed image name.
 # These images are built locally instead of pulled from a registry.
-_BUILD_RECIPES: Dict[str, BuildRecipe] = {
+_BUILD_RECIPES: dict[str, BuildRecipe] = {
     "kitt/llama-cpp:spark": BuildRecipe(
         dockerfile="docker/llama_cpp/Dockerfile.spark",
         target="server",
@@ -72,7 +71,7 @@ _BUILD_RECIPES: Dict[str, BuildRecipe] = {
 }
 
 
-def get_build_recipe(image: str) -> Optional[BuildRecipe]:
+def get_build_recipe(image: str) -> BuildRecipe | None:
     """Return the BuildRecipe for a KITT-managed image, or None."""
     return _BUILD_RECIPES.get(image)
 
@@ -88,7 +87,7 @@ def is_kitt_managed_image(image: str) -> bool:
 #
 # IMPORTANT: Keep lists sorted by compute capability DESCENDING so that
 # more specific (higher cc) matches are checked first.
-_IMAGE_OVERRIDES: Dict[str, List[Tuple[Tuple[int, int], str]]] = {
+_IMAGE_OVERRIDES: dict[str, list[tuple[tuple[int, int], str]]] = {
     # vLLM: Standard images use Triton which requires ptxas for the target arch.
     # Blackwell (sm_100+, sm_120, sm_121a) is not supported in standard vLLM.
     # NGC containers include proper Blackwell support.
@@ -113,11 +112,11 @@ _IMAGE_OVERRIDES: Dict[str, List[Tuple[Tuple[int, int], str]]] = {
 }
 
 # Cache for detected compute capability (None = not yet detected)
-_cc_cache: Optional[Tuple[int, int]] = None
+_cc_cache: tuple[int, int] | None = None
 _cc_detected: bool = False
 
 
-def _detect_cc() -> Optional[Tuple[int, int]]:
+def _detect_cc() -> tuple[int, int] | None:
     """Detect and cache GPU compute capability."""
     global _cc_cache, _cc_detected
     if _cc_detected:
@@ -133,9 +132,7 @@ def _detect_cc() -> Optional[Tuple[int, int]]:
         _cc_cache = None
 
     if _cc_cache:
-        logger.info(
-            f"GPU compute capability: {_cc_cache[0]}.{_cc_cache[1]}"
-        )
+        logger.info(f"GPU compute capability: {_cc_cache[0]}.{_cc_cache[1]}")
     return _cc_cache
 
 
@@ -157,8 +154,7 @@ def resolve_image(engine_name: str, default_image: str) -> str:
     for min_cc, image in overrides:
         if cc >= min_cc:
             logger.info(
-                f"GPU cc {cc[0]}.{cc[1]} matched override for "
-                f"{engine_name}: {image}"
+                f"GPU cc {cc[0]}.{cc[1]} matched override for {engine_name}: {image}"
             )
             return image
 
@@ -172,7 +168,7 @@ def clear_cache() -> None:
     _cc_detected = False
 
 
-def get_supported_engines() -> List[str]:
+def get_supported_engines() -> list[str]:
     """Return list of engines with hardware-aware image selection.
 
     All engines in _IMAGE_OVERRIDES are supported, even if they have

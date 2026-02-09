@@ -2,7 +2,7 @@
 
 import logging
 import statistics
-from typing import Any, Dict, List
+from typing import Any
 
 from kitt.benchmarks.base import BenchmarkResult, LLMBenchmark
 from kitt.benchmarks.registry import register_benchmark
@@ -31,15 +31,15 @@ class LatencyBenchmark(LLMBenchmark):
     category = "performance"
     description = "Measure inference latency (TTFT, per-token, end-to-end)"
 
-    def _execute(self, engine, config: Dict[str, Any]) -> BenchmarkResult:
+    def _execute(self, engine, config: dict[str, Any]) -> BenchmarkResult:
         """Run latency benchmark."""
         prompts = self._load_prompts(config)
         max_tokens = config.get("max_tokens", 128)
         temperature = config.get("temperature", 0.0)
         iterations = config.get("iterations", len(prompts))
 
-        outputs: List[Dict[str, Any]] = []
-        errors: List[str] = []
+        outputs: list[dict[str, Any]] = []
+        errors: list[str] = []
 
         for i in range(iterations):
             prompt = prompts[i % len(prompts)]
@@ -52,20 +52,23 @@ class LatencyBenchmark(LLMBenchmark):
 
                 per_token_ms = (
                     result.metrics.total_latency_ms / result.completion_tokens
-                    if result.completion_tokens > 0 else 0
+                    if result.completion_tokens > 0
+                    else 0
                 )
 
-                outputs.append({
-                    "iteration": i,
-                    "prompt_length": len(prompt),
-                    "completion_tokens": result.completion_tokens,
-                    "metrics": {
-                        "ttft_ms": result.metrics.ttft_ms,
-                        "total_latency_ms": result.metrics.total_latency_ms,
-                        "per_token_ms": round(per_token_ms, 2),
-                        "tps": result.metrics.tps,
-                    },
-                })
+                outputs.append(
+                    {
+                        "iteration": i,
+                        "prompt_length": len(prompt),
+                        "completion_tokens": result.completion_tokens,
+                        "metrics": {
+                            "ttft_ms": result.metrics.ttft_ms,
+                            "total_latency_ms": result.metrics.total_latency_ms,
+                            "per_token_ms": round(per_token_ms, 2),
+                            "tps": result.metrics.tps,
+                        },
+                    }
+                )
 
             except Exception as e:
                 error_msg = f"Error on iteration {i}: {str(e)}"
@@ -83,10 +86,11 @@ class LatencyBenchmark(LLMBenchmark):
             errors=errors,
         )
 
-    def _load_prompts(self, config: Dict[str, Any]) -> List[str]:
+    def _load_prompts(self, config: dict[str, Any]) -> list[str]:
         """Load prompts from config, dataset_path, or defaults."""
         if "dataset_path" in config:
             from pathlib import Path
+
             dataset_path = Path(config["dataset_path"])
             if dataset_path.exists():
                 lines = [
@@ -100,7 +104,7 @@ class LatencyBenchmark(LLMBenchmark):
             logger.warning(f"Dataset file not found: {dataset_path}, using defaults")
         return config.get("prompts", DEFAULT_PROMPTS)
 
-    def _aggregate_metrics(self, outputs: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _aggregate_metrics(self, outputs: list[dict[str, Any]]) -> dict[str, Any]:
         """Aggregate latency metrics with percentiles."""
         if not outputs:
             return {}
@@ -109,7 +113,7 @@ class LatencyBenchmark(LLMBenchmark):
         latencies = [o["metrics"]["total_latency_ms"] for o in outputs]
         per_token = [o["metrics"]["per_token_ms"] for o in outputs]
 
-        def percentile(data: List[float], p: float) -> float:
+        def percentile(data: list[float], p: float) -> float:
             sorted_data = sorted(data)
             idx = int(len(sorted_data) * p / 100)
             idx = min(idx, len(sorted_data) - 1)
@@ -124,7 +128,9 @@ class LatencyBenchmark(LLMBenchmark):
                 "p50": round(percentile(ttft_values, 50), 2),
                 "p95": round(percentile(ttft_values, 95), 2),
                 "p99": round(percentile(ttft_values, 99), 2),
-                "std_dev": round(statistics.stdev(ttft_values), 2) if len(ttft_values) > 1 else 0,
+                "std_dev": round(statistics.stdev(ttft_values), 2)
+                if len(ttft_values) > 1
+                else 0,
             },
             "total_latency_ms": {
                 "avg": round(statistics.mean(latencies), 2),
@@ -133,7 +139,9 @@ class LatencyBenchmark(LLMBenchmark):
                 "p50": round(percentile(latencies, 50), 2),
                 "p95": round(percentile(latencies, 95), 2),
                 "p99": round(percentile(latencies, 99), 2),
-                "std_dev": round(statistics.stdev(latencies), 2) if len(latencies) > 1 else 0,
+                "std_dev": round(statistics.stdev(latencies), 2)
+                if len(latencies) > 1
+                else 0,
             },
             "per_token_ms": {
                 "avg": round(statistics.mean(per_token), 2),

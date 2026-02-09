@@ -2,8 +2,6 @@
 
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from kitt.remote.executor import RemoteCampaignExecutor
 from kitt.remote.host_config import HostConfig
 
@@ -69,9 +67,7 @@ class TestUploadConfig:
 class TestStartCampaign:
     @patch("kitt.remote.ssh_connection.subprocess.run")
     def test_success(self, mock_run):
-        mock_run.return_value = MagicMock(
-            returncode=0, stdout="12345\n", stderr=""
-        )
+        mock_run.return_value = MagicMock(returncode=0, stdout="12345\n", stderr="")
         config = _make_host_config()
         executor = RemoteCampaignExecutor(config)
         result = executor.start_campaign("~/kitt-campaigns/campaign.yaml")
@@ -82,9 +78,7 @@ class TestStartCampaign:
 
     @patch("kitt.remote.ssh_connection.subprocess.run")
     def test_dry_run_passes_flag(self, mock_run):
-        mock_run.return_value = MagicMock(
-            returncode=0, stdout="12345\n", stderr=""
-        )
+        mock_run.return_value = MagicMock(returncode=0, stdout="12345\n", stderr="")
         config = _make_host_config()
         executor = RemoteCampaignExecutor(config)
         executor.start_campaign("~/kitt-campaigns/campaign.yaml", dry_run=True)
@@ -107,9 +101,7 @@ class TestStartCampaign:
 class TestCheckStatus:
     @patch("kitt.remote.ssh_connection.subprocess.run")
     def test_running_when_process_found(self, mock_run):
-        mock_run.return_value = MagicMock(
-            returncode=0, stdout="12345\n", stderr=""
-        )
+        mock_run.return_value = MagicMock(returncode=0, stdout="12345\n", stderr="")
         config = _make_host_config()
         executor = RemoteCampaignExecutor(config)
         status = executor.check_status()

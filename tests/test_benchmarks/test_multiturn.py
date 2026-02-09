@@ -1,12 +1,12 @@
 """Tests for multi-turn benchmark."""
 
+from datetime import datetime
 from unittest.mock import MagicMock
 
 import pytest
 
 from kitt.benchmarks.quality.standard.multiturn import MultiTurnBenchmark
-from kitt.engines.base import GenerationResult, GenerationMetrics
-from datetime import datetime
+from kitt.engines.base import GenerationMetrics, GenerationResult
 
 
 @pytest.fixture
@@ -18,8 +18,11 @@ def make_gen_result(text: str, tokens: int = 10) -> GenerationResult:
     return GenerationResult(
         output=text,
         metrics=GenerationMetrics(
-            ttft_ms=0, tps=10, total_latency_ms=100,
-            gpu_memory_peak_gb=0, gpu_memory_avg_gb=0,
+            ttft_ms=0,
+            tps=10,
+            total_latency_ms=100,
+            gpu_memory_peak_gb=0,
+            gpu_memory_avg_gb=0,
             timestamp=datetime.now(),
         ),
         prompt_tokens=5,
@@ -40,9 +43,17 @@ class TestMultiTurnBenchmark:
             make_gen_result("15 and 23"),
         ]
 
-        result = benchmark._execute(engine, {"conversations": [
-            {"name": "test", "turns": ["What is 15*23?", "Double it", "Original numbers?"]}
-        ]})
+        result = benchmark._execute(
+            engine,
+            {
+                "conversations": [
+                    {
+                        "name": "test",
+                        "turns": ["What is 15*23?", "Double it", "Original numbers?"],
+                    }
+                ]
+            },
+        )
 
         assert result.passed
         assert len(result.outputs) == 1
@@ -56,9 +67,14 @@ class TestMultiTurnBenchmark:
             RuntimeError("OOM"),
         ]
 
-        result = benchmark._execute(engine, {"conversations": [
-            {"name": "test", "turns": ["Turn 1", "Turn 2", "Turn 3"]}
-        ]})
+        result = benchmark._execute(
+            engine,
+            {
+                "conversations": [
+                    {"name": "test", "turns": ["Turn 1", "Turn 2", "Turn 3"]}
+                ]
+            },
+        )
 
         assert not result.passed
         assert result.outputs[0]["turns_completed"] == 1

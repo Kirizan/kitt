@@ -1,7 +1,5 @@
 """Tests for KARR repo manager."""
 
-import pytest
-
 from kitt.git_ops.repo_manager import KARRRepoManager
 
 

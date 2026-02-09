@@ -90,5 +90,6 @@ class TestHealthRecovery:
 
     def test_check_health_failure(self, recovery):
         import urllib.error
+
         with patch("urllib.request.urlopen", side_effect=urllib.error.URLError("down")):
             assert recovery.check_health() is False

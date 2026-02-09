@@ -3,9 +3,8 @@
 import logging
 import time
 from pathlib import Path
-from typing import Optional
 
-from .host_config import HostConfig, HostManager
+from .host_config import HostConfig
 from .ssh_connection import SSHConnection
 
 logger = logging.getLogger(__name__)
@@ -23,7 +22,7 @@ class RemoteCampaignExecutor:
             port=host_config.port,
         )
 
-    def upload_config(self, local_config_path: str) -> Optional[str]:
+    def upload_config(self, local_config_path: str) -> str | None:
         """Upload campaign config to remote host.
 
         Returns:
@@ -58,10 +57,7 @@ class RemoteCampaignExecutor:
             cmd += " --dry-run"
 
         # Run detached with nohup
-        full_cmd = (
-            f"nohup {cmd} > ~/kitt-campaign.log 2>&1 & "
-            f"echo $!"
-        )
+        full_cmd = f"nohup {cmd} > ~/kitt-campaign.log 2>&1 & echo $!"
 
         rc, out, err = self.conn.run_command(full_cmd)
         if rc == 0 and out.strip():
@@ -101,7 +97,9 @@ class RemoteCampaignExecutor:
         Returns:
             Log output string.
         """
-        rc, out, _ = self.conn.run_command(f"tail -n {tail} ~/kitt-campaign.log 2>/dev/null")
+        rc, out, _ = self.conn.run_command(
+            f"tail -n {tail} ~/kitt-campaign.log 2>/dev/null"
+        )
         return out if rc == 0 else "No logs available."
 
     def run_and_wait(

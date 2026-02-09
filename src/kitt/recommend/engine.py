@@ -1,7 +1,7 @@
 """Model recommendation engine."""
 
 import logging
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from .constraints import HardwareConstraints
 
@@ -20,10 +20,10 @@ class ModelRecommender:
 
     def recommend(
         self,
-        constraints: Optional[HardwareConstraints] = None,
+        constraints: HardwareConstraints | None = None,
         limit: int = 10,
         sort_by: str = "score",
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Get ranked model recommendations.
 
         Args:
@@ -64,7 +64,7 @@ class ModelRecommender:
 
         return candidates[:limit]
 
-    def _score_result(self, result: Dict[str, Any]) -> Dict[str, Any]:
+    def _score_result(self, result: dict[str, Any]) -> dict[str, Any]:
         """Compute a composite score for a result.
 
         Score = normalized_accuracy * 0.6 + normalized_throughput * 0.4
@@ -91,8 +91,8 @@ class ModelRecommender:
 
     def pareto_frontier(
         self,
-        constraints: Optional[HardwareConstraints] = None,
-    ) -> List[Dict[str, Any]]:
+        constraints: HardwareConstraints | None = None,
+    ) -> list[dict[str, Any]]:
         """Find models on the Pareto frontier of quality vs performance.
 
         A model is Pareto-optimal if no other model is better in both
@@ -112,10 +112,14 @@ class ModelRecommender:
             for other in candidates:
                 if other is c:
                     continue
-                if (other.get("accuracy", 0) >= c.get("accuracy", 0) and
-                    other.get("throughput", 0) >= c.get("throughput", 0) and
-                    (other.get("accuracy", 0) > c.get("accuracy", 0) or
-                     other.get("throughput", 0) > c.get("throughput", 0))):
+                if (
+                    other.get("accuracy", 0) >= c.get("accuracy", 0)
+                    and other.get("throughput", 0) >= c.get("throughput", 0)
+                    and (
+                        other.get("accuracy", 0) > c.get("accuracy", 0)
+                        or other.get("throughput", 0) > c.get("throughput", 0)
+                    )
+                ):
                     dominated = True
                     break
             if not dominated:

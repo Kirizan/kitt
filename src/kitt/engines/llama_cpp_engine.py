@@ -3,7 +3,7 @@
 import logging
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from .base import GenerationResult, InferenceEngine
 from .registry import register_engine
@@ -19,7 +19,7 @@ class LlamaCppEngine(InferenceEngine):
     """
 
     def __init__(self) -> None:
-        self._container_id: Optional[str] = None
+        self._container_id: str | None = None  # type: ignore[assignment]
         self._base_url: str = ""
         self._model_name: str = ""
 
@@ -28,7 +28,7 @@ class LlamaCppEngine(InferenceEngine):
         return "llama_cpp"
 
     @classmethod
-    def supported_formats(cls) -> List[str]:
+    def supported_formats(cls) -> list[str]:
         return ["gguf"]
 
     @classmethod
@@ -47,7 +47,7 @@ class LlamaCppEngine(InferenceEngine):
     def health_endpoint(cls) -> str:
         return "/health"
 
-    def initialize(self, model_path: str, config: Dict[str, Any]) -> None:
+    def initialize(self, model_path: str, config: dict[str, Any]) -> None:
         """Start llama.cpp server container and wait for healthy."""
         from .docker_manager import ContainerConfig, DockerManager
 
@@ -61,11 +61,16 @@ class LlamaCppEngine(InferenceEngine):
         n_ctx = config.get("n_ctx", 4096)
 
         cmd_args = [
-            "-m", self._model_name,
-            "--n-gpu-layers", str(n_gpu_layers),
-            "-c", str(n_ctx),
-            "--host", "0.0.0.0",
-            "--port", str(port),
+            "-m",
+            self._model_name,
+            "--n-gpu-layers",
+            str(n_gpu_layers),
+            "-c",
+            str(n_ctx),
+            "--host",
+            "0.0.0.0",
+            "--port",
+            str(port),
         ]
 
         # Mount the model file's parent directory

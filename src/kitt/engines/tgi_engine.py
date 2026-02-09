@@ -7,7 +7,7 @@ import urllib.error
 import urllib.request
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from .base import GenerationMetrics, GenerationResult, InferenceEngine
 from .registry import register_engine
@@ -23,7 +23,7 @@ class TGIEngine(InferenceEngine):
     """
 
     def __init__(self) -> None:
-        self._container_id: Optional[str] = None
+        self._container_id: str | None = None  # type: ignore[assignment]
         self._base_url: str = ""
         self._model_id: str = ""
 
@@ -32,7 +32,7 @@ class TGIEngine(InferenceEngine):
         return "tgi"
 
     @classmethod
-    def supported_formats(cls) -> List[str]:
+    def supported_formats(cls) -> list[str]:
         return ["safetensors", "pytorch"]
 
     @classmethod
@@ -51,7 +51,7 @@ class TGIEngine(InferenceEngine):
     def health_endpoint(cls) -> str:
         return "/info"
 
-    def initialize(self, model_path: str, config: Dict[str, Any]) -> None:
+    def initialize(self, model_path: str, config: dict[str, Any]) -> None:
         """Start TGI container and wait for healthy."""
         from .docker_manager import ContainerConfig, DockerManager
 
@@ -113,7 +113,9 @@ class TGIEngine(InferenceEngine):
         }
         # Remove None values
         payload["parameters"] = {
-            k: v for k, v in payload["parameters"].items() if v is not None
+            k: v
+            for k, v in payload["parameters"].items()  # type: ignore[attr-defined]
+            if v is not None
         }
 
         data = json.dumps(payload).encode("utf-8")
@@ -135,13 +137,13 @@ class TGIEngine(InferenceEngine):
         details = result.get("details", {})
 
         prompt_tokens = details.get("prefill", [{}])
-        prompt_token_count = len(prompt_tokens) if isinstance(prompt_tokens, list) else 0
+        prompt_token_count = (
+            len(prompt_tokens) if isinstance(prompt_tokens, list) else 0
+        )
         completion_tokens = details.get("generated_tokens", 0)
 
         tps = (
-            completion_tokens / (total_latency_ms / 1000)
-            if total_latency_ms > 0
-            else 0
+            completion_tokens / (total_latency_ms / 1000) if total_latency_ms > 0 else 0
         )
 
         metrics = GenerationMetrics(

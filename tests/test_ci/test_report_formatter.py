@@ -69,7 +69,9 @@ class TestFormatSummary:
         assert "mmlu" in md
         assert "312.5s" in md
 
-    def test_with_baseline_showing_regression(self, formatter, basic_results, baseline_results):
+    def test_with_baseline_showing_regression(
+        self, formatter, basic_results, baseline_results
+    ):
         md = formatter.format_summary(basic_results, baseline=baseline_results)
         assert "## KITT Benchmark Results" in md
         # avg_tps dropped from 50.0 to 45.67 = -8.7%, should appear

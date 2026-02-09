@@ -3,8 +3,7 @@
 import logging
 import threading
 import time
-from dataclasses import dataclass, field
-from typing import List, Optional
+from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
 
@@ -39,13 +38,14 @@ class PowerMonitor:
     def __init__(self, gpu_index: int = 0, sample_interval_ms: int = 100) -> None:
         self.gpu_index = gpu_index
         self.sample_interval_ms = sample_interval_ms
-        self.samples: List[PowerSample] = []
+        self.samples: list[PowerSample] = []
         self._initialized = False
-        self._stop_event: Optional[threading.Event] = None
-        self._thread: Optional[threading.Thread] = None
+        self._stop_event: threading.Event | None = None
+        self._thread: threading.Thread | None = None
 
         try:
             import pynvml
+
             pynvml.nvmlInit()
             self._handle = pynvml.nvmlDeviceGetHandleByIndex(gpu_index)
             self._initialized = True
@@ -56,7 +56,7 @@ class PowerMonitor:
     def is_available(self) -> bool:
         return self._initialized
 
-    def read_power_watts(self) -> Optional[float]:
+    def read_power_watts(self) -> float | None:
         """Read current GPU power in watts.
 
         Returns:
@@ -66,6 +66,7 @@ class PowerMonitor:
             return None
         try:
             import pynvml
+
             milliwatts = pynvml.nvmlDeviceGetPowerUsage(self._handle)
             return milliwatts / 1000.0
         except Exception:
@@ -83,11 +84,13 @@ class PowerMonitor:
             while not self._stop_event.is_set():
                 watts = self.read_power_watts()
                 if watts is not None:
-                    self.samples.append(PowerSample(
-                        timestamp=time.time(),
-                        gpu_power_watts=watts,
-                        gpu_index=self.gpu_index,
-                    ))
+                    self.samples.append(
+                        PowerSample(
+                            timestamp=time.time(),
+                            gpu_power_watts=watts,
+                            gpu_index=self.gpu_index,
+                        )
+                    )
                 time.sleep(self.sample_interval_ms / 1000.0)
 
         self._thread = threading.Thread(target=sample_loop, daemon=True)

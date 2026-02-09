@@ -1,8 +1,5 @@
 """Tests for JSON file-based result store."""
 
-import json
-from pathlib import Path
-
 import pytest
 
 from kitt.storage.json_store import JsonStore

@@ -3,7 +3,7 @@
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Dict, List
+from typing import Any
 
 from kitt.benchmarks.base import BenchmarkResult, LLMBenchmark
 from kitt.engines.base import InferenceEngine
@@ -18,7 +18,7 @@ class SuiteResult:
     """Result from running an entire test suite."""
 
     suite_name: str
-    results: List[BenchmarkResult] = field(default_factory=list)
+    results: list[BenchmarkResult] = field(default_factory=list)
     timestamp: datetime = field(default_factory=datetime.now)
     total_time_seconds: float = 0.0
 
@@ -49,9 +49,9 @@ class SuiteRunner:
     def run(
         self,
         suite_name: str,
-        benchmarks: List[LLMBenchmark],
-        global_config: Dict[str, Any],
-        test_overrides: Dict[str, Dict[str, Any]] = None,
+        benchmarks: list[LLMBenchmark],
+        global_config: dict[str, Any],
+        test_overrides: dict[str, dict[str, Any]] = None,
     ) -> SuiteResult:
         """Execute all benchmarks in the suite.
 
@@ -80,9 +80,7 @@ class SuiteRunner:
             runs = config.pop("runs", 1)
 
             for run_num in range(1, runs + 1):
-                logger.info(
-                    f"[{benchmark.name}] Run {run_num}/{runs}"
-                )
+                logger.info(f"[{benchmark.name}] Run {run_num}/{runs}")
 
                 runner = SingleTestRunner(self.engine, benchmark)
                 result = runner.run(config)

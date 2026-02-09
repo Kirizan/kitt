@@ -3,7 +3,7 @@
 import json
 import logging
 import urllib.request
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -13,7 +13,7 @@ HF_API_BASE = "https://huggingface.co/api/models"
 class GatedModelChecker:
     """Check whether HuggingFace models are gated or restricted."""
 
-    def __init__(self, hf_token: Optional[str] = None) -> None:
+    def __init__(self, hf_token: str | None = None) -> None:
         self.hf_token = hf_token
 
     def is_gated(self, repo_id: str) -> bool:
@@ -30,7 +30,7 @@ class GatedModelChecker:
             return False
         return info.get("gated", False) is not False
 
-    def check_access(self, repo_id: str) -> Dict[str, Any]:
+    def check_access(self, repo_id: str) -> dict[str, Any]:
         """Check access status for a model.
 
         Returns:
@@ -58,9 +58,7 @@ class GatedModelChecker:
             "error": None,
         }
 
-    def filter_accessible(
-        self, repo_ids: List[str]
-    ) -> tuple[List[str], List[str]]:
+    def filter_accessible(self, repo_ids: list[str]) -> tuple[list[str], list[str]]:
         """Filter a list of repos into accessible and inaccessible.
 
         Returns:
@@ -82,7 +80,7 @@ class GatedModelChecker:
 
         return accessible, inaccessible
 
-    def _fetch_model_info(self, repo_id: str) -> Optional[Dict[str, Any]]:
+    def _fetch_model_info(self, repo_id: str) -> dict[str, Any] | None:
         """Fetch model info from HuggingFace API."""
         url = f"{HF_API_BASE}/{repo_id}"
         headers = {}

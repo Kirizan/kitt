@@ -40,18 +40,27 @@ class TestVLLMEngineMetadata:
 class TestVLLMEngineAvailability:
     @patch("kitt.engines.image_resolver._detect_cc", return_value=None)
     @patch("kitt.engines.docker_manager.DockerManager.image_exists", return_value=True)
-    @patch("kitt.engines.docker_manager.DockerManager.is_docker_available", return_value=True)
+    @patch(
+        "kitt.engines.docker_manager.DockerManager.is_docker_available",
+        return_value=True,
+    )
     def test_is_available_true(self, mock_avail, mock_exists, mock_cc):
         assert VLLMEngine.is_available() is True
 
     @patch("kitt.engines.image_resolver._detect_cc", return_value=None)
-    @patch("kitt.engines.docker_manager.DockerManager.is_docker_available", return_value=False)
+    @patch(
+        "kitt.engines.docker_manager.DockerManager.is_docker_available",
+        return_value=False,
+    )
     def test_is_available_no_docker(self, mock_avail, mock_cc):
         assert VLLMEngine.is_available() is False
 
     @patch("kitt.engines.image_resolver._detect_cc", return_value=None)
     @patch("kitt.engines.docker_manager.DockerManager.image_exists", return_value=True)
-    @patch("kitt.engines.docker_manager.DockerManager.is_docker_available", return_value=True)
+    @patch(
+        "kitt.engines.docker_manager.DockerManager.is_docker_available",
+        return_value=True,
+    )
     def test_diagnose_available(self, mock_avail, mock_exists, mock_cc):
         diag = VLLMEngine.diagnose()
         assert diag.available is True
@@ -59,7 +68,10 @@ class TestVLLMEngineAvailability:
 
     @patch("kitt.engines.image_resolver._detect_cc", return_value=None)
     @patch("kitt.engines.docker_manager.DockerManager.image_exists", return_value=False)
-    @patch("kitt.engines.docker_manager.DockerManager.is_docker_available", return_value=True)
+    @patch(
+        "kitt.engines.docker_manager.DockerManager.is_docker_available",
+        return_value=True,
+    )
     def test_diagnose_image_not_pulled(self, mock_avail, mock_exists, mock_cc):
         diag = VLLMEngine.diagnose()
         assert diag.available is False
@@ -68,7 +80,10 @@ class TestVLLMEngineAvailability:
 
     @patch("kitt.engines.image_resolver._detect_cc", return_value=(12, 1))
     @patch("kitt.engines.docker_manager.DockerManager.image_exists", return_value=True)
-    @patch("kitt.engines.docker_manager.DockerManager.is_docker_available", return_value=True)
+    @patch(
+        "kitt.engines.docker_manager.DockerManager.is_docker_available",
+        return_value=True,
+    )
     def test_diagnose_blackwell_uses_ngc_image(self, mock_avail, mock_exists, mock_cc):
         diag = VLLMEngine.diagnose()
         assert diag.available is True
@@ -77,8 +92,13 @@ class TestVLLMEngineAvailability:
 
 class TestVLLMEngineInitialize:
     @patch("kitt.engines.image_resolver._detect_cc", return_value=None)
-    @patch("kitt.engines.docker_manager.DockerManager.wait_for_healthy", return_value=True)
-    @patch("kitt.engines.docker_manager.DockerManager.run_container", return_value="container123")
+    @patch(
+        "kitt.engines.docker_manager.DockerManager.wait_for_healthy", return_value=True
+    )
+    @patch(
+        "kitt.engines.docker_manager.DockerManager.run_container",
+        return_value="container123",
+    )
     def test_initialize_starts_container(self, mock_run, mock_wait, mock_cc):
         engine = VLLMEngine()
         engine.initialize("/models/llama-7b", {})
@@ -91,8 +111,13 @@ class TestVLLMEngineInitialize:
         assert engine._container_id == "container123"
 
     @patch("kitt.engines.image_resolver._detect_cc", return_value=(12, 1))
-    @patch("kitt.engines.docker_manager.DockerManager.wait_for_healthy", return_value=True)
-    @patch("kitt.engines.docker_manager.DockerManager.run_container", return_value="container123")
+    @patch(
+        "kitt.engines.docker_manager.DockerManager.wait_for_healthy", return_value=True
+    )
+    @patch(
+        "kitt.engines.docker_manager.DockerManager.run_container",
+        return_value="container123",
+    )
     def test_initialize_blackwell_uses_ngc_image(self, mock_run, mock_wait, mock_cc):
         engine = VLLMEngine()
         engine.initialize("/models/llama-7b", {})
@@ -101,13 +126,20 @@ class TestVLLMEngineInitialize:
         assert config.image == "nvcr.io/nvidia/vllm:26.01-py3"
         # NGC images need 'vllm serve' prefix with positional model arg
         assert config.command_args[:3] == [
-            "vllm", "serve", "/models/llama-7b",
+            "vllm",
+            "serve",
+            "/models/llama-7b",
         ]
         assert "--model" not in config.command_args
 
     @patch("kitt.engines.image_resolver._detect_cc", return_value=None)
-    @patch("kitt.engines.docker_manager.DockerManager.wait_for_healthy", return_value=True)
-    @patch("kitt.engines.docker_manager.DockerManager.run_container", return_value="container123")
+    @patch(
+        "kitt.engines.docker_manager.DockerManager.wait_for_healthy", return_value=True
+    )
+    @patch(
+        "kitt.engines.docker_manager.DockerManager.run_container",
+        return_value="container123",
+    )
     def test_initialize_with_tensor_parallel(self, mock_run, mock_wait, mock_cc):
         engine = VLLMEngine()
         engine.initialize("/models/llama-7b", {"tensor_parallel_size": 2})
@@ -117,8 +149,13 @@ class TestVLLMEngineInitialize:
         assert "2" in config.command_args
 
     @patch("kitt.engines.image_resolver._detect_cc", return_value=None)
-    @patch("kitt.engines.docker_manager.DockerManager.wait_for_healthy", return_value=True)
-    @patch("kitt.engines.docker_manager.DockerManager.run_container", return_value="container123")
+    @patch(
+        "kitt.engines.docker_manager.DockerManager.wait_for_healthy", return_value=True
+    )
+    @patch(
+        "kitt.engines.docker_manager.DockerManager.run_container",
+        return_value="container123",
+    )
     def test_initialize_with_custom_port(self, mock_run, mock_wait, mock_cc):
         engine = VLLMEngine()
         engine.initialize("/models/llama-7b", {"port": 9000})
@@ -127,9 +164,16 @@ class TestVLLMEngineInitialize:
         assert "9000" in health_url
 
     @patch("kitt.engines.image_resolver._detect_cc", return_value=(12, 1))
-    @patch("kitt.engines.docker_manager.DockerManager.wait_for_healthy", return_value=True)
-    @patch("kitt.engines.docker_manager.DockerManager.run_container", return_value="container123")
-    def test_initialize_explicit_image_overrides_resolver(self, mock_run, mock_wait, mock_cc):
+    @patch(
+        "kitt.engines.docker_manager.DockerManager.wait_for_healthy", return_value=True
+    )
+    @patch(
+        "kitt.engines.docker_manager.DockerManager.run_container",
+        return_value="container123",
+    )
+    def test_initialize_explicit_image_overrides_resolver(
+        self, mock_run, mock_wait, mock_cc
+    ):
         """User-provided image in config takes priority over resolved image."""
         engine = VLLMEngine()
         engine.initialize("/models/llama-7b", {"image": "custom/image:v1"})
@@ -138,9 +182,16 @@ class TestVLLMEngineInitialize:
         assert config.image == "custom/image:v1"
 
     @patch("kitt.engines.image_resolver._detect_cc", return_value=None)
-    @patch("kitt.engines.docker_manager.DockerManager.wait_for_healthy", return_value=True)
-    @patch("kitt.engines.docker_manager.DockerManager.run_container", return_value="container123")
-    def test_initialize_sets_model_name_with_container_path(self, mock_run, mock_wait, mock_cc):
+    @patch(
+        "kitt.engines.docker_manager.DockerManager.wait_for_healthy", return_value=True
+    )
+    @patch(
+        "kitt.engines.docker_manager.DockerManager.run_container",
+        return_value="container123",
+    )
+    def test_initialize_sets_model_name_with_container_path(
+        self, mock_run, mock_wait, mock_cc
+    ):
         """Model name should include /models/ prefix for vLLM served_model_name."""
         engine = VLLMEngine()
         engine.initialize("/path/to/Qwen2.5-0.5B-Instruct", {})
@@ -152,8 +203,13 @@ class TestVLLMEngineInitialize:
         assert "/models/Qwen2.5-0.5B-Instruct" in config.volumes.values()
 
     @patch("kitt.engines.image_resolver._detect_cc", return_value=None)
-    @patch("kitt.engines.docker_manager.DockerManager.wait_for_healthy", return_value=True)
-    @patch("kitt.engines.docker_manager.DockerManager.run_container", return_value="container123")
+    @patch(
+        "kitt.engines.docker_manager.DockerManager.wait_for_healthy", return_value=True
+    )
+    @patch(
+        "kitt.engines.docker_manager.DockerManager.run_container",
+        return_value="container123",
+    )
     def test_initialize_model_name_in_command_args(self, mock_run, mock_wait, mock_cc):
         """Command args should use the container path for --model flag."""
         engine = VLLMEngine()

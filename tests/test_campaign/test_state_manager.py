@@ -20,13 +20,15 @@ class TestCampaignStateManager:
 
     def test_save_and_load(self, state_mgr):
         state = state_mgr.create("test-002", "Saved Campaign")
-        state.runs.append(RunState(
-            model_name="Llama-8B",
-            engine_name="llama_cpp",
-            quant="Q4_K_M",
-            status="success",
-            duration_s=120.5,
-        ))
+        state.runs.append(
+            RunState(
+                model_name="Llama-8B",
+                engine_name="llama_cpp",
+                quant="Q4_K_M",
+                status="success",
+                duration_s=120.5,
+            )
+        )
         state_mgr.save(state)
 
         loaded = state_mgr.load("test-002")
@@ -49,12 +51,14 @@ class TestCampaignStateManager:
 
     def test_update_run(self, state_mgr):
         state = state_mgr.create("test-003", "Update Test")
-        state.runs.append(RunState(
-            model_name="Llama-8B",
-            engine_name="vllm",
-            quant="bf16",
-            status="pending",
-        ))
+        state.runs.append(
+            RunState(
+                model_name="Llama-8B",
+                engine_name="vllm",
+                quant="bf16",
+                status="pending",
+            )
+        )
         state_mgr.save(state)
 
         state_mgr.update_run(
@@ -73,12 +77,14 @@ class TestCampaignStateManager:
 
     def test_is_run_done(self, state_mgr):
         state = state_mgr.create("test-004", "Done Check")
-        state.runs.append(RunState(
-            model_name="Llama-8B",
-            engine_name="vllm",
-            quant="bf16",
-            status="success",
-        ))
+        state.runs.append(
+            RunState(
+                model_name="Llama-8B",
+                engine_name="vllm",
+                quant="bf16",
+                status="success",
+            )
+        )
         assert state_mgr.is_run_done(state, "Llama-8B|vllm|bf16")
         assert not state_mgr.is_run_done(state, "Llama-8B|ollama|8b")
 
