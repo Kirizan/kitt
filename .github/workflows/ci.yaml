@@ -26,6 +26,11 @@ jobs:
       - name: Install Git LFS
         run: git lfs install
 
+      - name: Configure git identity
+        run: |
+          git config --global user.email "ci@kitt.dev"
+          git config --global user.name "KITT CI"
+
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
@@ -99,6 +104,11 @@ jobs:
 
       - name: Install Git LFS
         run: git lfs install
+
+      - name: Configure git identity
+        run: |
+          git config --global user.email "ci@kitt.dev"
+          git config --global user.name "KITT CI"
 
       - name: Set up Python
         uses: actions/setup-python@v5
