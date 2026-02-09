@@ -114,7 +114,9 @@ class TestCampaignMetricsExporter:
             )
             mock_url.assert_not_called()
 
-    @pytest.mark.skipif(sys.platform == "darwin", reason="HTTPServer.shutdown() unreliable on macOS")
+    @pytest.mark.skipif(
+        sys.platform == "darwin", reason="HTTPServer.shutdown() unreliable on macOS"
+    )
     def test_start_stop_server(self):
         exporter = CampaignMetricsExporter(prometheus_port=19100)
         exporter.start()
