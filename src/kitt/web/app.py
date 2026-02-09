@@ -241,11 +241,15 @@ INDEX_TEMPLATE = """
 """
 
 
-def create_app(results_dir: Optional[str] = None) -> "Flask":
+def create_app(
+    results_dir: Optional[str] = None,
+    result_store: Optional[Any] = None,
+) -> "Flask":
     """Create the Flask application.
 
     Args:
         results_dir: Directory to search for results. Defaults to cwd.
+        result_store: Optional ResultStore backend. Falls back to file scan.
     """
     if not FLASK_AVAILABLE:
         raise ImportError(
@@ -254,10 +258,17 @@ def create_app(results_dir: Optional[str] = None) -> "Flask":
 
     app = Flask(__name__)
     base_dir = Path(results_dir) if results_dir else Path.cwd()
+    store = result_store
+
+    def _get_results() -> List[Dict[str, Any]]:
+        """Get results from store or file scan."""
+        if store is not None:
+            return store.query()
+        return _scan_results(base_dir)
 
     @app.route("/")
     def index():
-        all_results = _scan_results(base_dir)
+        all_results = _get_results()
         all_engines = sorted(set(r.get("engine", "") for r in all_results))
         all_models = sorted(set(r.get("model", "") for r in all_results))
 
@@ -290,19 +301,19 @@ def create_app(results_dir: Optional[str] = None) -> "Flask":
 
     @app.route("/api/results")
     def api_results():
-        results = _scan_results(base_dir)
+        results = _get_results()
         return jsonify(results)
 
     @app.route("/api/results/<int:idx>")
     def api_result_detail(idx):
-        results = _scan_results(base_dir)
+        results = _get_results()
         if 0 <= idx < len(results):
             return jsonify(results[idx])
         return jsonify({"error": "Not found"}), 404
 
     @app.route("/api/campaigns")
     def api_campaigns():
-        results = _scan_results(base_dir)
+        results = _get_results()
         filter_model = request.args.get("model", "")
         filter_engine = request.args.get("engine", "")
         if filter_model:

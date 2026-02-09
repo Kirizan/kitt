@@ -70,6 +70,14 @@ class EngineRegistry:
         except Exception:
             pass
 
+        # External plugins via entry points
+        try:
+            from kitt.plugins.discovery import discover_external_engines
+            for engine_cls in discover_external_engines():
+                cls.register(engine_cls)
+        except Exception:
+            pass
+
     @classmethod
     def clear(cls) -> None:
         """Clear all registered engines (for testing)."""

@@ -176,6 +176,32 @@ class CampaignRunner:
                 error="Insufficient disk space",
             )
 
+        # Check gated model access (skip in dry-run mode)
+        if (
+            not self.dry_run
+            and self.config.skip_gated
+            and run_spec.repo_id
+            and run_spec.engine_name != "ollama"
+        ):
+            try:
+                from .gated_model_checker import GatedModelChecker
+                checker = GatedModelChecker(hf_token=self.config.hf_token)
+                if checker.is_gated(run_spec.repo_id):
+                    skip_reason = f"Model {run_spec.repo_id} is gated (requires access approval)"
+                    logger.info(f"Skipping gated model: {run_spec.key}")
+                    self.state_manager.update_run(
+                        state, run_spec.key, "skipped", error=skip_reason
+                    )
+                    return CampaignRunResult(
+                        model_name=run_spec.model_name,
+                        engine_name=run_spec.engine_name,
+                        quant=run_spec.quant,
+                        status="skipped",
+                        error=skip_reason,
+                    )
+            except Exception as e:
+                logger.debug(f"Gated model check failed: {e}")
+
         self.state_manager.update_run(state, run_spec.key, "running")
         start_time = time.time()
 

@@ -74,6 +74,7 @@ def save_json_report(
     system_info: Optional[SystemInfo] = None,
     engine_name: str = "unknown",
     model_name: str = "unknown",
+    result_store: Optional[Any] = None,
 ) -> Path:
     """Save suite results as JSON.
 
@@ -83,6 +84,7 @@ def save_json_report(
         system_info: Optional system hardware information.
         engine_name: Name of the inference engine used.
         model_name: Name/path of the model tested.
+        result_store: Optional ResultStore to also persist to database.
 
     Returns:
         Path to the created JSON file.
@@ -95,5 +97,15 @@ def save_json_report(
 
     with open(output_path, "w") as f:
         json.dump(data, f, indent=2, default=_default_serializer)
+
+    # Persist to database if a store is configured
+    if result_store is not None:
+        try:
+            result_store.save_result(data)
+        except Exception:
+            import logging
+            logging.getLogger(__name__).warning(
+                "Failed to save result to storage backend"
+            )
 
     return output_path

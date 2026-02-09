@@ -204,3 +204,83 @@ def create(from_results, output):
         console.print(f"Campaign config saved to [green]{output}[/green]")
     else:
         console.print(yaml_str)
+
+
+@campaign.command("schedule")
+@click.argument("config_path", type=click.Path(exists=True))
+@click.option("--cron", required=True, help='Cron expression (e.g. "0 2 * * *")')
+@click.option("--id", "schedule_id", default=None, help="Schedule identifier")
+def schedule(config_path, cron, schedule_id):
+    """Schedule a campaign to run on a cron schedule."""
+    from kitt.campaign.scheduler_cron import CronScheduler
+
+    scheduler = CronScheduler()
+    if scheduler.schedule(config_path, cron, campaign_id=schedule_id):
+        console.print(f"[green]Scheduled:[/green] {cron}")
+    else:
+        console.print("[red]Failed to schedule campaign.[/red]")
+        raise SystemExit(1)
+
+
+@campaign.command("unschedule")
+@click.argument("schedule_id")
+def unschedule(schedule_id):
+    """Remove a scheduled campaign."""
+    from kitt.campaign.scheduler_cron import CronScheduler
+
+    scheduler = CronScheduler()
+    scheduler.unschedule(schedule_id)
+    console.print(f"[green]Unscheduled:[/green] {schedule_id}")
+
+
+@campaign.command("wizard")
+def wizard():
+    """Interactive campaign builder wizard."""
+    from kitt.tui.campaign_builder import CampaignBuilderApp
+
+    builder = CampaignBuilderApp()
+
+    try:
+        config = builder.run_tui()
+    except Exception:
+        config = builder.run_simple()
+
+    if config:
+        yaml_str = builder.to_yaml()
+        console.print("\n[bold]Generated Campaign Config:[/bold]\n")
+        console.print(yaml_str)
+
+        import click as clk
+        save_path = clk.prompt("Save to file? (blank to skip)", default="", show_default=False)
+        if save_path:
+            builder.save(save_path)
+            console.print(f"[green]Saved to {save_path}[/green]")
+
+
+@campaign.command("cron-status")
+def cron_status():
+    """Show scheduled campaigns."""
+    from kitt.campaign.scheduler_cron import CronScheduler
+
+    scheduler = CronScheduler()
+    schedules = scheduler.list_scheduled()
+
+    if not schedules:
+        console.print("No scheduled campaigns.")
+        return
+
+    table = Table(title="Scheduled Campaigns")
+    table.add_column("ID", style="cyan")
+    table.add_column("Cron")
+    table.add_column("Config")
+    table.add_column("Enabled")
+
+    for s in schedules:
+        table.add_row(
+            s.get("schedule_id", ""),
+            s.get("cron_expr", ""),
+            s.get("campaign_config", ""),
+            str(s.get("enabled", True)),
+        )
+
+    console.print(table)

@@ -15,11 +15,18 @@ def cli():
     """
 
 
+from .bot_commands import bot  # noqa: E402
 from .campaign_commands import campaign  # noqa: E402
+from .charts_commands import charts  # noqa: E402
+from .ci_commands import ci  # noqa: E402
 from .engine_commands import engines  # noqa: E402
 from .monitoring_commands import monitoring  # noqa: E402
+from .plugin_commands import plugin  # noqa: E402
+from .recommend_commands import recommend  # noqa: E402
+from .remote_commands import remote  # noqa: E402
 from .results_commands import results  # noqa: E402
 from .run import run  # noqa: E402
+from .storage_commands import storage  # noqa: E402
 from .test_commands import test  # noqa: E402
 
 cli.add_command(run)
@@ -28,6 +35,13 @@ cli.add_command(engines)
 cli.add_command(results)
 cli.add_command(campaign)
 cli.add_command(monitoring)
+cli.add_command(storage)
+cli.add_command(plugin)
+cli.add_command(ci)
+cli.add_command(bot)
+cli.add_command(remote)
+cli.add_command(recommend)
+cli.add_command(charts)
 
 
 @cli.command()

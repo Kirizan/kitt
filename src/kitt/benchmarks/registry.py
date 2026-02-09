@@ -61,11 +61,27 @@ class BenchmarkRegistry:
         from .performance import warmup_analysis  # noqa: F401
         from .performance import streaming_latency  # noqa: F401
         from .performance import long_context  # noqa: F401
+        from .performance import batch_inference  # noqa: F401
+        from .performance import tensor_parallel  # noqa: F401
+        from .performance import speculative  # noqa: F401
         from .quality.standard import mmlu  # noqa: F401
         from .quality.standard import gsm8k  # noqa: F401
         from .quality.standard import truthfulqa  # noqa: F401
         from .quality.standard import hellaswag  # noqa: F401
         from .quality.standard import multiturn  # noqa: F401
+        from .quality.standard import function_calling  # noqa: F401
+        from .quality.standard import prompt_robustness  # noqa: F401
+        from .quality.standard import coding  # noqa: F401
+        from .quality.standard import rag_pipeline  # noqa: F401
+        from .quality.standard import vlm_benchmark  # noqa: F401
+
+        # External plugins via entry points
+        try:
+            from kitt.plugins.discovery import discover_external_benchmarks
+            for bench_cls in discover_external_benchmarks():
+                cls.register(bench_cls)
+        except Exception:
+            pass
 
 
 def register_benchmark(benchmark_class: Type[LLMBenchmark]) -> Type[LLMBenchmark]:
