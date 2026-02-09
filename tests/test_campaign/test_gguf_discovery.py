@@ -2,8 +2,6 @@
 
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from kitt.campaign.gguf_discovery import (
     GGUFQuantInfo,
     discover_gguf_quants,
@@ -139,11 +137,11 @@ class TestDiscoverOllamaTags:
     @patch("urllib.request.urlopen")
     def test_parses_html_tags(self, mock_urlopen):
         mock_resp = MagicMock()
-        mock_resp.read.return_value = b'''
+        mock_resp.read.return_value = b"""
             <a href="/library/testmodel:7b-instruct-q4_0">7b-instruct-q4_0</a>
             <a href="/library/testmodel:7b-instruct-q5_K_M">7b-instruct-q5_K_M</a>
             <a href="/library/testmodel:14b-q4_0">14b-q4_0</a>
-        '''
+        """
         mock_resp.__enter__ = lambda s: mock_resp
         mock_resp.__exit__ = MagicMock(return_value=False)
         mock_urlopen.return_value = mock_resp
@@ -160,9 +158,7 @@ class TestFindModelPath:
         model_dir.mkdir(parents=True)
         (model_dir / "config.json").touch()
 
-        result = find_model_path(
-            "meta-llama/Llama-8B", storage_root=tmp_path
-        )
+        result = find_model_path("meta-llama/Llama-8B", storage_root=tmp_path)
         assert result == str(model_dir)
 
     def test_gguf_file(self, tmp_path):
@@ -191,17 +187,13 @@ class TestFindModelPath:
         assert result == str(gguf)
 
     def test_not_found(self, tmp_path):
-        assert find_model_path(
-            "nonexistent/repo", storage_root=tmp_path
-        ) is None
+        assert find_model_path("nonexistent/repo", storage_root=tmp_path) is None
 
     def test_gguf_not_found(self, tmp_path):
         model_dir = tmp_path / "huggingface" / "test" / "repo"
         model_dir.mkdir(parents=True)
 
-        result = find_model_path(
-            "test/repo", "nonexistent.gguf", storage_root=tmp_path
-        )
+        result = find_model_path("test/repo", "nonexistent.gguf", storage_root=tmp_path)
         assert result is None
 
     def test_sharded_selects_first_shard(self, tmp_path):
@@ -215,7 +207,8 @@ class TestFindModelPath:
 
         # Searching for the include pattern should find the first shard
         result = find_model_path(
-            "test/repo", "f32/phi-4-f32-00001-of-00002.gguf",
+            "test/repo",
+            "f32/phi-4-f32-00001-of-00002.gguf",
             storage_root=tmp_path,
         )
         assert result == str(shard1)
@@ -231,7 +224,9 @@ class TestFindModelPath:
 
         # Pass a non-existent filename that contains the quant name
         result = find_model_path(
-            "test/repo", "model-f32.gguf", storage_root=tmp_path,
+            "test/repo",
+            "model-f32.gguf",
+            storage_root=tmp_path,
         )
         # Should find the first shard via _find_first_shard fallback
         assert result == str(shard1)

@@ -3,7 +3,6 @@
 import json
 import logging
 from pathlib import Path
-from typing import List, Optional
 
 from .host_config import HostConfig
 from .ssh_connection import SSHConnection
@@ -17,7 +16,7 @@ class ResultSync:
     def __init__(
         self,
         host_config: HostConfig,
-        local_results_dir: Optional[Path] = None,
+        local_results_dir: Path | None = None,
     ) -> None:
         self.host = host_config
         self.conn = SSHConnection(
@@ -28,7 +27,7 @@ class ResultSync:
         )
         self.local_dir = local_results_dir or Path.cwd() / "kitt-results"
 
-    def list_remote_results(self) -> List[str]:
+    def list_remote_results(self) -> list[str]:
         """List result directories on the remote host.
 
         Returns:
@@ -42,7 +41,7 @@ class ResultSync:
             return out.strip().splitlines()
         return []
 
-    def list_local_results(self) -> List[str]:
+    def list_local_results(self) -> list[str]:
         """List result directory names that already exist locally."""
         if not self.local_dir.exists():
             return []
@@ -74,7 +73,9 @@ class ResultSync:
             # Extract relative path for comparison
             # Remote paths like ~/kitt-results/model/engine/timestamp
             remote_base = self.host.storage_path or "~/kitt-results"
-            rel_path = remote_path.replace(remote_base + "/", "").replace(remote_base, "")
+            rel_path = remote_path.replace(remote_base + "/", "").replace(
+                remote_base, ""
+            )
             if rel_path.startswith("/"):
                 rel_path = rel_path[1:]
 

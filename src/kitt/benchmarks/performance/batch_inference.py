@@ -3,7 +3,7 @@
 import logging
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Any, Dict, List
+from typing import Any
 
 from kitt.benchmarks.base import BenchmarkResult, LLMBenchmark
 from kitt.benchmarks.registry import register_benchmark
@@ -29,22 +29,28 @@ class BatchInferenceBenchmark(LLMBenchmark):
     category = "performance"
     description = "Measure inference performance at multiple concurrency levels"
 
-    def _execute(self, engine, config: Dict[str, Any]) -> BenchmarkResult:
-        concurrency_levels = config.get("concurrency_levels", DEFAULT_CONCURRENCY_LEVELS)
+    def _execute(self, engine, config: dict[str, Any]) -> BenchmarkResult:
+        concurrency_levels = config.get(
+            "concurrency_levels", DEFAULT_CONCURRENCY_LEVELS
+        )
         prompts = config.get("prompts", DEFAULT_PROMPTS)
         max_tokens = config.get("max_tokens", 128)
         temperature = config.get("temperature", 0.0)
         requests_per_level = config.get("requests_per_level", len(prompts))
 
-        outputs: List[Dict[str, Any]] = []
-        errors: List[str] = []
-        level_metrics: Dict[int, Dict[str, float]] = {}
+        outputs: list[dict[str, Any]] = []
+        errors: list[str] = []
+        level_metrics: dict[int, dict[str, float]] = {}
 
         for level in concurrency_levels:
             logger.info(f"Testing concurrency level: {level}")
             results = self._run_concurrent(
-                engine, prompts, level, requests_per_level,
-                max_tokens, temperature,
+                engine,
+                prompts,
+                level,
+                requests_per_level,
+                max_tokens,
+                temperature,
             )
 
             successes = [r for r in results if r.get("success")]
@@ -52,9 +58,7 @@ class BatchInferenceBenchmark(LLMBenchmark):
 
             if failures:
                 for f in failures:
-                    errors.append(
-                        f"Concurrency {level}: {f.get('error', 'unknown')}"
-                    )
+                    errors.append(f"Concurrency {level}: {f.get('error', 'unknown')}")
 
             if successes:
                 tps_values = [r["tps"] for r in successes]
@@ -67,7 +71,9 @@ class BatchInferenceBenchmark(LLMBenchmark):
                     "requests": len(successes),
                     "failed": len(failures),
                     "avg_tps": round(sum(tps_values) / len(tps_values), 2),
-                    "throughput_total_tps": round(total_tokens / wall_time, 2) if wall_time > 0 else 0,
+                    "throughput_total_tps": round(total_tokens / wall_time, 2)
+                    if wall_time > 0
+                    else 0,
                     "avg_latency_ms": round(sum(latencies) / len(latencies), 2),
                     "min_latency_ms": round(min(latencies), 2),
                     "max_latency_ms": round(max(latencies), 2),
@@ -91,16 +97,16 @@ class BatchInferenceBenchmark(LLMBenchmark):
     def _run_concurrent(
         self,
         engine,
-        prompts: List[str],
+        prompts: list[str],
         concurrency: int,
         num_requests: int,
         max_tokens: int,
         temperature: float,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Run concurrent requests and return per-request results."""
-        results: List[Dict[str, Any]] = []
+        results: list[dict[str, Any]] = []
 
-        def _single_request(idx: int) -> Dict[str, Any]:
+        def _single_request(idx: int) -> dict[str, Any]:
             prompt = prompts[idx % len(prompts)]
             start = time.perf_counter()
             try:
@@ -125,18 +131,15 @@ class BatchInferenceBenchmark(LLMBenchmark):
                 }
 
         with ThreadPoolExecutor(max_workers=concurrency) as executor:
-            futures = [
-                executor.submit(_single_request, i)
-                for i in range(num_requests)
-            ]
+            futures = [executor.submit(_single_request, i) for i in range(num_requests)]
             for future in as_completed(futures):
                 results.append(future.result())
 
         return results
 
     def _compute_aggregate(
-        self, level_metrics: Dict[int, Dict[str, float]]
-    ) -> Dict[str, Any]:
+        self, level_metrics: dict[int, dict[str, float]]
+    ) -> dict[str, Any]:
         """Compute aggregate metrics across concurrency levels."""
         if not level_metrics:
             return {}
@@ -144,13 +147,15 @@ class BatchInferenceBenchmark(LLMBenchmark):
         # Find optimal concurrency (highest total throughput)
         best_level = max(
             level_metrics,
-            key=lambda l: level_metrics[l].get("throughput_total_tps", 0),
+            key=lambda level: level_metrics[level].get("throughput_total_tps", 0),
         )
 
-        metrics: Dict[str, Any] = {
+        metrics: dict[str, Any] = {
             "concurrency_levels_tested": list(level_metrics.keys()),
             "optimal_concurrency": best_level,
-            "optimal_throughput_tps": level_metrics[best_level].get("throughput_total_tps", 0),
+            "optimal_throughput_tps": level_metrics[best_level].get(
+                "throughput_total_tps", 0
+            ),
         }
 
         for level, data in level_metrics.items():

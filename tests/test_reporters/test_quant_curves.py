@@ -2,9 +2,7 @@
 
 from unittest.mock import MagicMock, patch
 
-import pytest
-
-from kitt.reporters.quant_curves import QuantCurveGenerator, _QUANT_BPP
+from kitt.reporters.quant_curves import _QUANT_BPP, QuantCurveGenerator
 
 
 def _make_store_result(model, engine, quant, accuracy=0.8, avg_tps=50.0):
@@ -86,7 +84,9 @@ class TestGenerateCurve:
         store = MagicMock()
         store.query.return_value = [
             _make_store_result("Llama-3.1-8B", "llama_cpp", "Q4_K_M"),
-            _make_store_result("Llama-3.1-8B", "llama_cpp", "Q8_0", accuracy=0.85, avg_tps=30),
+            _make_store_result(
+                "Llama-3.1-8B", "llama_cpp", "Q8_0", accuracy=0.85, avg_tps=30
+            ),
         ]
         gen = QuantCurveGenerator(result_store=store)
         output = tmp_path / "curve.png"
@@ -102,10 +102,14 @@ class TestGenerateCurve:
         mock_matplotlib.pyplot = mock_plt
 
         import sys
-        with patch.dict(sys.modules, {
-            "matplotlib": mock_matplotlib,
-            "matplotlib.pyplot": mock_plt,
-        }):
+
+        with patch.dict(
+            sys.modules,
+            {
+                "matplotlib": mock_matplotlib,
+                "matplotlib.pyplot": mock_plt,
+            },
+        ):
             result = gen.generate_curve(output_path=str(output))
 
         assert result == str(output)
@@ -116,7 +120,9 @@ class TestExportCsv:
     def test_creates_csv_file(self, tmp_path):
         store = MagicMock()
         store.query.return_value = [
-            _make_store_result("Llama-3.1-8B", "llama_cpp", "Q4_K_M", accuracy=0.8, avg_tps=50),
+            _make_store_result(
+                "Llama-3.1-8B", "llama_cpp", "Q4_K_M", accuracy=0.8, avg_tps=50
+            ),
         ]
         gen = QuantCurveGenerator(result_store=store)
         output = tmp_path / "curves.csv"

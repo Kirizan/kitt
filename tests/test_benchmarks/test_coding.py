@@ -6,7 +6,6 @@ from unittest.mock import MagicMock
 import pytest
 
 from kitt.benchmarks.quality.standard.coding import (
-    BUILT_IN_PROBLEMS,
     CodingBenchmark,
 )
 
@@ -83,7 +82,9 @@ class TestCodingBenchmark:
 
     def test_test_code_valid(self, bench):
         code = "def is_palindrome(s):\n    return s == s[::-1]"
-        test_code = "assert is_palindrome('aba') == True\nassert is_palindrome('ab') == False"
+        test_code = (
+            "assert is_palindrome('aba') == True\nassert is_palindrome('ab') == False"
+        )
         passed, syntax_err = bench._test_code(code, test_code, "is_palindrome")
         assert passed is True
         assert syntax_err is False

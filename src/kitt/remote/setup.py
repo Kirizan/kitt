@@ -1,7 +1,6 @@
 """Remote host setup and provisioning for KITT."""
 
 import logging
-from typing import Dict, Optional
 
 from .host_config import HostConfig, HostManager
 from .ssh_connection import SSHConnection
@@ -15,13 +14,13 @@ class RemoteSetup:
     def __init__(self, connection: SSHConnection) -> None:
         self.conn = connection
 
-    def check_prerequisites(self) -> Dict[str, bool]:
+    def check_prerequisites(self) -> dict[str, bool | str]:
         """Check what's available on the remote host.
 
         Returns:
             Dict of capability checks.
         """
-        checks = {}
+        checks: dict[str, bool | str] = {}
 
         # SSH connectivity
         checks["ssh"] = self.conn.check_connection()
@@ -38,7 +37,9 @@ class RemoteSetup:
         checks["docker"] = rc == 0
 
         # GPU
-        rc, out, _ = self.conn.run_command("nvidia-smi --query-gpu=name,memory.total --format=csv,noheader,nounits")
+        rc, out, _ = self.conn.run_command(
+            "nvidia-smi --query-gpu=name,memory.total --format=csv,noheader,nounits"
+        )
         checks["gpu"] = rc == 0
         checks["gpu_info"] = out.strip() if rc == 0 else ""
 
@@ -76,25 +77,29 @@ class RemoteSetup:
 
         return True
 
-    def verify_kitt(self) -> Optional[str]:
+    def verify_kitt(self) -> str | None:
         """Verify KITT is installed and return version.
 
         Returns:
             Version string or None.
         """
-        rc, out, _ = self.conn.run_command("kitt --version || python3 -m kitt --version")
+        rc, out, _ = self.conn.run_command(
+            "kitt --version || python3 -m kitt --version"
+        )
         if rc == 0:
             return out.strip()
         return None
 
-    def detect_hardware(self) -> Dict[str, str]:
+    def detect_hardware(self) -> dict[str, str]:
         """Run KITT fingerprint on remote host.
 
         Returns:
             Dict with hardware info.
         """
         info = {}
-        rc, out, _ = self.conn.run_command("kitt fingerprint --verbose 2>/dev/null || echo 'not-available'")
+        rc, out, _ = self.conn.run_command(
+            "kitt fingerprint --verbose 2>/dev/null || echo 'not-available'"
+        )
         info["fingerprint"] = out.strip()
 
         rc, out, _ = self.conn.run_command(
@@ -109,9 +114,9 @@ class RemoteSetup:
     def setup_host(
         self,
         name: str,
-        host_manager: Optional[HostManager] = None,
+        host_manager: HostManager | None = None,
         install: bool = True,
-    ) -> Optional[HostConfig]:
+    ) -> HostConfig | None:
         """Full setup flow for a remote host.
 
         1. Check connectivity
@@ -151,9 +156,9 @@ class RemoteSetup:
             user=self.conn.user or "",
             ssh_key=self.conn.ssh_key or "",
             port=self.conn.port,
-            gpu_info=hw_info.get("gpu", prereqs.get("gpu_info", "")),
+            gpu_info=hw_info.get("gpu", prereqs.get("gpu_info", "")),  # type: ignore[arg-type]
             gpu_count=int(hw_info.get("gpu_count", "0") or "0"),
-            python_version=prereqs.get("python_version", ""),
+            python_version=prereqs.get("python_version", ""),  # type: ignore[arg-type]
         )
 
         # Save

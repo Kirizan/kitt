@@ -1,7 +1,7 @@
 """Shared command handler for bot integrations."""
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -9,13 +9,14 @@ logger = logging.getLogger(__name__)
 class BotCommandHandler:
     """Handle bot commands with shared logic across Slack/Discord."""
 
-    def __init__(self, result_store: Optional[Any] = None) -> None:
+    def __init__(self, result_store: Any | None = None) -> None:
         self.store = result_store
 
     def handle_status(self) -> str:
         """Return campaign status summary."""
         try:
             from kitt.campaign.state_manager import CampaignStateManager
+
             mgr = CampaignStateManager()
             campaigns = mgr.list_campaigns()
             if not campaigns:
@@ -33,8 +34,8 @@ class BotCommandHandler:
 
     def handle_results(
         self,
-        model: Optional[str] = None,
-        engine: Optional[str] = None,
+        model: str | None = None,
+        engine: str | None = None,
         limit: int = 5,
     ) -> str:
         """Return recent results."""
@@ -67,9 +68,7 @@ class BotCommandHandler:
         except Exception as e:
             return f"Error querying results: {e}"
 
-    def handle_compare(
-        self, model: str, engine: str
-    ) -> str:
+    def handle_compare(self, model: str, engine: str) -> str:
         """Compare recent runs for a model/engine pair."""
         if self.store is None:
             return "No storage backend configured."

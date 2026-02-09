@@ -1,7 +1,7 @@
 """HellaSwag benchmark."""
 
 import logging
-from typing import Any, Dict, List
+from typing import Any
 
 from kitt.benchmarks.base import BenchmarkResult, LLMBenchmark
 from kitt.benchmarks.registry import register_benchmark
@@ -34,7 +34,7 @@ class HellaSwagBenchmark(LLMBenchmark):
     category = "quality_standard"
     description = "HellaSwag - Commonsense NLI for sentence completion"
 
-    def _execute(self, engine, config: Dict[str, Any]) -> BenchmarkResult:
+    def _execute(self, engine, config: dict[str, Any]) -> BenchmarkResult:
         """Run HellaSwag evaluation."""
         sampling = config.get("sampling", {})
         max_tokens = sampling.get("max_tokens", 10)
@@ -55,8 +55,8 @@ class HellaSwagBenchmark(LLMBenchmark):
                 errors=["No questions loaded - dataset may not be available"],
             )
 
-        outputs: List[Dict[str, Any]] = []
-        errors: List[str] = []
+        outputs: list[dict[str, Any]] = []
+        errors: list[str] = []
         correct = 0
         total = 0
 
@@ -84,25 +84,29 @@ class HellaSwagBenchmark(LLMBenchmark):
                 )
 
                 predicted = self._extract_answer(result.output)
-                expected = LABEL_MAP.get(label, "") if isinstance(label, int) else str(label)
+                expected = (
+                    LABEL_MAP.get(label, "") if isinstance(label, int) else str(label)
+                )
 
                 is_correct = predicted.upper() == expected.upper()
                 if is_correct:
                     correct += 1
                 total += 1
 
-                outputs.append({
-                    "index": i,
-                    "context": context[:200],
-                    "predicted": predicted,
-                    "expected": expected,
-                    "correct": is_correct,
-                    "raw_output": result.output[:200],
-                    "metrics": {
-                        "tps": result.metrics.tps,
-                        "total_latency_ms": result.metrics.total_latency_ms,
-                    },
-                })
+                outputs.append(
+                    {
+                        "index": i,
+                        "context": context[:200],
+                        "predicted": predicted,
+                        "expected": expected,
+                        "correct": is_correct,
+                        "raw_output": result.output[:200],
+                        "metrics": {
+                            "tps": result.metrics.tps,
+                            "total_latency_ms": result.metrics.total_latency_ms,
+                        },
+                    }
+                )
 
             except Exception as e:
                 error_msg = f"Error on question {i}: {str(e)}"
@@ -128,7 +132,7 @@ class HellaSwagBenchmark(LLMBenchmark):
             errors=errors,
         )
 
-    def _load_questions(self, config: Dict[str, Any]) -> List[Dict[str, Any]]:
+    def _load_questions(self, config: dict[str, Any]) -> list[dict[str, Any]]:
         """Load HellaSwag questions."""
         dataset_config = config.get("dataset", {})
         source = dataset_config.get("source")
@@ -138,6 +142,7 @@ class HellaSwagBenchmark(LLMBenchmark):
         if source:
             try:
                 from kitt.benchmarks.dataset_manager import DatasetManager
+
                 raw = DatasetManager.load_from_huggingface(
                     source,
                     split=dataset_config.get("split", "validation"),
@@ -151,7 +156,9 @@ class HellaSwagBenchmark(LLMBenchmark):
         if local_path:
             try:
                 from pathlib import Path
+
                 from kitt.benchmarks.dataset_manager import DatasetManager
+
                 raw = DatasetManager.load_from_directory(
                     Path(local_path), sample_size=sample_size
                 )
@@ -162,7 +169,7 @@ class HellaSwagBenchmark(LLMBenchmark):
 
         return []
 
-    def _parse_raw(self, raw_items: List[Any]) -> List[Dict[str, Any]]:
+    def _parse_raw(self, raw_items: list[Any]) -> list[dict[str, Any]]:
         """Parse raw dataset items."""
         questions = []
         for item in raw_items:
@@ -174,8 +181,9 @@ class HellaSwagBenchmark(LLMBenchmark):
     def _extract_answer(output: str) -> str:
         """Extract answer letter from model output."""
         import re
+
         output = output.strip()
-        match = re.search(r'\b([ABCD])\b', output)
+        match = re.search(r"\b([ABCD])\b", output)
         if match:
             return match.group(1)
         if output and output[0].upper() in "ABCD":

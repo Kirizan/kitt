@@ -42,14 +42,14 @@ def start(compose_dir):
     )
 
     if result.returncode != 0:
-        console.print(f"[red]Failed to start monitoring stack:[/red]")
+        console.print("[red]Failed to start monitoring stack:[/red]")
         console.print(result.stderr)
         raise SystemExit(1)
 
     console.print("[green]Monitoring stack started:[/green]")
-    console.print(f"  Grafana:    http://localhost:3000  (admin/kitt)")
-    console.print(f"  Prometheus: http://localhost:9090")
-    console.print(f"  InfluxDB:   http://localhost:8086")
+    console.print("  Grafana:    http://localhost:3000  (admin/kitt)")
+    console.print("  Prometheus: http://localhost:9090")
+    console.print("  InfluxDB:   http://localhost:8086")
 
 
 @monitoring.command()
@@ -75,7 +75,7 @@ def stop(compose_dir):
     )
 
     if result.returncode != 0:
-        console.print(f"[red]Failed to stop monitoring stack:[/red]")
+        console.print("[red]Failed to stop monitoring stack:[/red]")
         console.print(result.stderr)
         raise SystemExit(1)
 

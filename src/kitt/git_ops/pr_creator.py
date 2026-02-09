@@ -3,7 +3,6 @@
 import logging
 import subprocess
 from pathlib import Path
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +48,7 @@ class PRCreator:
         title: str,
         description: str,
         upstream_repo: str,
-    ) -> Optional[str]:
+    ) -> str | None:
         """Create pull request for results.
 
         Args:
@@ -78,15 +77,20 @@ class PRCreator:
         title: str,
         description: str,
         upstream_repo: str,
-    ) -> Optional[str]:
+    ) -> str | None:
         """Create PR using GitHub CLI."""
         try:
             result = subprocess.run(
                 [
-                    "gh", "pr", "create",
-                    "--title", title,
-                    "--body", description,
-                    "--repo", upstream_repo,
+                    "gh",
+                    "pr",
+                    "create",
+                    "--title",
+                    title,
+                    "--body",
+                    description,
+                    "--repo",
+                    upstream_repo,
                 ],
                 cwd=repo_path,
                 check=True,

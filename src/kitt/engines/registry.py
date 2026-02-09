@@ -1,7 +1,6 @@
 """Engine discovery and registration."""
 
 import logging
-from typing import Dict, List, Type
 
 from .base import InferenceEngine
 
@@ -11,15 +10,15 @@ logger = logging.getLogger(__name__)
 class EngineRegistry:
     """Registry for discovering and managing inference engines."""
 
-    _engines: Dict[str, Type[InferenceEngine]] = {}
+    _engines: dict[str, type[InferenceEngine]] = {}
 
     @classmethod
-    def register(cls, engine_class: Type[InferenceEngine]) -> None:
+    def register(cls, engine_class: type[InferenceEngine]) -> None:
         """Register an engine class."""
         cls._engines[engine_class.name()] = engine_class
 
     @classmethod
-    def get_engine(cls, name: str) -> Type[InferenceEngine]:
+    def get_engine(cls, name: str) -> type[InferenceEngine]:
         """Get engine class by name.
 
         Raises:
@@ -33,7 +32,7 @@ class EngineRegistry:
         return cls._engines[name]
 
     @classmethod
-    def list_available(cls) -> List[str]:
+    def list_available(cls) -> list[str]:
         """List all available (installed and functional) engines."""
         return [
             name
@@ -42,7 +41,7 @@ class EngineRegistry:
         ]
 
     @classmethod
-    def list_all(cls) -> List[str]:
+    def list_all(cls) -> list[str]:
         """List all registered engines (available or not)."""
         return list(cls._engines.keys())
 
@@ -60,12 +59,19 @@ class EngineRegistry:
         from .tgi_engine import TGIEngine
         from .vllm_engine import VLLMEngine
 
-        for engine_cls in (ExLlamaV2Engine, LlamaCppEngine, OllamaEngine, TGIEngine, VLLMEngine):
+        for engine_cls in (
+            ExLlamaV2Engine,
+            LlamaCppEngine,
+            OllamaEngine,
+            TGIEngine,
+            VLLMEngine,
+        ):
             cls.register(engine_cls)
 
         # MLX: conditional import — only available on macOS with mlx-lm
         try:
             from .mlx_engine import MLXEngine
+
             cls.register(MLXEngine)
         except Exception:
             pass
@@ -73,7 +79,8 @@ class EngineRegistry:
         # External plugins via entry points
         try:
             from kitt.plugins.discovery import discover_external_engines
-            for engine_cls in discover_external_engines():
+
+            for engine_cls in discover_external_engines():  # type: ignore[assignment]
                 cls.register(engine_cls)
         except Exception:
             pass
@@ -84,7 +91,7 @@ class EngineRegistry:
         cls._engines.clear()
 
 
-def register_engine(engine_class: Type[InferenceEngine]) -> Type[InferenceEngine]:
+def register_engine(engine_class: type[InferenceEngine]) -> type[InferenceEngine]:
     """Decorator to auto-register engine classes."""
     EngineRegistry.register(engine_class)
     return engine_class

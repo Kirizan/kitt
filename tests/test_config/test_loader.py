@@ -1,15 +1,15 @@
 """Tests for KITT configuration loader."""
 
-import pytest
 from pathlib import Path
-import tempfile
+
+import pytest
 
 from kitt.config.loader import (
     ConfigError,
-    load_yaml,
-    load_test_config,
-    load_suite_config,
     load_engine_config,
+    load_suite_config,
+    load_test_config,
+    load_yaml,
 )
 
 

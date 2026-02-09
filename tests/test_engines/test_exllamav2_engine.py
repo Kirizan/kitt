@@ -4,8 +4,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from kitt.engines.image_resolver import clear_cache
 from kitt.engines.exllamav2_engine import ExLlamaV2Engine
+from kitt.engines.image_resolver import clear_cache
 
 
 @pytest.fixture(autouse=True)
@@ -37,8 +37,13 @@ class TestExLlamaV2EngineMetadata:
 
 class TestExLlamaV2EngineInitialize:
     @patch("kitt.engines.image_resolver._detect_cc", return_value=None)
-    @patch("kitt.engines.docker_manager.DockerManager.wait_for_healthy", return_value=True)
-    @patch("kitt.engines.docker_manager.DockerManager.run_container", return_value="container123")
+    @patch(
+        "kitt.engines.docker_manager.DockerManager.wait_for_healthy", return_value=True
+    )
+    @patch(
+        "kitt.engines.docker_manager.DockerManager.run_container",
+        return_value="container123",
+    )
     def test_initialize_starts_container(self, mock_run, mock_wait, mock_cc):
         engine = ExLlamaV2Engine()
         engine.initialize("/models/gptq-model", {})
@@ -48,8 +53,13 @@ class TestExLlamaV2EngineInitialize:
         assert engine._container_id == "container123"
 
     @patch("kitt.engines.image_resolver._detect_cc", return_value=None)
-    @patch("kitt.engines.docker_manager.DockerManager.wait_for_healthy", return_value=True)
-    @patch("kitt.engines.docker_manager.DockerManager.run_container", return_value="container123")
+    @patch(
+        "kitt.engines.docker_manager.DockerManager.wait_for_healthy", return_value=True
+    )
+    @patch(
+        "kitt.engines.docker_manager.DockerManager.run_container",
+        return_value="container123",
+    )
     def test_initialize_with_max_seq_len(self, mock_run, mock_wait, mock_cc):
         engine = ExLlamaV2Engine()
         engine.initialize("/models/gptq-model", {"max_seq_len": 8192})

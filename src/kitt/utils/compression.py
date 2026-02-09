@@ -2,8 +2,9 @@
 
 import gzip
 import json
+from collections.abc import Iterator
 from pathlib import Path
-from typing import Any, Iterator, List
+from typing import Any
 
 
 class ResultCompression:
@@ -11,10 +12,10 @@ class ResultCompression:
 
     @staticmethod
     def save_outputs(
-        outputs: List[Any],
+        outputs: list[Any],
         base_path: Path,
         chunk_size_mb: int = 50,
-    ) -> List[Path]:
+    ) -> list[Path]:
         """Save outputs with compression and chunking.
 
         Args:
@@ -25,9 +26,9 @@ class ResultCompression:
         Returns:
             List of created file paths.
         """
-        chunk_files: List[Path] = []
+        chunk_files: list[Path] = []
         chunk_num = 0
-        current_chunk: List[str] = []
+        current_chunk: list[str] = []
         current_size = 0.0
 
         for output in outputs:
@@ -55,7 +56,7 @@ class ResultCompression:
         return chunk_files
 
     @staticmethod
-    def _write_chunk(data: List[str], base_path: Path, chunk_num: int) -> Path:
+    def _write_chunk(data: list[str], base_path: Path, chunk_num: int) -> Path:
         """Write compressed chunk to disk."""
         base_path.parent.mkdir(parents=True, exist_ok=True)
         filename = base_path.parent / f"{base_path.name}_chunk_{chunk_num:04d}.jsonl.gz"

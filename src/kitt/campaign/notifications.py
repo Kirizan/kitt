@@ -8,7 +8,6 @@ import smtplib
 import subprocess
 import urllib.request
 from email.mime.text import MIMEText
-from typing import Optional
 
 from .models import NotificationConfig
 
@@ -31,9 +30,7 @@ class NotificationDispatcher:
         title = f"KITT Campaign Complete: {campaign_name}"
         self._dispatch(title, summary)
 
-    def notify_failure(
-        self, campaign_name: str, run_key: str, error: str
-    ) -> None:
+    def notify_failure(self, campaign_name: str, run_key: str, error: str) -> None:
         """Notify that a run has failed."""
         if not self.config.on_failure:
             return
@@ -54,6 +51,7 @@ class NotificationDispatcher:
         """Send notification via HTTP POST webhook."""
         payload = json.dumps({"title": title, "body": body}).encode("utf-8")
         try:
+            assert self.config.webhook_url is not None
             req = urllib.request.Request(
                 self.config.webhook_url,
                 data=payload,
@@ -77,10 +75,7 @@ class NotificationDispatcher:
                     timeout=5,
                 )
             elif system == "Darwin" and shutil.which("osascript"):
-                script = (
-                    f'display notification "{body[:200]}" '
-                    f'with title "{title}"'
-                )
+                script = f'display notification "{body[:200]}" with title "{title}"'
                 subprocess.run(
                     ["osascript", "-e", script],
                     capture_output=True,
@@ -102,14 +97,10 @@ class NotificationDispatcher:
             msg["From"] = self.config.smtp_user or "kitt@localhost"
             msg["To"] = self.config.email
 
-            with smtplib.SMTP(
-                self.config.smtp_host, self.config.smtp_port
-            ) as server:
+            with smtplib.SMTP(self.config.smtp_host, self.config.smtp_port) as server:
                 if self.config.smtp_user and self.config.smtp_password:
                     server.starttls()
-                    server.login(
-                        self.config.smtp_user, self.config.smtp_password
-                    )
+                    server.login(self.config.smtp_user, self.config.smtp_password)
                 server.send_message(msg)
 
             logger.debug(f"Email notification sent to {self.config.email}")

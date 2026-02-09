@@ -1,19 +1,21 @@
 """Hardware constraints for model recommendations."""
 
-from typing import Optional
-
 from pydantic import BaseModel, Field
 
 
 class HardwareConstraints(BaseModel):
     """Hardware constraints for filtering model recommendations."""
 
-    max_vram_gb: Optional[float] = Field(None, description="Maximum GPU VRAM in GB")
-    max_ram_gb: Optional[float] = Field(None, description="Maximum system RAM in GB")
-    min_throughput_tps: Optional[float] = Field(None, description="Minimum throughput (tokens/sec)")
-    min_accuracy: Optional[float] = Field(None, description="Minimum accuracy (0-1)")
-    max_latency_ms: Optional[float] = Field(None, description="Maximum latency in milliseconds")
-    engine: Optional[str] = Field(None, description="Restrict to specific engine")
+    max_vram_gb: float | None = Field(None, description="Maximum GPU VRAM in GB")
+    max_ram_gb: float | None = Field(None, description="Maximum system RAM in GB")
+    min_throughput_tps: float | None = Field(
+        None, description="Minimum throughput (tokens/sec)"
+    )
+    min_accuracy: float | None = Field(None, description="Minimum accuracy (0-1)")
+    max_latency_ms: float | None = Field(
+        None, description="Maximum latency in milliseconds"
+    )
+    engine: str | None = Field(None, description="Restrict to specific engine")
 
     def matches(self, result: dict) -> bool:
         """Check if a result satisfies these constraints.
@@ -46,8 +48,4 @@ class HardwareConstraints(BaseModel):
             if latency > self.max_latency_ms:
                 return False
 
-        if self.engine is not None:
-            if result.get("engine") != self.engine:
-                return False
-
-        return True
+        return not (self.engine is not None and result.get("engine") != self.engine)

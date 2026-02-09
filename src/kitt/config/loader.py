@@ -1,7 +1,10 @@
 """YAML configuration file loading with Pydantic validation."""
 
 from pathlib import Path
-from typing import Type, TypeVar
+from typing import TYPE_CHECKING, TypeVar
+
+if TYPE_CHECKING:
+    from kitt.campaign.models import CampaignConfig
 
 import yaml
 from pydantic import BaseModel, ValidationError
@@ -34,12 +37,12 @@ def load_yaml(path: Path) -> dict:
                 return {}
             return data
     except FileNotFoundError:
-        raise ConfigError(f"Configuration file not found: {path}")
+        raise ConfigError(f"Configuration file not found: {path}") from None
     except yaml.YAMLError as e:
-        raise ConfigError(f"Invalid YAML in {path}: {e}")
+        raise ConfigError(f"Invalid YAML in {path}: {e}") from e
 
 
-def load_config(path: Path, model_class: Type[T]) -> T:
+def load_config(path: Path, model_class: type[T]) -> T:
     """Load and validate a YAML config file against a Pydantic model.
 
     Args:
@@ -56,7 +59,7 @@ def load_config(path: Path, model_class: Type[T]) -> T:
     try:
         return model_class(**data)
     except ValidationError as e:
-        raise ConfigError(f"Configuration validation failed for {path}: {e}")
+        raise ConfigError(f"Configuration validation failed for {path}: {e}") from e
 
 
 def load_test_config(path: Path) -> TestConfig:

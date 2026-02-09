@@ -1,8 +1,7 @@
 """Tests for TUI campaign builder."""
 
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import patch
 
-import pytest
 import yaml
 
 from kitt.tui.campaign_builder import CampaignBuilderApp
@@ -167,9 +166,11 @@ class TestRunTui:
     def test_falls_back_when_textual_not_available(self):
         app = CampaignBuilderApp()
 
-        with patch.dict("sys.modules", {"textual": None, "textual.app": None}):
-            with patch.object(app, "run_simple", return_value=app.config) as mock_simple:
-                result = app.run_tui()
+        with (
+            patch.dict("sys.modules", {"textual": None, "textual.app": None}),
+            patch.object(app, "run_simple", return_value=app.config) as mock_simple,
+        ):
+            result = app.run_tui()
 
         mock_simple.assert_called_once()
         assert result == app.config

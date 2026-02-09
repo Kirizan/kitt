@@ -2,8 +2,6 @@
 
 import json
 
-import pytest
-
 from kitt.reporters.campaign_rollup import generate_campaign_rollup
 
 

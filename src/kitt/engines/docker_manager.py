@@ -6,7 +6,6 @@ import time
 import urllib.error
 import urllib.request
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -19,10 +18,10 @@ class ContainerConfig:
     port: int  # Host port (used with --network host, engine binds here)
     container_port: int  # Port inside container
     gpu: bool = True
-    volumes: Dict[str, str] = field(default_factory=dict)  # host_path -> container_path
-    env: Dict[str, str] = field(default_factory=dict)
-    extra_args: List[str] = field(default_factory=list)  # e.g. --shm-size=8g
-    command_args: List[str] = field(default_factory=list)  # args after image name
+    volumes: dict[str, str] = field(default_factory=dict)  # host_path -> container_path
+    env: dict[str, str] = field(default_factory=dict)
+    extra_args: list[str] = field(default_factory=list)  # e.g. --shm-size=8g
+    command_args: list[str] = field(default_factory=list)  # args after image name
     name_prefix: str = "kitt"
 
 
@@ -110,9 +109,7 @@ class DockerManager:
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
 
         if result.returncode != 0:
-            raise RuntimeError(
-                f"Failed to start container: {result.stderr.strip()}"
-            )
+            raise RuntimeError(f"Failed to start container: {result.stderr.strip()}")
 
         container_id = result.stdout.strip()
         logger.info(f"Container started: {container_id[:12]} ({container_name})")
@@ -128,7 +125,9 @@ class DockerManager:
                 timeout=timeout + 15,
             )
         except subprocess.TimeoutExpired:
-            logger.warning(f"Timeout stopping container {container_id[:12]}, forcing kill")
+            logger.warning(
+                f"Timeout stopping container {container_id[:12]}, forcing kill"
+            )
             subprocess.run(
                 ["docker", "kill", container_id],
                 capture_output=True,
@@ -163,7 +162,7 @@ class DockerManager:
         url: str,
         timeout: float = 600.0,
         interval: float = 2.0,
-        container_id: Optional[str] = None,
+        container_id: str | None = None,
     ) -> bool:
         """Poll a health endpoint until it responds or timeout is reached.
 
@@ -204,8 +203,9 @@ class DockerManager:
 
         raise RuntimeError(
             f"Engine failed to become healthy within {timeout}s at {url}\n"
-            f"Container logs:\n{logs}" if logs else
-            f"Engine failed to become healthy within {timeout}s at {url}"
+            f"Container logs:\n{logs}"
+            if logs
+            else f"Engine failed to become healthy within {timeout}s at {url}"
         )
 
     @staticmethod
@@ -213,8 +213,8 @@ class DockerManager:
         image: str,
         dockerfile: str,
         context_dir: str,
-        target: Optional[str] = None,
-        build_args: Optional[Dict[str, str]] = None,
+        target: str | None = None,
+        build_args: dict[str, str] | None = None,
         timeout: int = 3600,
     ) -> None:
         """Build a Docker image from a Dockerfile.
@@ -241,9 +241,7 @@ class DockerManager:
         cmd.append(context_dir)
 
         logger.info(f"Building image: {' '.join(cmd)}")
-        result = subprocess.run(
-            cmd, capture_output=True, text=True, timeout=timeout
-        )
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
 
         if result.returncode != 0:
             raise RuntimeError(
@@ -254,7 +252,7 @@ class DockerManager:
 
     @staticmethod
     def exec_in_container(
-        container_id: str, command: List[str]
+        container_id: str, command: list[str]
     ) -> subprocess.CompletedProcess:
         """Execute a command inside a running container.
 
@@ -267,8 +265,6 @@ class DockerManager:
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
 
         if result.returncode != 0:
-            raise RuntimeError(
-                f"docker exec failed: {result.stderr.strip()}"
-            )
+            raise RuntimeError(f"docker exec failed: {result.stderr.strip()}")
 
         return result

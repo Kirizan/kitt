@@ -1,7 +1,5 @@
 """Tests for regression detection."""
 
-import pytest
-
 from kitt.reporters.regression import RegressionAlert, RegressionDetector
 
 
@@ -113,12 +111,16 @@ class TestRegressionDetector:
 
     def test_model_and_engine_from_current(self):
         detector = RegressionDetector(warning_threshold_pct=5.0)
-        baseline = {"model": "old", "engine": "e", "results": [
-            {"test_name": "t", "metrics": {"avg_tps": 100.0}}
-        ]}
-        current = {"model": "Qwen-7B", "engine": "vllm", "results": [
-            {"test_name": "t", "metrics": {"avg_tps": 80.0}}
-        ]}
+        baseline = {
+            "model": "old",
+            "engine": "e",
+            "results": [{"test_name": "t", "metrics": {"avg_tps": 100.0}}],
+        }
+        current = {
+            "model": "Qwen-7B",
+            "engine": "vllm",
+            "results": [{"test_name": "t", "metrics": {"avg_tps": 80.0}}],
+        }
 
         alerts = detector.detect(baseline, current)
         assert alerts[0].model == "Qwen-7B"

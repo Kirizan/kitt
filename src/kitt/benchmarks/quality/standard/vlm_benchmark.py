@@ -1,7 +1,7 @@
 """Vision-Language Model benchmark — image understanding tasks."""
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from kitt.benchmarks.base import BenchmarkResult, LLMBenchmark
 from kitt.benchmarks.registry import register_benchmark
@@ -9,7 +9,7 @@ from kitt.benchmarks.registry import register_benchmark
 logger = logging.getLogger(__name__)
 
 # Built-in text-only VLM evaluation (no actual images — tests the API path)
-BUILT_IN_VLM_TASKS = [
+BUILT_IN_VLM_TASKS: list[dict[str, Any]] = [
     {
         "prompt": "Describe what you see in this image.",
         "image_url": None,
@@ -28,7 +28,7 @@ class VLMBenchmark(LLMBenchmark):
     category = "quality_standard"
     description = "Evaluate vision-language model image understanding"
 
-    def _execute(self, engine, config: Dict[str, Any]) -> BenchmarkResult:
+    def _execute(self, engine, config: dict[str, Any]) -> BenchmarkResult:
         tasks = config.get("tasks", BUILT_IN_VLM_TASKS)
         max_tokens = config.get("max_tokens", 256)
         temperature = config.get("temperature", 0.0)
@@ -37,8 +37,8 @@ class VLMBenchmark(LLMBenchmark):
         if sample_size and sample_size < len(tasks):
             tasks = tasks[:sample_size]
 
-        outputs: List[Dict[str, Any]] = []
-        errors: List[str] = []
+        outputs: list[dict[str, Any]] = []
+        errors: list[str] = []
         correct = 0
         total = len(tasks)
 
@@ -53,13 +53,18 @@ class VLMBenchmark(LLMBenchmark):
             try:
                 if image_url and has_chat:
                     result = engine.generate_chat(
-                        messages=[{
-                            "role": "user",
-                            "content": [
-                                {"type": "text", "text": prompt},
-                                {"type": "image_url", "image_url": {"url": image_url}},
-                            ],
-                        }],
+                        messages=[
+                            {
+                                "role": "user",
+                                "content": [
+                                    {"type": "text", "text": prompt},
+                                    {
+                                        "type": "image_url",
+                                        "image_url": {"url": image_url},
+                                    },
+                                ],
+                            }
+                        ],
                         max_tokens=max_tokens,
                         temperature=temperature,
                     )
@@ -75,21 +80,22 @@ class VLMBenchmark(LLMBenchmark):
                 if expected_keywords:
                     answer_lower = answer.lower()
                     is_correct = any(
-                        kw.lower() in answer_lower
-                        for kw in expected_keywords
+                        kw.lower() in answer_lower for kw in expected_keywords
                     )
 
                 if is_correct:
                     correct += 1
 
-                outputs.append({
-                    "index": i,
-                    "prompt": prompt[:100],
-                    "has_image": image_url is not None,
-                    "correct": is_correct,
-                    "answer": answer[:200],
-                    "latency_ms": result.metrics.total_latency_ms,
-                })
+                outputs.append(
+                    {
+                        "index": i,
+                        "prompt": prompt[:100],
+                        "has_image": image_url is not None,
+                        "correct": is_correct,
+                        "answer": answer[:200],
+                        "latency_ms": result.metrics.total_latency_ms,
+                    }
+                )
 
             except Exception as e:
                 errors.append(f"Task {i}: {e}")

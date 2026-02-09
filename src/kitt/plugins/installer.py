@@ -3,14 +3,13 @@
 import logging
 import subprocess
 import sys
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
 
 def install_plugin(
     package: str,
-    version: Optional[str] = None,
+    version: str | None = None,
     upgrade: bool = False,
 ) -> bool:
     """Install a plugin package via pip.
@@ -94,10 +93,12 @@ def list_installed_plugins() -> list:
         for dist in distributions():
             name = dist.metadata["Name"]
             if name and name.startswith("kitt-plugin-"):
-                plugins.append({
-                    "name": name,
-                    "version": dist.metadata["Version"],
-                })
+                plugins.append(
+                    {
+                        "name": name,
+                        "version": dist.metadata["Version"],
+                    }
+                )
         return plugins
     except Exception:
         return []

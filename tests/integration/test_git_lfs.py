@@ -2,8 +2,6 @@
 
 import gzip
 import subprocess
-import tempfile
-from pathlib import Path
 
 import pytest
 
@@ -32,7 +30,9 @@ def test_git_lfs_workflow(lfs_available, tmp_path):
     subprocess.run(["git", "init"], cwd=repo_path, check=True, capture_output=True)
     subprocess.run(
         ["git", "lfs", "install"],
-        cwd=repo_path, check=True, capture_output=True,
+        cwd=repo_path,
+        check=True,
+        capture_output=True,
     )
 
     # Create .gitattributes
@@ -49,17 +49,23 @@ def test_git_lfs_workflow(lfs_available, tmp_path):
     # Add and commit
     subprocess.run(
         ["git", "add", ".gitattributes", "test.jsonl.gz"],
-        cwd=repo_path, check=True, capture_output=True,
+        cwd=repo_path,
+        check=True,
+        capture_output=True,
     )
     subprocess.run(
         ["git", "commit", "-m", "Test LFS"],
-        cwd=repo_path, check=True, capture_output=True,
+        cwd=repo_path,
+        check=True,
+        capture_output=True,
     )
 
     # Verify it's tracked by LFS
     result = subprocess.run(
         ["git", "lfs", "ls-files"],
-        cwd=repo_path, capture_output=True, text=True,
+        cwd=repo_path,
+        capture_output=True,
+        text=True,
     )
     assert "test.jsonl.gz" in result.stdout, "File not tracked by LFS"
 
@@ -69,7 +75,7 @@ def test_karr_repo_with_lfs(lfs_available, tmp_path):
     from kitt.git_ops.repo_manager import KARRRepoManager
 
     repo_path = tmp_path / "karr-test-lfs"
-    repo = KARRRepoManager.create_results_repo(repo_path, "test-fingerprint")
+    KARRRepoManager.create_results_repo(repo_path, "test-fingerprint")
 
     # Create a compressed test file
     test_file = repo_path / "test_results.jsonl.gz"
@@ -80,16 +86,22 @@ def test_karr_repo_with_lfs(lfs_available, tmp_path):
     # Add via subprocess (GitPython's index.add bypasses LFS filters)
     subprocess.run(
         ["git", "add", "test_results.jsonl.gz"],
-        cwd=repo_path, check=True, capture_output=True,
+        cwd=repo_path,
+        check=True,
+        capture_output=True,
     )
     subprocess.run(
         ["git", "commit", "-m", "Add test results"],
-        cwd=repo_path, check=True, capture_output=True,
+        cwd=repo_path,
+        check=True,
+        capture_output=True,
     )
 
     # Verify LFS tracking
     result = subprocess.run(
         ["git", "lfs", "ls-files"],
-        cwd=repo_path, capture_output=True, text=True,
+        cwd=repo_path,
+        capture_output=True,
+        text=True,
     )
     assert "test_results.jsonl.gz" in result.stdout

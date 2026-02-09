@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 @dataclass
@@ -16,7 +16,7 @@ class CampaignRunResult:
     duration_s: float = 0.0
     output_dir: str = ""
     error: str = ""
-    metrics: Dict[str, Any] = field(default_factory=dict)
+    metrics: dict[str, Any] = field(default_factory=dict)
     timestamp: str = field(default_factory=lambda: datetime.now().isoformat())
 
 
@@ -28,7 +28,7 @@ class CampaignResult:
     campaign_name: str
     started_at: str = ""
     completed_at: str = ""
-    runs: List[CampaignRunResult] = field(default_factory=list)
+    runs: list[CampaignRunResult] = field(default_factory=list)
 
     @property
     def total(self) -> int:

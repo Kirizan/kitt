@@ -2,7 +2,7 @@
 
 import json
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 try:
     from textual.app import App, ComposeResult
@@ -70,11 +70,11 @@ if TEXTUAL_AVAILABLE:
             ("r", "refresh", "Refresh"),
         ]
 
-        def __init__(self, result_paths: List[str], **kwargs):
+        def __init__(self, result_paths: list[str], **kwargs):
             super().__init__(**kwargs)
             self.result_paths = result_paths
-            self.result_data: List[Dict[str, Any]] = []
-            self.labels: List[str] = []
+            self.result_data: list[dict[str, Any]] = []
+            self.labels: list[str] = []
 
         def compose(self) -> ComposeResult:
             yield Header(show_clock=True)
@@ -111,13 +111,13 @@ if TEXTUAL_AVAILABLE:
             """Build the sidebar tree of runs."""
             tree = self.query_one("#run-tree", Tree)
             tree.clear()
-            for i, (data, label) in enumerate(
-                zip(self.result_data, self.labels)
+            for _i, (data, label) in enumerate(
+                zip(self.result_data, self.labels, strict=False)
             ):
                 node = tree.root.add(label)
                 node.add_leaf(f"Suite: {data.get('suite_name', '?')}")
                 node.add_leaf(f"Time: {data.get('timestamp', '?')[:19]}")
-                passed = data.get('passed', False)
+                passed = data.get("passed", False)
                 status = "PASS" if passed else "FAIL"
                 node.add_leaf(f"Status: {status}")
                 results = data.get("results", [])
@@ -169,11 +169,9 @@ if TEXTUAL_AVAILABLE:
                         row.append("-")
                     table.add_row(*row)
 
-        def _collect_bench_metrics(
-            self, bench_name: str
-        ) -> Dict[str, Dict[int, Any]]:
+        def _collect_bench_metrics(self, bench_name: str) -> dict[str, dict[int, Any]]:
             """Collect metrics for a benchmark across all runs."""
-            metrics: Dict[str, Dict[int, Any]] = {}
+            metrics: dict[str, dict[int, Any]] = {}
             for i, data in enumerate(self.result_data):
                 for r in data.get("results", []):
                     if r.get("test_name") != bench_name:
@@ -194,17 +192,17 @@ if TEXTUAL_AVAILABLE:
 
             lines = [f"Comparing {len(self.result_data)} result set(s)"]
             for i, (data, label) in enumerate(
-                zip(self.result_data, self.labels)
+                zip(self.result_data, self.labels, strict=False)
             ):
                 passed = data.get("passed", False)
                 status = "[PASS]" if passed else "[FAIL]"
                 time_s = data.get("total_time_seconds", 0)
-                lines.append(f"  {i+1}. {label} - {status} ({time_s:.1f}s)")
+                lines.append(f"  {i + 1}. {label} - {status} ({time_s:.1f}s)")
 
             panel.update("\n".join(lines))
 
         def action_toggle_dark(self) -> None:
-            self.dark = not self.dark
+            self.dark: bool = not self.dark
 
         def action_refresh(self) -> None:
             self.result_data.clear()
@@ -215,7 +213,7 @@ if TEXTUAL_AVAILABLE:
             self._update_summary()
 
 
-def launch_comparison_tui(result_paths: List[str]) -> None:
+def launch_comparison_tui(result_paths: list[str]) -> None:
     """Launch the comparison TUI.
 
     Args:

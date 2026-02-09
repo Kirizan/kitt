@@ -1,6 +1,5 @@
 """Tests for parallel campaign runner."""
 
-import time
 from datetime import datetime
 from unittest.mock import MagicMock, patch
 
@@ -20,13 +19,15 @@ from kitt.campaign.state_manager import CampaignState, CampaignStateManager, Run
 def _make_config(models=None, engines=None):
     return CampaignConfig(
         campaign_name="parallel-test",
-        models=models or [
+        models=models
+        or [
             CampaignModelSpec(
                 name="test-model",
                 gguf_repo="test/model-GGUF",
             ),
         ],
-        engines=engines or [
+        engines=engines
+        or [
             CampaignEngineSpec(name="llama_cpp"),
         ],
         suite="quick",
@@ -118,17 +119,25 @@ class TestParallelCampaignRunner:
 
             results = [
                 CampaignRunResult(
-                    model_name="test-model", engine_name="llama_cpp",
-                    quant="Q4_K_M", status="failed", error="test error",
+                    model_name="test-model",
+                    engine_name="llama_cpp",
+                    quant="Q4_K_M",
+                    status="failed",
+                    error="test error",
                 ),
                 CampaignRunResult(
-                    model_name="test-model", engine_name="llama_cpp",
-                    quant="Q5_K_M", status="success", duration_s=10.0,
+                    model_name="test-model",
+                    engine_name="llama_cpp",
+                    quant="Q5_K_M",
+                    status="success",
+                    duration_s=10.0,
                 ),
             ]
             mock_exec.side_effect = results
 
-            with patch.object(runner._runner, "_download_model", return_value="/fake/path"):
+            with patch.object(
+                runner._runner, "_download_model", return_value="/fake/path"
+            ):
                 result = runner.run(campaign_id="test-isolation")
 
         assert result.total == 2
@@ -161,12 +170,15 @@ class TestParallelCampaignRunner:
         )
 
         run_spec = CampaignRunSpec(
-            model_name="test", engine_name="llama_cpp",
-            quant="Q4_K_M", suite="quick",
+            model_name="test",
+            engine_name="llama_cpp",
+            quant="Q4_K_M",
+            suite="quick",
         )
 
         with patch.object(
-            runner._runner, "_download_model",
+            runner._runner,
+            "_download_model",
             side_effect=RuntimeError("download failed"),
         ):
             result = runner._safe_download(run_spec)
@@ -182,8 +194,10 @@ class TestParallelCampaignRunner:
         )
 
         # Run should complete without deadlock
-        with patch("kitt.campaign.runner.discover_gguf_quants") as mock_discover, \
-             patch("kitt.campaign.runner.filter_quants") as mock_filter:
+        with (
+            patch("kitt.campaign.runner.discover_gguf_quants") as mock_discover,
+            patch("kitt.campaign.runner.filter_quants") as mock_filter,
+        ):
             quants = [MagicMock(quant_name="Q4_K_M", include_pattern="*Q4_K_M*")]
             mock_discover.return_value = quants
             mock_filter.return_value = quants
@@ -204,12 +218,14 @@ class TestParallelCampaignRunner:
             campaign_name="parallel-test",
             status="running",
             started_at=datetime.now().isoformat(),
-            runs=[RunState(
-                model_name="test-model",
-                engine_name="llama_cpp",
-                quant="Q4_K_M",
-                status="success",
-            )],
+            runs=[
+                RunState(
+                    model_name="test-model",
+                    engine_name="llama_cpp",
+                    quant="Q4_K_M",
+                    status="success",
+                )
+            ],
         )
         mock_state_manager.load.return_value = existing_state
         mock_state_manager.is_run_done.return_value = True

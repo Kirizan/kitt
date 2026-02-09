@@ -1,16 +1,16 @@
 """Cross-campaign comparison."""
 
 import logging
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
 def compare_campaigns(
-    campaign_a: List[Dict[str, Any]],
-    campaign_b: List[Dict[str, Any]],
-    metric_keys: Optional[List[str]] = None,
-) -> Dict[str, Dict[str, Any]]:
+    campaign_a: list[dict[str, Any]],
+    campaign_b: list[dict[str, Any]],
+    metric_keys: list[str] | None = None,
+) -> dict[str, dict[str, Any]]:
     """Compare results between two campaigns.
 
     Matches runs by (model, engine) and computes deltas for numeric metrics.
@@ -33,7 +33,7 @@ def compare_campaigns(
         result_a = index_a.get(key)
         result_b = index_b.get(key)
 
-        entry: Dict[str, Any] = {
+        entry: dict[str, Any] = {
             "key": key,
             "in_a": result_a is not None,
             "in_b": result_b is not None,
@@ -43,16 +43,14 @@ def compare_campaigns(
             metrics_a = _extract_flat_metrics(result_a, metric_keys)
             metrics_b = _extract_flat_metrics(result_b, metric_keys)
 
-            deltas = {}
+            deltas: dict[str, dict[str, float | None]] = {}
             for metric in sorted(set(metrics_a.keys()) | set(metrics_b.keys())):
                 val_a = metrics_a.get(metric)
                 val_b = metrics_b.get(metric)
 
                 if val_a is not None and val_b is not None:
                     delta = val_b - val_a
-                    pct_change = (
-                        (delta / val_a * 100) if val_a != 0 else 0
-                    )
+                    pct_change = (delta / val_a * 100) if val_a != 0 else 0
                     deltas[metric] = {
                         "baseline": val_a,
                         "comparison": val_b,
@@ -76,8 +74,8 @@ def compare_campaigns(
 
 
 def _index_by_key(
-    results: List[Dict[str, Any]],
-) -> Dict[str, Dict[str, Any]]:
+    results: list[dict[str, Any]],
+) -> dict[str, dict[str, Any]]:
     """Index results by (model, engine) key."""
     index = {}
     for r in results:
@@ -89,9 +87,9 @@ def _index_by_key(
 
 
 def _extract_flat_metrics(
-    result: Dict[str, Any],
-    metric_keys: Optional[List[str]] = None,
-) -> Dict[str, float]:
+    result: dict[str, Any],
+    metric_keys: list[str] | None = None,
+) -> dict[str, float]:
     """Extract flat numeric metrics from a result."""
     flat = {}
     for bench in result.get("results", []):

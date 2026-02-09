@@ -9,14 +9,13 @@ Falls back gracefully when Devon is not installed.
 
 import logging
 from pathlib import Path
-from typing import List, Optional
 
 logger = logging.getLogger(__name__)
 
 DEVON_AVAILABLE = False
 try:
-    from devon.storage.manager import ModelStorage
     from devon.sources.huggingface import HuggingFaceSource
+    from devon.storage.manager import ModelStorage
 
     DEVON_AVAILABLE = True
 except ImportError:
@@ -30,7 +29,7 @@ class DevonBridge:
     via Devon's Python API.
     """
 
-    def __init__(self, storage_path: Optional[str] = None) -> None:
+    def __init__(self, storage_path: str | None = None) -> None:
         """Initialize the Devon bridge.
 
         Args:
@@ -47,9 +46,7 @@ class DevonBridge:
                 "or: pip install kitt[devon]"
             )
 
-        self._storage = ModelStorage(
-            root=Path(storage_path) if storage_path else None
-        )
+        self._storage = ModelStorage(root=Path(storage_path) if storage_path else None)
         self._hf_source = HuggingFaceSource()
 
     @property
@@ -60,7 +57,7 @@ class DevonBridge:
     def download(
         self,
         repo_id: str,
-        allow_patterns: Optional[List[str]] = None,
+        allow_patterns: list[str] | None = None,
     ) -> Path:
         """Download a model from HuggingFace.
 
@@ -74,8 +71,10 @@ class DevonBridge:
         Raises:
             RuntimeError: If download fails.
         """
-        logger.info(f"Downloading {repo_id} via Devon" +
-                     (f" (patterns: {allow_patterns})" if allow_patterns else ""))
+        logger.info(
+            f"Downloading {repo_id} via Devon"
+            + (f" (patterns: {allow_patterns})" if allow_patterns else "")
+        )
         try:
             path = self._hf_source.download_model(
                 repo_id,
@@ -104,7 +103,7 @@ class DevonBridge:
             logger.warning(f"Remove failed for {repo_id}: {e}")
             return False
 
-    def find_path(self, repo_id: str) -> Optional[Path]:
+    def find_path(self, repo_id: str) -> Path | None:
         """Find the local path for a downloaded model.
 
         Args:
@@ -121,7 +120,7 @@ class DevonBridge:
             pass
         return None
 
-    def list_models(self) -> List[str]:
+    def list_models(self) -> list[str]:
         """List all downloaded model repository IDs.
 
         Returns:
@@ -147,7 +146,7 @@ class DevonBridge:
             return 0.0
 
         total = sum(f.stat().st_size for f in path.rglob("*") if f.is_file())
-        return total / (1024 ** 3)
+        return total / (1024**3)
 
 
 def is_devon_available() -> bool:

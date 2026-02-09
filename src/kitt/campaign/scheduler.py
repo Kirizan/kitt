@@ -4,7 +4,6 @@ import logging
 import re
 import shutil
 from pathlib import Path
-from typing import List, Optional
 
 from .models import CampaignConfig, CampaignRunSpec, DiskConfig, ResourceLimitsConfig
 from .state_manager import CampaignState
@@ -63,12 +62,12 @@ class CampaignScheduler:
     def __init__(
         self,
         disk_config: DiskConfig,
-        resource_limits: Optional[ResourceLimitsConfig] = None,
+        resource_limits: ResourceLimitsConfig | None = None,
     ) -> None:
         self.disk_config = disk_config
         self.resource_limits = resource_limits or ResourceLimitsConfig()
 
-    def plan_runs(self, config: CampaignConfig) -> List[CampaignRunSpec]:
+    def plan_runs(self, config: CampaignConfig) -> list[CampaignRunSpec]:
         """Generate ordered list of runs from campaign config.
 
         Produces one CampaignRunSpec per (model, engine, quant) combination.
@@ -76,63 +75,69 @@ class CampaignScheduler:
         are discovered dynamically at runtime — here we produce placeholders
         that the runner will expand.
         """
-        runs: List[CampaignRunSpec] = []
+        runs: list[CampaignRunSpec] = []
 
         for model in config.models:
             for engine in config.engines:
                 if engine.name == "vllm" and model.safetensors_repo:
-                    runs.append(CampaignRunSpec(
-                        model_name=model.name,
-                        engine_name=engine.name,
-                        quant="bf16",
-                        repo_id=model.safetensors_repo,
-                        estimated_size_gb=model.estimated_size_gb,
-                        suite=engine.suite,
-                        engine_config=engine.config,
-                    ))
+                    runs.append(
+                        CampaignRunSpec(
+                            model_name=model.name,
+                            engine_name=engine.name,
+                            quant="bf16",
+                            repo_id=model.safetensors_repo,
+                            estimated_size_gb=model.estimated_size_gb,
+                            suite=engine.suite,
+                            engine_config=engine.config,
+                        )
+                    )
                 elif engine.name in ("llama_cpp", "exllamav2") and model.gguf_repo:
                     # Placeholder — actual quants discovered at runtime
-                    runs.append(CampaignRunSpec(
-                        model_name=model.name,
-                        engine_name=engine.name,
-                        quant="__discover_gguf__",
-                        repo_id=model.gguf_repo,
-                        estimated_size_gb=model.estimated_size_gb,
-                        suite=engine.suite,
-                        engine_config=engine.config,
-                    ))
+                    runs.append(
+                        CampaignRunSpec(
+                            model_name=model.name,
+                            engine_name=engine.name,
+                            quant="__discover_gguf__",
+                            repo_id=model.gguf_repo,
+                            estimated_size_gb=model.estimated_size_gb,
+                            suite=engine.suite,
+                            engine_config=engine.config,
+                        )
+                    )
                 elif engine.name == "ollama" and model.ollama_tag:
                     # Placeholder — actual tags discovered at runtime
-                    runs.append(CampaignRunSpec(
-                        model_name=model.name,
-                        engine_name=engine.name,
-                        quant="__discover_ollama__",
-                        repo_id=model.ollama_tag,
-                        estimated_size_gb=model.estimated_size_gb,
-                        suite=engine.suite,
-                        engine_config=engine.config,
-                    ))
+                    runs.append(
+                        CampaignRunSpec(
+                            model_name=model.name,
+                            engine_name=engine.name,
+                            quant="__discover_ollama__",
+                            repo_id=model.ollama_tag,
+                            estimated_size_gb=model.estimated_size_gb,
+                            suite=engine.suite,
+                            engine_config=engine.config,
+                        )
+                    )
 
         return runs
 
-    def order_by_size(self, runs: List[CampaignRunSpec]) -> List[CampaignRunSpec]:
+    def order_by_size(self, runs: list[CampaignRunSpec]) -> list[CampaignRunSpec]:
         """Order runs by estimated size (smallest first) to maximize throughput."""
         return sorted(runs, key=lambda r: r.estimated_size_gb)
 
     def filter_completed(
-        self, runs: List[CampaignRunSpec], state: CampaignState
-    ) -> List[CampaignRunSpec]:
+        self, runs: list[CampaignRunSpec], state: CampaignState
+    ) -> list[CampaignRunSpec]:
         """Remove runs that are already completed (for resume)."""
         return [r for r in runs if r.key not in state.completed_keys]
 
     def check_disk_space(
-        self, run: CampaignRunSpec, storage_path: Optional[str] = None
+        self, run: CampaignRunSpec, storage_path: str | None = None
     ) -> bool:
         """Check if there's enough disk space for a run."""
         path = storage_path or str(Path.home())
         try:
             usage = shutil.disk_usage(path)
-            free_gb = usage.free / (1024 ** 3)
+            free_gb = usage.free / (1024**3)
         except OSError:
             logger.warning(f"Could not check disk space at {path}")
             return True
@@ -152,9 +157,7 @@ class CampaignScheduler:
         """Check if a run should be skipped based on disk or size constraints."""
         if not self.check_disk_space(run, self.disk_config.storage_path):
             return True
-        if self.should_skip_for_size(run):
-            return True
-        return False
+        return bool(self.should_skip_for_size(run))
 
     def should_skip_for_size(self, run: CampaignRunSpec) -> bool:
         """Check if a run exceeds the configured model size limit.

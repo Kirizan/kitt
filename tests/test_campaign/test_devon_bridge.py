@@ -30,9 +30,19 @@ def mock_devon():
     mock_storage.root = Path("/mock/models")
     mock_source = MagicMock()
 
-    with patch("kitt.campaign.devon_bridge.DEVON_AVAILABLE", True), \
-         patch("kitt.campaign.devon_bridge.ModelStorage", return_value=mock_storage, create=True), \
-         patch("kitt.campaign.devon_bridge.HuggingFaceSource", return_value=mock_source, create=True):
+    with (
+        patch("kitt.campaign.devon_bridge.DEVON_AVAILABLE", True),
+        patch(
+            "kitt.campaign.devon_bridge.ModelStorage",
+            return_value=mock_storage,
+            create=True,
+        ),
+        patch(
+            "kitt.campaign.devon_bridge.HuggingFaceSource",
+            return_value=mock_source,
+            create=True,
+        ),
+    ):
         from kitt.campaign.devon_bridge import DevonBridge
 
         bridge = DevonBridge.__new__(DevonBridge)

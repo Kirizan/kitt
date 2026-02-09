@@ -3,7 +3,6 @@
 import logging
 import platform
 from dataclasses import dataclass
-from typing import Optional
 
 from .detector import (
     CPUInfo,
@@ -35,13 +34,13 @@ TESTED_ENVIRONMENTS = [
 class SystemInfo:
     """Complete system hardware information."""
 
-    gpu: Optional[GPUInfo]
+    gpu: GPUInfo | None
     cpu: CPUInfo
     ram_gb: int
     ram_type: str
     storage: StorageInfo
-    cuda_version: Optional[str]
-    driver_version: Optional[str]
+    cuda_version: str | None
+    driver_version: str | None
     os: str
     kernel: str
     environment_type: str
@@ -102,7 +101,11 @@ class HardwareFingerprint:
         # CPU (first and last token of model name + core count)
         if info.cpu.model != "Unknown":
             cpu_tokens = info.cpu.model.split()
-            cpu_label = f"{cpu_tokens[0]}-{cpu_tokens[-1]}" if len(cpu_tokens) > 1 else cpu_tokens[0]
+            cpu_label = (
+                f"{cpu_tokens[0]}-{cpu_tokens[-1]}"
+                if len(cpu_tokens) > 1
+                else cpu_tokens[0]
+            )
             parts.append(f"{cpu_label}-{info.cpu.cores}c")
         else:
             parts.append(f"UnknownCPU-{info.cpu.cores}c")

@@ -36,17 +36,21 @@ class TestHandleStatus:
             },
         ]
 
-        with patch(
-            "kitt.campaign.state_manager.CampaignStateManager",
-            return_value=mock_mgr,
+        with (
+            patch(
+                "kitt.campaign.state_manager.CampaignStateManager",
+                return_value=mock_mgr,
+            ),
+            patch.dict(
+                "sys.modules",
+                {
+                    "kitt.campaign.state_manager": MagicMock(
+                        CampaignStateManager=MagicMock(return_value=mock_mgr)
+                    ),
+                },
+            ),
         ):
-            # Patch the import inside handle_status
-            with patch.dict("sys.modules", {
-                "kitt.campaign.state_manager": MagicMock(
-                    CampaignStateManager=MagicMock(return_value=mock_mgr)
-                ),
-            }):
-                result = handler.handle_status()
+            result = handler.handle_status()
 
         assert "nightly-bench" in result
         assert "completed" in result
@@ -56,19 +60,25 @@ class TestHandleStatus:
         mock_mgr = MagicMock()
         mock_mgr.list_campaigns.return_value = []
 
-        with patch.dict("sys.modules", {
-            "kitt.campaign.state_manager": MagicMock(
-                CampaignStateManager=MagicMock(return_value=mock_mgr)
-            ),
-        }):
+        with patch.dict(
+            "sys.modules",
+            {
+                "kitt.campaign.state_manager": MagicMock(
+                    CampaignStateManager=MagicMock(return_value=mock_mgr)
+                ),
+            },
+        ):
             result = handler.handle_status()
 
         assert "No campaigns found." in result
 
     def test_with_error(self, handler):
-        with patch.dict("sys.modules", {
-            "kitt.campaign.state_manager": None,
-        }):
+        with patch.dict(
+            "sys.modules",
+            {
+                "kitt.campaign.state_manager": None,
+            },
+        ):
             result = handler.handle_status()
             assert "Error getting status:" in result
 
@@ -140,7 +150,12 @@ class TestHandleCompare:
 
     def test_with_less_than_two_results(self, handler, mock_store):
         mock_store.query.return_value = [
-            {"model": "llama-8b", "engine": "vllm", "passed": True, "timestamp": "2024-01-15T00:00:00Z"},
+            {
+                "model": "llama-8b",
+                "engine": "vllm",
+                "passed": True,
+                "timestamp": "2024-01-15T00:00:00Z",
+            },
         ]
         result = handler.handle_compare("llama-8b", "vllm")
         assert "Need at least 2 runs to compare." in result

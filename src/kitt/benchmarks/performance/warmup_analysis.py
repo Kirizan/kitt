@@ -2,7 +2,7 @@
 
 import logging
 import time
-from typing import Any, Dict, List
+from typing import Any
 
 from kitt.benchmarks.base import BenchmarkResult, LLMBenchmark
 from kitt.benchmarks.registry import register_benchmark
@@ -30,7 +30,7 @@ class WarmupAnalysisBenchmark(LLMBenchmark):
     category = "performance"
     description = "Measure warmup performance and CUDA kernel initialization"
 
-    def _execute(self, engine, config: Dict[str, Any]) -> BenchmarkResult:
+    def _execute(self, engine, config: dict[str, Any]) -> BenchmarkResult:
         """Run warmup analysis benchmark."""
         test_config = config.get("test_config", {})
         prompts = test_config.get("prompts", DEFAULT_PROMPTS)
@@ -38,8 +38,8 @@ class WarmupAnalysisBenchmark(LLMBenchmark):
         max_tokens = config.get("sampling", {}).get("max_tokens", 100)
         temperature = config.get("sampling", {}).get("temperature", 0.0)
 
-        outputs: List[Dict[str, Any]] = []
-        errors: List[str] = []
+        outputs: list[dict[str, Any]] = []
+        errors: list[str] = []
 
         for i in range(iterations):
             prompt = prompts[i % len(prompts)]
@@ -52,18 +52,20 @@ class WarmupAnalysisBenchmark(LLMBenchmark):
                 )
                 wall_time_ms = (time.perf_counter() - start) * 1000
 
-                outputs.append({
-                    "iteration": i,
-                    "prompt": prompt[:100],
-                    "metrics": {
-                        "wall_time_ms": round(wall_time_ms, 2),
-                        "total_latency_ms": result.metrics.total_latency_ms,
-                        "ttft_ms": result.metrics.ttft_ms,
-                        "tps": result.metrics.tps,
-                        "completion_tokens": result.completion_tokens,
-                        "gpu_memory_peak_gb": result.metrics.gpu_memory_peak_gb,
-                    },
-                })
+                outputs.append(
+                    {
+                        "iteration": i,
+                        "prompt": prompt[:100],
+                        "metrics": {
+                            "wall_time_ms": round(wall_time_ms, 2),
+                            "total_latency_ms": result.metrics.total_latency_ms,
+                            "ttft_ms": result.metrics.ttft_ms,
+                            "tps": result.metrics.tps,
+                            "completion_tokens": result.completion_tokens,
+                            "gpu_memory_peak_gb": result.metrics.gpu_memory_peak_gb,
+                        },
+                    }
+                )
 
             except Exception as e:
                 error_msg = f"Error on warmup iteration {i}: {str(e)}"
@@ -81,7 +83,7 @@ class WarmupAnalysisBenchmark(LLMBenchmark):
             errors=errors,
         )
 
-    def _aggregate_metrics(self, outputs: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _aggregate_metrics(self, outputs: list[dict[str, Any]]) -> dict[str, Any]:
         """Analyze warmup curve."""
         if not outputs:
             return {}
@@ -98,13 +100,14 @@ class WarmupAnalysisBenchmark(LLMBenchmark):
         # Reduction percentage
         reduction_pct = (
             ((first_latency - subsequent_avg) / first_latency * 100)
-            if first_latency > 0 else 0
+            if first_latency > 0
+            else 0
         )
 
         # Find stabilization point (where variance drops below 10% of mean)
         stabilization_idx = len(latencies) - 1
         for i in range(2, len(latencies)):
-            window = latencies[max(0, i - 2):i + 1]
+            window = latencies[max(0, i - 2) : i + 1]
             mean_w = sum(window) / len(window)
             if mean_w > 0:
                 max_dev = max(abs(v - mean_w) / mean_w for v in window)
@@ -118,5 +121,5 @@ class WarmupAnalysisBenchmark(LLMBenchmark):
             "subsequent_avg_latency_ms": round(subsequent_avg, 2),
             "latency_reduction_percent": round(reduction_pct, 1),
             "stabilization_iteration": stabilization_idx,
-            "per_iteration_latencies_ms": [round(l, 2) for l in latencies],
+            "per_iteration_latencies_ms": [round(lat, 2) for lat in latencies],
         }

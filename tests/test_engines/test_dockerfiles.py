@@ -1,7 +1,5 @@
 """Tests for KITT-managed Dockerfiles — validate files exist and contain expected content."""
 
-from pathlib import Path
-
 from kitt.engines.image_resolver import _BUILD_RECIPES, _PROJECT_ROOT, get_build_recipe
 
 

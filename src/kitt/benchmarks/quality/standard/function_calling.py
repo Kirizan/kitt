@@ -3,7 +3,7 @@
 import json
 import logging
 import re
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from kitt.benchmarks.base import BenchmarkResult, LLMBenchmark
 from kitt.benchmarks.registry import register_benchmark
@@ -17,7 +17,11 @@ TOOL_DEFINITIONS = [
         "description": "Get current weather for a location",
         "parameters": {
             "location": {"type": "string", "required": True},
-            "unit": {"type": "string", "enum": ["celsius", "fahrenheit"], "required": False},
+            "unit": {
+                "type": "string",
+                "enum": ["celsius", "fahrenheit"],
+                "required": False,
+            },
         },
     },
     {
@@ -49,13 +53,29 @@ TOOL_DEFINITIONS = [
 # Test cases: (user_query, expected_function, expected_args_subset)
 TEST_CASES = [
     ("What's the weather like in Tokyo?", "get_weather", {"location": "Tokyo"}),
-    ("Search for the latest news about AI", "search_web", {"query": "latest news about AI"}),
+    (
+        "Search for the latest news about AI",
+        "search_web",
+        {"query": "latest news about AI"},
+    ),
     ("What is 15 * 23?", "calculate", {"expression": "15 * 23"}),
-    ("Send an email to alice@example.com with subject Hello", "send_email", {"to": "alice@example.com"}),
-    ("What's the temperature in Paris in celsius?", "get_weather", {"location": "Paris"}),
+    (
+        "Send an email to alice@example.com with subject Hello",
+        "send_email",
+        {"to": "alice@example.com"},
+    ),
+    (
+        "What's the temperature in Paris in celsius?",
+        "get_weather",
+        {"location": "Paris"},
+    ),
     ("Look up 'quantum computing breakthroughs'", "search_web", {}),
     ("Calculate the square root of 144", "calculate", {}),
-    ("Email bob@test.com about the meeting tomorrow", "send_email", {"to": "bob@test.com"}),
+    (
+        "Email bob@test.com about the meeting tomorrow",
+        "send_email",
+        {"to": "bob@test.com"},
+    ),
 ]
 
 
@@ -68,7 +88,7 @@ class FunctionCallingBenchmark(LLMBenchmark):
     category = "quality_standard"
     description = "Evaluate function selection and argument generation accuracy"
 
-    def _execute(self, engine, config: Dict[str, Any]) -> BenchmarkResult:
+    def _execute(self, engine, config: dict[str, Any]) -> BenchmarkResult:
         tools = config.get("tools", TOOL_DEFINITIONS)
         test_cases = config.get("test_cases", TEST_CASES)
         max_tokens = config.get("max_tokens", 512)
@@ -81,8 +101,8 @@ class FunctionCallingBenchmark(LLMBenchmark):
         tools_desc = self._format_tools(tools)
         tool_names = {t["name"] for t in tools}
 
-        outputs: List[Dict[str, Any]] = []
-        errors: List[str] = []
+        outputs: list[dict[str, Any]] = []
+        errors: list[str] = []
         correct_function = 0
         correct_args = 0
         json_parse_success = 0
@@ -117,39 +137,50 @@ class FunctionCallingBenchmark(LLMBenchmark):
                     hallucinated_functions += 1
 
                 # Check args
-                args_correct = all(
-                    func_args.get(k) is not None
-                    for k in expected_args
-                ) if func_correct and expected_args else func_correct
+                args_correct = (
+                    all(func_args.get(k) is not None for k in expected_args)
+                    if func_correct and expected_args
+                    else func_correct
+                )
 
                 if args_correct:
                     correct_args += 1
 
-                outputs.append({
-                    "index": i,
-                    "query": query,
-                    "expected_function": expected_func,
-                    "predicted_function": func_name,
-                    "function_correct": func_correct,
-                    "args_correct": args_correct,
-                    "json_valid": is_json_valid,
-                    "raw_output": raw_output[:300],
-                })
+                outputs.append(
+                    {
+                        "index": i,
+                        "query": query,
+                        "expected_function": expected_func,
+                        "predicted_function": func_name,
+                        "function_correct": func_correct,
+                        "args_correct": args_correct,
+                        "json_valid": is_json_valid,
+                        "raw_output": raw_output[:300],
+                    }
+                )
 
             except Exception as e:
                 errors.append(f"Test {i}: {e}")
-                outputs.append({
-                    "index": i,
-                    "query": query,
-                    "expected_function": expected_func,
-                    "error": str(e),
-                })
+                outputs.append(
+                    {
+                        "index": i,
+                        "query": query,
+                        "expected_function": expected_func,
+                        "error": str(e),
+                    }
+                )
 
         metrics = {
-            "correct_function_selection_rate": round(correct_function / total, 4) if total else 0,
+            "correct_function_selection_rate": round(correct_function / total, 4)
+            if total
+            else 0,
             "argument_accuracy": round(correct_args / total, 4) if total else 0,
-            "json_parse_success_rate": round(json_parse_success / total, 4) if total else 0,
-            "hallucinated_function_rate": round(hallucinated_functions / total, 4) if total else 0,
+            "json_parse_success_rate": round(json_parse_success / total, 4)
+            if total
+            else 0,
+            "hallucinated_function_rate": round(hallucinated_functions / total, 4)
+            if total
+            else 0,
             "correct_functions": correct_function,
             "correct_args": correct_args,
             "total": total,
@@ -158,13 +189,14 @@ class FunctionCallingBenchmark(LLMBenchmark):
         return BenchmarkResult(
             test_name=self.name,
             test_version=self.version,
-            passed=len(errors) == 0 and (correct_function / total >= 0.5 if total else False),
+            passed=len(errors) == 0
+            and (correct_function / total >= 0.5 if total else False),
             metrics=metrics,
             outputs=outputs,
             errors=errors,
         )
 
-    def _format_tools(self, tools: List[Dict]) -> str:
+    def _format_tools(self, tools: list[dict]) -> str:
         """Format tool definitions for prompt."""
         parts = []
         for tool in tools:
@@ -187,7 +219,7 @@ class FunctionCallingBenchmark(LLMBenchmark):
             f"Response (JSON only):"
         )
 
-    def _parse_function_call(self, output: str) -> Optional[Dict[str, Any]]:
+    def _parse_function_call(self, output: str) -> dict[str, Any] | None:
         """Try to parse a function call from model output."""
         # Try direct JSON parse
         try:

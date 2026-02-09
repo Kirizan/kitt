@@ -1,7 +1,7 @@
 """Dynamic campaign builder from database queries."""
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from .models import CampaignConfig, CampaignEngineSpec, CampaignModelSpec
 
@@ -21,8 +21,8 @@ class DynamicCampaignBuilder:
 
     def build_from_query(
         self,
-        filters: Dict[str, Any],
-        campaign_name: Optional[str] = None,
+        filters: dict[str, Any],
+        campaign_name: str | None = None,
         suite: str = "standard",
     ) -> CampaignConfig:
         """Build a campaign config from matching previous results.
@@ -41,8 +41,8 @@ class DynamicCampaignBuilder:
             logger.warning("No results match the query filters")
 
         # Extract unique models and engines
-        models_seen: Dict[str, CampaignModelSpec] = {}
-        engines_seen: Dict[str, CampaignEngineSpec] = {}
+        models_seen: dict[str, CampaignModelSpec] = {}
+        engines_seen: dict[str, CampaignEngineSpec] = {}
 
         for r in results:
             model = r.get("model", "")
@@ -52,9 +52,7 @@ class DynamicCampaignBuilder:
                 models_seen[model] = CampaignModelSpec(name=model)
 
             if engine and engine not in engines_seen:
-                engines_seen[engine] = CampaignEngineSpec(
-                    name=engine, suite=suite
-                )
+                engines_seen[engine] = CampaignEngineSpec(name=engine, suite=suite)
 
         name = campaign_name or f"dynamic-{len(models_seen)}m-{len(engines_seen)}e"
 
@@ -67,8 +65,8 @@ class DynamicCampaignBuilder:
 
     def build_from_matching_rules(
         self,
-        rules: List[str],
-        campaign_name: Optional[str] = None,
+        rules: list[str],
+        campaign_name: str | None = None,
         suite: str = "standard",
     ) -> CampaignConfig:
         """Build campaign from a list of matching rule expressions.
@@ -87,7 +85,7 @@ class DynamicCampaignBuilder:
         from .query_builder import QueryBuilder
 
         builder = QueryBuilder()
-        all_results: List[Dict[str, Any]] = []
+        all_results: list[dict[str, Any]] = []
         seen_keys: set = set()
 
         for rule in rules:
@@ -100,8 +98,8 @@ class DynamicCampaignBuilder:
                     seen_keys.add(key)
 
         # Build from collected results
-        models_seen: Dict[str, CampaignModelSpec] = {}
-        engines_seen: Dict[str, CampaignEngineSpec] = {}
+        models_seen: dict[str, CampaignModelSpec] = {}
+        engines_seen: dict[str, CampaignEngineSpec] = {}
 
         for r in all_results:
             model = r.get("model", "")

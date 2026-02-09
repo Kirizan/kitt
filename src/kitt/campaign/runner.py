@@ -4,10 +4,13 @@ import logging
 import subprocess
 import time
 from datetime import datetime
-from pathlib import Path
-from typing import List, Optional
 
-from .gguf_discovery import discover_gguf_quants, discover_ollama_tags, filter_quants, find_model_path
+from .gguf_discovery import (
+    discover_gguf_quants,
+    discover_ollama_tags,
+    filter_quants,
+    find_model_path,
+)
 from .metrics_exporter import CampaignMetricsExporter
 from .models import CampaignConfig, CampaignRunSpec
 from .notifications import NotificationDispatcher
@@ -32,9 +35,9 @@ class CampaignRunner:
     def __init__(
         self,
         config: CampaignConfig,
-        state_manager: Optional[CampaignStateManager] = None,
+        state_manager: CampaignStateManager | None = None,
         dry_run: bool = False,
-        metrics_exporter: Optional[CampaignMetricsExporter] = None,
+        metrics_exporter: CampaignMetricsExporter | None = None,
     ) -> None:
         self.config = config
         self.state_manager = state_manager or CampaignStateManager()
@@ -45,7 +48,7 @@ class CampaignRunner:
 
     def run(
         self,
-        campaign_id: Optional[str] = None,
+        campaign_id: str | None = None,
         resume: bool = False,
     ) -> CampaignResult:
         """Execute the campaign.
@@ -60,14 +63,12 @@ class CampaignRunner:
         campaign_id = campaign_id or self._generate_id()
 
         # Load or create state
-        state: Optional[CampaignState] = None
+        state: CampaignState | None = None
         if resume:
             state = self.state_manager.load(campaign_id)
 
         if state is None:
-            state = self.state_manager.create(
-                campaign_id, self.config.campaign_name
-            )
+            state = self.state_manager.create(campaign_id, self.config.campaign_name)
 
         # Plan and expand runs
         planned = self.scheduler.plan_runs(self.config)
@@ -79,8 +80,7 @@ class CampaignRunner:
 
         # Filter out completed runs
         remaining = [
-            r for r in expanded
-            if not self.state_manager.is_run_done(state, r.key)
+            r for r in expanded if not self.state_manager.is_run_done(state, r.key)
         ]
 
         logger.info(
@@ -185,9 +185,12 @@ class CampaignRunner:
         ):
             try:
                 from .gated_model_checker import GatedModelChecker
+
                 checker = GatedModelChecker(hf_token=self.config.hf_token)
                 if checker.is_gated(run_spec.repo_id):
-                    skip_reason = f"Model {run_spec.repo_id} is gated (requires access approval)"
+                    skip_reason = (
+                        f"Model {run_spec.repo_id} is gated (requires access approval)"
+                    )
                     logger.info(f"Skipping gated model: {run_spec.key}")
                     self.state_manager.update_run(
                         state, run_spec.key, "skipped", error=skip_reason
@@ -227,8 +230,11 @@ class CampaignRunner:
                     self._cleanup_model(run_spec.repo_id)
 
             self.state_manager.update_run(
-                state, run_spec.key, "success",
-                duration_s=duration, output_dir=output_dir,
+                state,
+                run_spec.key,
+                "success",
+                duration_s=duration,
+                output_dir=output_dir,
             )
 
             return CampaignRunResult(
@@ -246,8 +252,11 @@ class CampaignRunner:
             logger.error(f"Run failed: {run_spec.key}: {error_msg}")
 
             self.state_manager.update_run(
-                state, run_spec.key, "failed",
-                duration_s=duration, error=error_msg,
+                state,
+                run_spec.key,
+                "failed",
+                duration_s=duration,
+                error=error_msg,
             )
 
             # Clean up Docker containers
@@ -266,20 +275,16 @@ class CampaignRunner:
                 error=error_msg,
             )
 
-    def _expand_runs(
-        self, planned: List[CampaignRunSpec]
-    ) -> List[CampaignRunSpec]:
+    def _expand_runs(self, planned: list[CampaignRunSpec]) -> list[CampaignRunSpec]:
         """Expand discovery placeholders into concrete runs.
 
         Sets estimated_size_gb on each expanded run based on the quant
         name and model parameter count for size-based skip rules.
         """
-        expanded: List[CampaignRunSpec] = []
+        expanded: list[CampaignRunSpec] = []
 
         # Build a lookup from model name to params string
-        model_params: dict[str, str] = {
-            m.name: m.params for m in self.config.models
-        }
+        model_params: dict[str, str] = {m.name: m.params for m in self.config.models}
 
         for run in planned:
             params_b = parse_params(model_params.get(run.model_name, ""))
@@ -293,31 +298,35 @@ class CampaignRunner:
                 )
                 for q in quants:
                     est_size = estimate_quant_size_gb(params_b, q.quant_name)
-                    expanded.append(CampaignRunSpec(
-                        model_name=run.model_name,
-                        engine_name=run.engine_name,
-                        quant=q.quant_name,
-                        repo_id=run.repo_id,
-                        include_pattern=q.include_pattern,
-                        estimated_size_gb=est_size or run.estimated_size_gb,
-                        suite=run.suite,
-                        engine_config=run.engine_config,
-                    ))
+                    expanded.append(
+                        CampaignRunSpec(
+                            model_name=run.model_name,
+                            engine_name=run.engine_name,
+                            quant=q.quant_name,
+                            repo_id=run.repo_id,
+                            include_pattern=q.include_pattern,
+                            estimated_size_gb=est_size or run.estimated_size_gb,
+                            suite=run.suite,
+                            engine_config=run.engine_config,
+                        )
+                    )
 
             elif run.quant == "__discover_ollama__" and run.repo_id:
                 tags = discover_ollama_tags(run.repo_id)
                 for tag in tags:
                     quant = tag.split(":")[-1] if ":" in tag else tag
                     est_size = estimate_quant_size_gb(params_b, quant)
-                    expanded.append(CampaignRunSpec(
-                        model_name=run.model_name,
-                        engine_name=run.engine_name,
-                        quant=quant,
-                        repo_id=tag,
-                        estimated_size_gb=est_size or run.estimated_size_gb,
-                        suite=run.suite,
-                        engine_config=run.engine_config,
-                    ))
+                    expanded.append(
+                        CampaignRunSpec(
+                            model_name=run.model_name,
+                            engine_name=run.engine_name,
+                            quant=quant,
+                            repo_id=tag,
+                            estimated_size_gb=est_size or run.estimated_size_gb,
+                            suite=run.suite,
+                            engine_config=run.engine_config,
+                        )
+                    )
 
             else:
                 # For non-discovery runs (e.g. vllm bf16), estimate size
@@ -329,21 +338,21 @@ class CampaignRunner:
 
         return expanded
 
-    def _register_runs(
-        self, state: CampaignState, runs: List[CampaignRunSpec]
-    ) -> None:
+    def _register_runs(self, state: CampaignState, runs: list[CampaignRunSpec]) -> None:
         """Register all planned runs in state (skipping already-registered)."""
         existing_keys = {r.key for r in state.runs}
         for run in runs:
             if run.key not in existing_keys:
-                state.runs.append(RunState(
-                    model_name=run.model_name,
-                    engine_name=run.engine_name,
-                    quant=run.quant,
-                    status="pending",
-                ))
+                state.runs.append(
+                    RunState(
+                        model_name=run.model_name,
+                        engine_name=run.engine_name,
+                        quant=run.quant,
+                        status="pending",
+                    )
+                )
 
-    def _download_model(self, run_spec: CampaignRunSpec) -> Optional[str]:
+    def _download_model(self, run_spec: CampaignRunSpec) -> str | None:
         """Download model via Devon or return path for Ollama."""
         if run_spec.engine_name == "ollama":
             return run_spec.repo_id  # Ollama pulls inside container
@@ -376,13 +385,13 @@ class CampaignRunner:
         # Fallback: use Devon CLI via subprocess
         return self._download_via_cli(run_spec)
 
-    def _download_via_cli(self, run_spec: CampaignRunSpec) -> Optional[str]:
+    def _download_via_cli(self, run_spec: CampaignRunSpec) -> str | None:
         """Download model using Devon CLI as fallback."""
         args = ["devon", "download", run_spec.repo_id, "-y"]
         if run_spec.include_pattern:
             args.extend(["--include", run_spec.include_pattern])
 
-        result = subprocess.run(args, capture_output=True, text=True, timeout=7200)
+        result = subprocess.run(args, capture_output=True, text=True, timeout=7200)  # type: ignore[arg-type]
         if result.returncode != 0:
             stderr = (result.stderr or "").strip()
             stdout = (result.stdout or "").strip()
@@ -391,18 +400,14 @@ class CampaignRunner:
                 error_detail = f"Process exited with code {result.returncode}"
             raise RuntimeError(f"Devon download failed: {error_detail}")
 
-        return find_model_path(run_spec.repo_id, run_spec.include_pattern)
+        return find_model_path(run_spec.repo_id, run_spec.include_pattern)  # type: ignore[arg-type]
 
-    def _run_benchmark(
-        self, model_path: str, engine: str, suite: str
-    ) -> str:
+    def _run_benchmark(self, model_path: str, engine: str, suite: str) -> str:
         """Run a KITT benchmark and return the output directory."""
         args = ["kitt", "run", "-m", model_path, "-e", engine, "-s", suite]
         logger.info(f"Running: {' '.join(args)}")
 
-        result = subprocess.run(
-            args, capture_output=True, text=True, timeout=14400
-        )
+        result = subprocess.run(args, capture_output=True, text=True, timeout=14400)
 
         output_dir = ""
         for line in (result.stdout or "").splitlines():
@@ -418,7 +423,9 @@ class CampaignRunner:
             stdout_tail = (result.stdout or "").strip()[-500:] if result.stdout else ""
             error_detail = stderr[-500:] if stderr else stdout_tail
             if not error_detail:
-                error_detail = f"Process exited with code {result.returncode} (no output captured)"
+                error_detail = (
+                    f"Process exited with code {result.returncode} (no output captured)"
+                )
             raise RuntimeError(
                 f"kitt run failed (exit {result.returncode}): {error_detail}"
             )
@@ -440,22 +447,33 @@ class CampaignRunner:
         # Fallback: CLI
         subprocess.run(
             ["devon", "remove", repo_id, "-y"],
-            capture_output=True, timeout=60,
+            capture_output=True,
+            timeout=60,
         )
 
     def _cleanup_docker(self) -> None:
         """Clean up leftover kitt Docker containers."""
         try:
             result = subprocess.run(
-                ["docker", "ps", "-a", "--filter", "name=kitt-",
-                 "--format", "{{.Names}}"],
-                capture_output=True, text=True, timeout=10,
+                [
+                    "docker",
+                    "ps",
+                    "-a",
+                    "--filter",
+                    "name=kitt-",
+                    "--format",
+                    "{{.Names}}",
+                ],
+                capture_output=True,
+                text=True,
+                timeout=10,
             )
             containers = [c.strip() for c in result.stdout.splitlines() if c.strip()]
             if containers:
                 subprocess.run(
                     ["docker", "rm", "-f"] + containers,
-                    capture_output=True, timeout=30,
+                    capture_output=True,
+                    timeout=30,
                 )
         except Exception:
             pass

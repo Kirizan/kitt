@@ -1,6 +1,6 @@
 """Tests for engine CLI commands (setup, check, list) — Docker-only."""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 from click.testing import CliRunner
@@ -20,7 +20,10 @@ def _reset_image_resolver():
 class TestSetupEngine:
     @patch("kitt.engines.image_resolver._detect_cc", return_value=None)
     @patch("kitt.engines.docker_manager.DockerManager.pull_image")
-    @patch("kitt.engines.docker_manager.DockerManager.is_docker_available", return_value=True)
+    @patch(
+        "kitt.engines.docker_manager.DockerManager.is_docker_available",
+        return_value=True,
+    )
     def test_setup_pulls_image(self, mock_avail, mock_pull, mock_cc):
         runner = CliRunner()
         result = runner.invoke(engines, ["setup", "vllm"])
@@ -29,7 +32,10 @@ class TestSetupEngine:
         mock_pull.assert_called_once_with("vllm/vllm-openai:latest")
 
     @patch("kitt.engines.image_resolver._detect_cc", return_value=None)
-    @patch("kitt.engines.docker_manager.DockerManager.is_docker_available", return_value=True)
+    @patch(
+        "kitt.engines.docker_manager.DockerManager.is_docker_available",
+        return_value=True,
+    )
     def test_setup_dry_run(self, mock_avail, mock_cc):
         runner = CliRunner()
         result = runner.invoke(engines, ["setup", "--dry-run", "vllm"])
@@ -39,7 +45,10 @@ class TestSetupEngine:
         assert "vllm/vllm-openai" in result.output
         assert "Dry run" in result.output
 
-    @patch("kitt.engines.docker_manager.DockerManager.is_docker_available", return_value=False)
+    @patch(
+        "kitt.engines.docker_manager.DockerManager.is_docker_available",
+        return_value=False,
+    )
     def test_setup_no_docker(self, mock_avail):
         runner = CliRunner()
         result = runner.invoke(engines, ["setup", "vllm"])
@@ -47,8 +56,14 @@ class TestSetupEngine:
         assert "Docker is not installed" in result.output
 
     @patch("kitt.engines.image_resolver._detect_cc", return_value=None)
-    @patch("kitt.engines.docker_manager.DockerManager.pull_image", side_effect=RuntimeError("network error"))
-    @patch("kitt.engines.docker_manager.DockerManager.is_docker_available", return_value=True)
+    @patch(
+        "kitt.engines.docker_manager.DockerManager.pull_image",
+        side_effect=RuntimeError("network error"),
+    )
+    @patch(
+        "kitt.engines.docker_manager.DockerManager.is_docker_available",
+        return_value=True,
+    )
     def test_setup_pull_failure(self, mock_avail, mock_pull, mock_cc):
         runner = CliRunner()
         result = runner.invoke(engines, ["setup", "vllm"])
@@ -63,7 +78,10 @@ class TestSetupEngine:
 
     @patch("kitt.engines.image_resolver._detect_cc", return_value=None)
     @patch("kitt.engines.docker_manager.DockerManager.pull_image")
-    @patch("kitt.engines.docker_manager.DockerManager.is_docker_available", return_value=True)
+    @patch(
+        "kitt.engines.docker_manager.DockerManager.is_docker_available",
+        return_value=True,
+    )
     def test_setup_ollama(self, mock_avail, mock_pull, mock_cc):
         """All engines are now supported by setup (not just vllm)."""
         runner = CliRunner()
@@ -74,7 +92,10 @@ class TestSetupEngine:
 
     @patch("kitt.engines.image_resolver._detect_cc", return_value=None)
     @patch("kitt.engines.docker_manager.DockerManager.pull_image")
-    @patch("kitt.engines.docker_manager.DockerManager.is_docker_available", return_value=True)
+    @patch(
+        "kitt.engines.docker_manager.DockerManager.is_docker_available",
+        return_value=True,
+    )
     def test_setup_tgi(self, mock_avail, mock_pull, mock_cc):
         runner = CliRunner()
         result = runner.invoke(engines, ["setup", "tgi"])
@@ -85,18 +106,22 @@ class TestSetupEngine:
 
     @patch("kitt.engines.image_resolver._detect_cc", return_value=None)
     @patch("kitt.engines.docker_manager.DockerManager.pull_image")
-    @patch("kitt.engines.docker_manager.DockerManager.is_docker_available", return_value=True)
+    @patch(
+        "kitt.engines.docker_manager.DockerManager.is_docker_available",
+        return_value=True,
+    )
     def test_setup_llama_cpp(self, mock_avail, mock_pull, mock_cc):
         runner = CliRunner()
         result = runner.invoke(engines, ["setup", "llama_cpp"])
         assert result.exit_code == 0
-        mock_pull.assert_called_once_with(
-            "ghcr.io/ggml-org/llama.cpp:server-cuda"
-        )
+        mock_pull.assert_called_once_with("ghcr.io/ggml-org/llama.cpp:server-cuda")
 
     @patch("kitt.engines.image_resolver._detect_cc", return_value=(12, 1))
     @patch("kitt.engines.docker_manager.DockerManager.pull_image")
-    @patch("kitt.engines.docker_manager.DockerManager.is_docker_available", return_value=True)
+    @patch(
+        "kitt.engines.docker_manager.DockerManager.is_docker_available",
+        return_value=True,
+    )
     def test_setup_vllm_blackwell_pulls_ngc(self, mock_avail, mock_pull, mock_cc):
         """On Blackwell hardware, setup pulls the NGC image for vLLM."""
         runner = CliRunner()
@@ -111,8 +136,13 @@ class TestSetupEngineBuild:
     @patch("kitt.engines.image_resolver._detect_cc", return_value=(12, 1))
     @patch("kitt.engines.docker_manager.DockerManager.image_exists", return_value=False)
     @patch("kitt.engines.docker_manager.DockerManager.build_image")
-    @patch("kitt.engines.docker_manager.DockerManager.is_docker_available", return_value=True)
-    def test_setup_llama_cpp_blackwell_builds(self, mock_avail, mock_build, mock_exists, mock_cc):
+    @patch(
+        "kitt.engines.docker_manager.DockerManager.is_docker_available",
+        return_value=True,
+    )
+    def test_setup_llama_cpp_blackwell_builds(
+        self, mock_avail, mock_build, mock_exists, mock_cc
+    ):
         """On Blackwell, llama_cpp setup builds the KITT-managed image."""
         runner = CliRunner()
         result = runner.invoke(engines, ["setup", "llama_cpp"])
@@ -126,7 +156,10 @@ class TestSetupEngineBuild:
 
     @patch("kitt.engines.image_resolver._detect_cc", return_value=(12, 1))
     @patch("kitt.engines.docker_manager.DockerManager.pull_image")
-    @patch("kitt.engines.docker_manager.DockerManager.is_docker_available", return_value=True)
+    @patch(
+        "kitt.engines.docker_manager.DockerManager.is_docker_available",
+        return_value=True,
+    )
     def test_setup_tgi_blackwell_pulls_default(self, mock_avail, mock_pull, mock_cc):
         """On Blackwell, TGI has no viable build — falls through to pull default image."""
         runner = CliRunner()
@@ -137,7 +170,10 @@ class TestSetupEngineBuild:
         assert "text-generation-inference" in image_arg
 
     @patch("kitt.engines.image_resolver._detect_cc", return_value=(12, 1))
-    @patch("kitt.engines.docker_manager.DockerManager.is_docker_available", return_value=True)
+    @patch(
+        "kitt.engines.docker_manager.DockerManager.is_docker_available",
+        return_value=True,
+    )
     def test_setup_llama_cpp_blackwell_dry_run(self, mock_avail, mock_cc):
         """Dry run for KITT-managed image shows docker build command."""
         runner = CliRunner()
@@ -150,7 +186,10 @@ class TestSetupEngineBuild:
         assert "Dry run" in result.output
 
     @patch("kitt.engines.image_resolver._detect_cc", return_value=(12, 1))
-    @patch("kitt.engines.docker_manager.DockerManager.is_docker_available", return_value=True)
+    @patch(
+        "kitt.engines.docker_manager.DockerManager.is_docker_available",
+        return_value=True,
+    )
     def test_setup_tgi_blackwell_dry_run_shows_pull(self, mock_avail, mock_cc):
         """Dry run for TGI on Blackwell shows pull (no viable build)."""
         runner = CliRunner()
@@ -162,8 +201,13 @@ class TestSetupEngineBuild:
     @patch("kitt.engines.image_resolver._detect_cc", return_value=(12, 1))
     @patch("kitt.engines.docker_manager.DockerManager.image_exists", return_value=True)
     @patch("kitt.engines.docker_manager.DockerManager.build_image")
-    @patch("kitt.engines.docker_manager.DockerManager.is_docker_available", return_value=True)
-    def test_setup_skips_existing_build(self, mock_avail, mock_build, mock_exists, mock_cc):
+    @patch(
+        "kitt.engines.docker_manager.DockerManager.is_docker_available",
+        return_value=True,
+    )
+    def test_setup_skips_existing_build(
+        self, mock_avail, mock_build, mock_exists, mock_cc
+    ):
         """If KITT-managed image already exists, skip build."""
         runner = CliRunner()
         result = runner.invoke(engines, ["setup", "llama_cpp"])
@@ -174,7 +218,10 @@ class TestSetupEngineBuild:
     @patch("kitt.engines.image_resolver._detect_cc", return_value=(12, 1))
     @patch("kitt.engines.docker_manager.DockerManager.image_exists", return_value=True)
     @patch("kitt.engines.docker_manager.DockerManager.build_image")
-    @patch("kitt.engines.docker_manager.DockerManager.is_docker_available", return_value=True)
+    @patch(
+        "kitt.engines.docker_manager.DockerManager.is_docker_available",
+        return_value=True,
+    )
     def test_setup_force_rebuild(self, mock_avail, mock_build, mock_exists, mock_cc):
         """--force-rebuild builds even if image exists."""
         runner = CliRunner()
@@ -185,8 +232,14 @@ class TestSetupEngineBuild:
 
     @patch("kitt.engines.image_resolver._detect_cc", return_value=(12, 1))
     @patch("kitt.engines.docker_manager.DockerManager.image_exists", return_value=False)
-    @patch("kitt.engines.docker_manager.DockerManager.build_image", side_effect=RuntimeError("build failed"))
-    @patch("kitt.engines.docker_manager.DockerManager.is_docker_available", return_value=True)
+    @patch(
+        "kitt.engines.docker_manager.DockerManager.build_image",
+        side_effect=RuntimeError("build failed"),
+    )
+    @patch(
+        "kitt.engines.docker_manager.DockerManager.is_docker_available",
+        return_value=True,
+    )
     def test_setup_build_failure(self, mock_avail, mock_build, mock_exists, mock_cc):
         """Build failure is reported to user."""
         runner = CliRunner()
@@ -201,9 +254,7 @@ class TestCheckEngine:
             available=True,
             image="vllm/vllm-openai:latest",
         )
-        with patch(
-            "kitt.engines.vllm_engine.VLLMEngine.diagnose", return_value=diag
-        ):
+        with patch("kitt.engines.vllm_engine.VLLMEngine.diagnose", return_value=diag):
             runner = CliRunner()
             result = runner.invoke(engines, ["check", "vllm"])
         assert "Available" in result.output
@@ -216,9 +267,7 @@ class TestCheckEngine:
             error="Docker image not pulled: vllm/vllm-openai:latest",
             guidance="Pull with: kitt engines setup vllm",
         )
-        with patch(
-            "kitt.engines.vllm_engine.VLLMEngine.diagnose", return_value=diag
-        ):
+        with patch("kitt.engines.vllm_engine.VLLMEngine.diagnose", return_value=diag):
             runner = CliRunner()
             result = runner.invoke(engines, ["check", "vllm"])
         assert "Not Available" in result.output
@@ -248,9 +297,7 @@ class TestCheckEngine:
             error="Docker is not installed or not running",
             guidance="Install Docker: https://docs.docker.com/get-docker/",
         )
-        with patch(
-            "kitt.engines.vllm_engine.VLLMEngine.diagnose", return_value=diag
-        ):
+        with patch("kitt.engines.vllm_engine.VLLMEngine.diagnose", return_value=diag):
             runner = CliRunner()
             result = runner.invoke(engines, ["check", "vllm"])
         assert "Docker is not installed" in result.output
@@ -265,7 +312,10 @@ class TestCheckEngine:
 class TestListEngines:
     @patch("kitt.engines.image_resolver._detect_cc", return_value=None)
     @patch("kitt.engines.docker_manager.DockerManager.image_exists", return_value=True)
-    @patch("kitt.engines.docker_manager.DockerManager.is_docker_available", return_value=True)
+    @patch(
+        "kitt.engines.docker_manager.DockerManager.is_docker_available",
+        return_value=True,
+    )
     def test_list_shows_all_engines(self, mock_avail, mock_exists, mock_cc):
         runner = CliRunner()
         result = runner.invoke(engines, ["list"])
@@ -277,7 +327,10 @@ class TestListEngines:
 
     @patch("kitt.engines.image_resolver._detect_cc", return_value=None)
     @patch("kitt.engines.docker_manager.DockerManager.image_exists", return_value=False)
-    @patch("kitt.engines.docker_manager.DockerManager.is_docker_available", return_value=True)
+    @patch(
+        "kitt.engines.docker_manager.DockerManager.is_docker_available",
+        return_value=True,
+    )
     def test_list_shows_image_column(self, mock_avail, mock_exists, mock_cc):
         runner = CliRunner()
         result = runner.invoke(engines, ["list"])
@@ -286,7 +339,10 @@ class TestListEngines:
 
     @patch("kitt.engines.image_resolver._detect_cc", return_value=None)
     @patch("kitt.engines.docker_manager.DockerManager.image_exists", return_value=False)
-    @patch("kitt.engines.docker_manager.DockerManager.is_docker_available", return_value=True)
+    @patch(
+        "kitt.engines.docker_manager.DockerManager.is_docker_available",
+        return_value=True,
+    )
     def test_list_shows_status(self, mock_avail, mock_exists, mock_cc):
         runner = CliRunner()
         result = runner.invoke(engines, ["list"])
@@ -294,7 +350,10 @@ class TestListEngines:
 
     @patch("kitt.engines.image_resolver._detect_cc", return_value=None)
     @patch("kitt.engines.docker_manager.DockerManager.image_exists", return_value=False)
-    @patch("kitt.engines.docker_manager.DockerManager.is_docker_available", return_value=True)
+    @patch(
+        "kitt.engines.docker_manager.DockerManager.is_docker_available",
+        return_value=True,
+    )
     def test_list_shows_source_column(self, mock_avail, mock_exists, mock_cc):
         """List shows Registry as source for non-Blackwell images."""
         runner = CliRunner()
@@ -304,7 +363,10 @@ class TestListEngines:
 
     @patch("kitt.engines.image_resolver._detect_cc", return_value=(12, 1))
     @patch("kitt.engines.docker_manager.DockerManager.image_exists", return_value=True)
-    @patch("kitt.engines.docker_manager.DockerManager.is_docker_available", return_value=True)
+    @patch(
+        "kitt.engines.docker_manager.DockerManager.is_docker_available",
+        return_value=True,
+    )
     def test_list_blackwell_shows_ngc_for_vllm(self, mock_avail, mock_exists, mock_cc):
         """On Blackwell, vLLM should show the NGC image."""
         runner = CliRunner()
@@ -318,7 +380,10 @@ class TestListEngines:
 
     @patch("kitt.engines.image_resolver._detect_cc", return_value=(12, 1))
     @patch("kitt.engines.docker_manager.DockerManager.image_exists", return_value=False)
-    @patch("kitt.engines.docker_manager.DockerManager.is_docker_available", return_value=True)
+    @patch(
+        "kitt.engines.docker_manager.DockerManager.is_docker_available",
+        return_value=True,
+    )
     def test_list_blackwell_shows_build_source(self, mock_avail, mock_exists, mock_cc):
         """On Blackwell, KITT-managed images show Build source and Not Built status."""
         runner = CliRunner()
@@ -328,7 +393,10 @@ class TestListEngines:
 
     @patch("kitt.engines.image_resolver._detect_cc", return_value=(12, 1))
     @patch("kitt.engines.docker_manager.DockerManager.image_exists", return_value=False)
-    @patch("kitt.engines.docker_manager.DockerManager.is_docker_available", return_value=True)
+    @patch(
+        "kitt.engines.docker_manager.DockerManager.is_docker_available",
+        return_value=True,
+    )
     def test_list_blackwell_shows_tgi_default(self, mock_avail, mock_exists, mock_cc):
         """On Blackwell, TGI shows default image (no viable KITT-managed build)."""
         runner = CliRunner()

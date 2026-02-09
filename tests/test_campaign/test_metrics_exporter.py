@@ -1,9 +1,7 @@
 """Tests for campaign metrics exporter."""
 
 import urllib.request
-from unittest.mock import MagicMock, patch
-
-import pytest
+from unittest.mock import patch
 
 from kitt.campaign.metrics_exporter import (
     CampaignMetricsExporter,
@@ -66,7 +64,10 @@ class TestCampaignMetricsExporter:
             metrics={"avg_tps": 150.0},
         )
         output = exporter._render_prometheus()
-        assert 'kitt_benchmark_avg_tps{model="Qwen-7B",engine="vllm",benchmark="throughput"} 150.0' in output
+        assert (
+            'kitt_benchmark_avg_tps{model="Qwen-7B",engine="vllm",benchmark="throughput"} 150.0'
+            in output
+        )
 
     @patch("kitt.campaign.metrics_exporter.urllib.request.urlopen")
     def test_write_influxdb(self, mock_urlopen):
@@ -93,7 +94,9 @@ class TestCampaignMetricsExporter:
         exporter = CampaignMetricsExporter()
         # Should not raise
         exporter.record_benchmark_result(
-            model="m", engine="e", benchmark="b",
+            model="m",
+            engine="e",
+            benchmark="b",
             metrics={"avg_tps": 100.0},
         )
 
@@ -101,7 +104,10 @@ class TestCampaignMetricsExporter:
         exporter = CampaignMetricsExporter()
         with patch("kitt.campaign.metrics_exporter.urllib.request.urlopen") as mock_url:
             exporter.record_benchmark_result(
-                model="m", engine="e", benchmark="b", metrics={},
+                model="m",
+                engine="e",
+                benchmark="b",
+                metrics={},
             )
             mock_url.assert_not_called()
 
@@ -118,11 +124,15 @@ class TestCampaignMetricsExporter:
         exporter = CampaignMetricsExporter()
         with patch("kitt.campaign.metrics_exporter.urllib.request.urlopen"):
             exporter.record_benchmark_result(
-                model="m1", engine="e1", benchmark="b1",
+                model="m1",
+                engine="e1",
+                benchmark="b1",
                 metrics={"avg_tps": 100.0},
             )
             exporter.record_benchmark_result(
-                model="m2", engine="e2", benchmark="b2",
+                model="m2",
+                engine="e2",
+                benchmark="b2",
                 metrics={"avg_tps": 200.0},
             )
         assert len(exporter._labeled_metrics) == 2

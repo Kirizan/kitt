@@ -5,7 +5,7 @@ import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Dict, List
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -26,12 +26,12 @@ class BenchmarkResult:
     test_name: str
     test_version: str
     passed: bool
-    metrics: Dict[str, Any]
-    outputs: List[Any]
-    errors: List[str] = field(default_factory=list)
+    metrics: dict[str, Any]
+    outputs: list[Any]
+    errors: list[str] = field(default_factory=list)
     timestamp: datetime = field(default_factory=datetime.now)
     run_number: int = 1
-    warmup_times: List[float] = field(default_factory=list)
+    warmup_times: list[float] = field(default_factory=list)
 
 
 class LLMBenchmark(ABC):
@@ -43,7 +43,7 @@ class LLMBenchmark(ABC):
     category: str = ""  # 'performance', 'quality_standard', 'quality_custom'
     description: str = ""
 
-    def run(self, engine, config: Dict[str, Any]) -> BenchmarkResult:
+    def run(self, engine, config: dict[str, Any]) -> BenchmarkResult:
         """Execute the benchmark with optional warmup phase.
 
         Args:
@@ -54,7 +54,7 @@ class LLMBenchmark(ABC):
             BenchmarkResult containing metrics and outputs.
         """
         warmup_config = self._parse_warmup_config(config)
-        warmup_times: List[float] = []
+        warmup_times: list[float] = []
 
         # Warmup phase
         if warmup_config.enabled:
@@ -66,7 +66,7 @@ class LLMBenchmark(ABC):
 
         return result
 
-    def _parse_warmup_config(self, config: Dict[str, Any]) -> WarmupConfig:
+    def _parse_warmup_config(self, config: dict[str, Any]) -> WarmupConfig:
         """Parse warmup configuration from benchmark config."""
         warmup = config.get("warmup", {})
         return WarmupConfig(
@@ -78,9 +78,9 @@ class LLMBenchmark(ABC):
     def _warmup_phase(
         self,
         engine,
-        config: Dict[str, Any],
+        config: dict[str, Any],
         warmup_config: WarmupConfig,
-    ) -> List[float]:
+    ) -> list[float]:
         """Run warmup iterations to initialize CUDA kernels and memory.
 
         Returns:
@@ -112,20 +112,20 @@ class LLMBenchmark(ABC):
         return warmup_times
 
     @abstractmethod
-    def _execute(self, engine, config: Dict[str, Any]) -> BenchmarkResult:
+    def _execute(self, engine, config: dict[str, Any]) -> BenchmarkResult:
         """Execute the actual benchmark (override in subclasses).
 
         This method should implement the core benchmark logic without warmup.
         """
 
-    def required_config(self) -> List[str]:
+    def required_config(self) -> list[str]:
         """List of required configuration keys.
 
         Override if benchmark needs specific config.
         """
         return []
 
-    def validate_config(self, config: Dict[str, Any]) -> bool:
+    def validate_config(self, config: dict[str, Any]) -> bool:
         """Validate that required config is present."""
         required = self.required_config()
         return all(key in config for key in required)

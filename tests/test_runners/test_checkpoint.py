@@ -1,6 +1,5 @@
 """Tests for checkpoint manager."""
 
-import json
 import pytest
 
 from kitt.runners.checkpoint import CheckpointManager

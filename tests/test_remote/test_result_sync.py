@@ -3,8 +3,6 @@
 import json
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from kitt.remote.host_config import HostConfig
 from kitt.remote.result_sync import ResultSync
 
@@ -49,9 +47,7 @@ class TestListRemoteResults:
 
     @patch("kitt.remote.ssh_connection.subprocess.run")
     def test_returns_empty_on_no_output(self, mock_run):
-        mock_run.return_value = MagicMock(
-            returncode=0, stdout="", stderr=""
-        )
+        mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
         config = _make_host_config()
         sync = ResultSync(config)
         results = sync.list_remote_results()

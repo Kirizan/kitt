@@ -156,7 +156,9 @@ def run_remote(config_path, host, dry_run, wait):
     executor = RemoteCampaignExecutor(host_config)
 
     if wait:
-        console.print(f"[bold]Running campaign on '{host}' (waiting for completion)...[/bold]")
+        console.print(
+            f"[bold]Running campaign on '{host}' (waiting for completion)...[/bold]"
+        )
         success = executor.run_and_wait(config_path, dry_run=dry_run)
         if success:
             console.print("[green]Campaign completed.[/green]")
@@ -216,7 +218,9 @@ def logs(host, tail):
 
 @remote.command()
 @click.option("--host", required=True, help="Remote host name")
-@click.option("--output", "-o", type=click.Path(), default=None, help="Local results directory")
+@click.option(
+    "--output", "-o", type=click.Path(), default=None, help="Local results directory"
+)
 def sync(host, output):
     """Sync results from a remote host."""
     from pathlib import Path

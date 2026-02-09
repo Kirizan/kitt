@@ -27,22 +27,30 @@ class TestCompareWithPrevious:
 
     def test_returns_comparison_dict(self, comparer, tmp_path):
         # Write two results: older baseline and current
-        _write_metrics(tmp_path, "llama-8b/vllm/2024-01-01", {
-            "model": "llama-8b",
-            "engine": "vllm",
-            "timestamp": "2024-01-01T00:00:00",
-            "results": [
-                {"test_name": "throughput", "metrics": {"avg_tps": 50.0}},
-            ],
-        })
-        _write_metrics(tmp_path, "llama-8b/vllm/2024-01-02", {
-            "model": "llama-8b",
-            "engine": "vllm",
-            "timestamp": "2024-01-02T00:00:00",
-            "results": [
-                {"test_name": "throughput", "metrics": {"avg_tps": 40.0}},
-            ],
-        })
+        _write_metrics(
+            tmp_path,
+            "llama-8b/vllm/2024-01-01",
+            {
+                "model": "llama-8b",
+                "engine": "vllm",
+                "timestamp": "2024-01-01T00:00:00",
+                "results": [
+                    {"test_name": "throughput", "metrics": {"avg_tps": 50.0}},
+                ],
+            },
+        )
+        _write_metrics(
+            tmp_path,
+            "llama-8b/vllm/2024-01-02",
+            {
+                "model": "llama-8b",
+                "engine": "vllm",
+                "timestamp": "2024-01-02T00:00:00",
+                "results": [
+                    {"test_name": "throughput", "metrics": {"avg_tps": 40.0}},
+                ],
+            },
+        )
 
         current = {
             "model": "llama-8b",
@@ -64,16 +72,24 @@ class TestFindPreviousResult:
         assert result is None
 
     def test_skips_current_returns_older(self, comparer, tmp_path):
-        _write_metrics(tmp_path, "run1", {
-            "model": "llama-8b",
-            "engine": "vllm",
-            "timestamp": "2024-01-01T00:00:00",
-        })
-        _write_metrics(tmp_path, "run2", {
-            "model": "llama-8b",
-            "engine": "vllm",
-            "timestamp": "2024-01-02T00:00:00",
-        })
+        _write_metrics(
+            tmp_path,
+            "run1",
+            {
+                "model": "llama-8b",
+                "engine": "vllm",
+                "timestamp": "2024-01-01T00:00:00",
+            },
+        )
+        _write_metrics(
+            tmp_path,
+            "run2",
+            {
+                "model": "llama-8b",
+                "engine": "vllm",
+                "timestamp": "2024-01-02T00:00:00",
+            },
+        )
 
         result = comparer._find_previous_result("llama-8b", "vllm")
         assert result is not None

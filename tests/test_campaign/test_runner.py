@@ -1,6 +1,6 @@
 """Tests for campaign runner."""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -8,7 +8,6 @@ from kitt.campaign.models import (
     CampaignConfig,
     CampaignEngineSpec,
     CampaignModelSpec,
-    CampaignRunSpec,
     DiskConfig,
     NotificationConfig,
 )
@@ -82,7 +81,6 @@ class TestCampaignRunner:
 
         # Mock _execute_run to fail on first, succeed on second
         call_count = 0
-        original_execute = runner._execute_run
 
         def mock_execute(run_spec, state):
             nonlocal call_count
@@ -148,6 +146,7 @@ class TestExpandRuns:
 
         with patch("kitt.campaign.runner.discover_gguf_quants") as mock_discover:
             from kitt.campaign.gguf_discovery import GGUFQuantInfo
+
             mock_discover.return_value = [
                 GGUFQuantInfo(quant_name="Q4_K_M", files=["Model-Q4_K_M.gguf"]),
                 GGUFQuantInfo(quant_name="Q8_0", files=["Model-Q8_0.gguf"]),
@@ -195,6 +194,7 @@ class TestExpandRuns:
 
         with patch("kitt.campaign.runner.discover_gguf_quants") as mock:
             from kitt.campaign.gguf_discovery import GGUFQuantInfo
+
             mock.return_value = [
                 GGUFQuantInfo(quant_name="Q4_K_M", files=["a.gguf"]),
                 GGUFQuantInfo(quant_name="IQ1_S", files=["b.gguf"]),

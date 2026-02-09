@@ -1,7 +1,7 @@
 """CI report formatting for PR comments and GitHub Actions."""
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -11,8 +11,8 @@ class CIReportFormatter:
 
     def format_summary(
         self,
-        results: Dict[str, Any],
-        baseline: Optional[Dict[str, Any]] = None,
+        results: dict[str, Any],
+        baseline: dict[str, Any] | None = None,
     ) -> str:
         """Format a benchmark result summary as Markdown table.
 
@@ -32,7 +32,9 @@ class CIReportFormatter:
         passed = results.get("passed", False)
         status = "PASS" if passed else "FAIL"
 
-        lines.append(f"**Model:** {model} | **Engine:** {engine} | **Status:** {status}")
+        lines.append(
+            f"**Model:** {model} | **Engine:** {engine} | **Status:** {status}"
+        )
         lines.append("")
 
         # Benchmarks table
@@ -48,7 +50,9 @@ class CIReportFormatter:
             key_metrics = []
             for k, v in metrics.items():
                 if isinstance(v, (int, float)):
-                    key_metrics.append(f"{k}={v:.2f}" if isinstance(v, float) else f"{k}={v}")
+                    key_metrics.append(
+                        f"{k}={v:.2f}" if isinstance(v, float) else f"{k}={v}"
+                    )
             metrics_str = ", ".join(key_metrics[:4])
 
             lines.append(f"| {name} | {run_num} | {bench_status} | {metrics_str} |")
@@ -68,7 +72,7 @@ class CIReportFormatter:
 
     def format_regression_alert(
         self,
-        regressions: List[Dict[str, Any]],
+        regressions: list[dict[str, Any]],
     ) -> str:
         """Format regression alerts as Markdown.
 
@@ -101,18 +105,14 @@ class CIReportFormatter:
 
     def _format_regression(
         self,
-        current: Dict[str, Any],
-        baseline: Dict[str, Any],
-    ) -> List[str]:
+        current: dict[str, Any],
+        baseline: dict[str, Any],
+    ) -> list[str]:
         """Compare current vs baseline and format differences."""
         lines = ["### Comparison vs Baseline", ""]
 
-        current_benchmarks = {
-            b["test_name"]: b for b in current.get("results", [])
-        }
-        baseline_benchmarks = {
-            b["test_name"]: b for b in baseline.get("results", [])
-        }
+        current_benchmarks = {b["test_name"]: b for b in current.get("results", [])}
+        baseline_benchmarks = {b["test_name"]: b for b in baseline.get("results", [])}
 
         has_changes = False
         for name, curr_bench in current_benchmarks.items():
@@ -124,7 +124,11 @@ class CIReportFormatter:
                 for key in curr_metrics:
                     curr_val = curr_metrics.get(key)
                     base_val = base_metrics.get(key)
-                    if isinstance(curr_val, (int, float)) and isinstance(base_val, (int, float)) and base_val != 0:
+                    if (
+                        isinstance(curr_val, (int, float))
+                        and isinstance(base_val, (int, float))
+                        and base_val != 0
+                    ):
                         change = ((curr_val - base_val) / base_val) * 100
                         if abs(change) > 5:
                             if not has_changes:

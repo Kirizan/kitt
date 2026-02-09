@@ -1,10 +1,8 @@
 """Tests for RemoteSetup — all tests mock the SSHConnection."""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
-import pytest
-
-from kitt.remote.host_config import HostConfig, HostManager
+from kitt.remote.host_config import HostManager
 from kitt.remote.setup import RemoteSetup
 from kitt.remote.ssh_connection import SSHConnection
 
@@ -14,7 +12,7 @@ def _make_connection(**kwargs):
     conn = MagicMock(spec=SSHConnection)
     conn.host = kwargs.get("host", "gpu-server")
     conn.user = kwargs.get("user", "kitt")
-    conn.ssh_key = kwargs.get("ssh_key", None)
+    conn.ssh_key = kwargs.get("ssh_key")
     conn.port = kwargs.get("port", 22)
     conn.target = f"{conn.user}@{conn.host}" if conn.user else conn.host
     return conn
@@ -25,10 +23,10 @@ class TestCheckPrerequisites:
         conn = _make_connection()
         conn.check_connection.return_value = True
         conn.run_command.side_effect = [
-            (0, "Python 3.10.12\n", ""),        # python3 --version
+            (0, "Python 3.10.12\n", ""),  # python3 --version
             (0, "Docker version 24.0.5\n", ""),  # docker --version
-            (0, "NVIDIA A100, 81920\n", ""),     # nvidia-smi
-            (0, "500G\n", ""),                    # df
+            (0, "NVIDIA A100, 81920\n", ""),  # nvidia-smi
+            (0, "500G\n", ""),  # df
         ]
         setup = RemoteSetup(conn)
         checks = setup.check_prerequisites()
@@ -53,9 +51,9 @@ class TestCheckPrerequisites:
         conn.check_connection.return_value = True
         conn.run_command.side_effect = [
             (0, "Python 3.11.0\n", ""),  # python3
-            (1, "", "not found"),        # docker
-            (1, "", "not found"),        # nvidia-smi
-            (1, "", ""),                 # df
+            (1, "", "not found"),  # docker
+            (1, "", "not found"),  # nvidia-smi
+            (1, "", ""),  # df
         ]
         setup = RemoteSetup(conn)
         checks = setup.check_prerequisites()
@@ -66,10 +64,10 @@ class TestCheckPrerequisites:
         conn = _make_connection()
         conn.check_connection.return_value = True
         conn.run_command.side_effect = [
-            (1, "", "not found"),            # python3
-            (1, "", "not found"),            # docker
-            (0, "RTX 4090, 24576\n", ""),    # nvidia-smi
-            (0, "1000G\n", ""),              # df
+            (1, "", "not found"),  # python3
+            (1, "", "not found"),  # docker
+            (0, "RTX 4090, 24576\n", ""),  # nvidia-smi
+            (0, "1000G\n", ""),  # df
         ]
         setup = RemoteSetup(conn)
         checks = setup.check_prerequisites()
@@ -134,13 +132,13 @@ class TestSetupHost:
         conn.check_connection.return_value = True
         # check_prerequisites run_command calls
         conn.run_command.side_effect = [
-            (0, "Python 3.10.12\n", ""),     # python3 --version
-            (0, "Docker 24.0.5\n", ""),      # docker --version
-            (0, "A100, 81920\n", ""),         # nvidia-smi (prereqs)
-            (0, "500G\n", ""),               # df
-            (0, "kitt 0.5.0\n", ""),         # verify_kitt
+            (0, "Python 3.10.12\n", ""),  # python3 --version
+            (0, "Docker 24.0.5\n", ""),  # docker --version
+            (0, "A100, 81920\n", ""),  # nvidia-smi (prereqs)
+            (0, "500G\n", ""),  # df
+            (0, "kitt 0.5.0\n", ""),  # verify_kitt
             (0, "a100-80gb_fingerprint\n", ""),  # kitt fingerprint (detect_hardware)
-            (0, "A100, 81920\n", ""),        # nvidia-smi (detect_hardware)
+            (0, "A100, 81920\n", ""),  # nvidia-smi (detect_hardware)
         ]
         hosts_file = tmp_path / "hosts.yaml"
         hm = HostManager(hosts_path=hosts_file)

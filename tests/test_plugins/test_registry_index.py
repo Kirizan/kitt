@@ -3,10 +3,7 @@
 import json
 from unittest.mock import MagicMock, patch
 
-import pytest
-
-from kitt.plugins.registry_index import PluginIndex, DEFAULT_INDEX_URL
-
+from kitt.plugins.registry_index import DEFAULT_INDEX_URL, PluginIndex
 
 SAMPLE_INDEX = {
     "plugins": [
@@ -112,7 +109,9 @@ class TestPluginIndex:
         mock_resp = _mock_urlopen(SAMPLE_INDEX)
 
         with patch("urllib.request.urlopen", return_value=mock_resp):
-            result = index.check_compatibility("kitt-mmlu-extended", kitt_version="0.9.0")
+            result = index.check_compatibility(
+                "kitt-mmlu-extended", kitt_version="0.9.0"
+            )
 
         assert result is False
 

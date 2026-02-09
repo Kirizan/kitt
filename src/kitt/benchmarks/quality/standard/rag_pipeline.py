@@ -1,9 +1,8 @@
 """RAG pipeline benchmark — end-to-end retrieval-augmented generation."""
 
 import logging
-import math
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from kitt.benchmarks.base import BenchmarkResult, LLMBenchmark
 from kitt.benchmarks.registry import register_benchmark
@@ -45,11 +44,11 @@ BUILT_IN_CORPUS = [
 class SimpleRetriever:
     """Simple TF-IDF-like retriever using word overlap scoring."""
 
-    def __init__(self, documents: List[str]) -> None:
+    def __init__(self, documents: list[str]) -> None:
         self.documents = documents
         self._word_sets = [set(doc.lower().split()) for doc in documents]
 
-    def retrieve(self, query: str, top_k: int = 3) -> List[str]:
+    def retrieve(self, query: str, top_k: int = 3) -> list[str]:
         """Retrieve top_k most relevant documents for query."""
         query_words = set(query.lower().split())
         scores = []
@@ -72,7 +71,7 @@ class RAGPipelineBenchmark(LLMBenchmark):
     category = "quality_standard"
     description = "End-to-end retrieval-augmented generation benchmark"
 
-    def _execute(self, engine, config: Dict[str, Any]) -> BenchmarkResult:
+    def _execute(self, engine, config: dict[str, Any]) -> BenchmarkResult:
         corpus = config.get("corpus", BUILT_IN_CORPUS)
         max_tokens = config.get("max_tokens", 256)
         temperature = config.get("temperature", 0.0)
@@ -88,13 +87,13 @@ class RAGPipelineBenchmark(LLMBenchmark):
             all_docs.extend(item.get("documents", []))
         retriever = SimpleRetriever(all_docs)
 
-        outputs: List[Dict[str, Any]] = []
-        errors: List[str] = []
+        outputs: list[dict[str, Any]] = []
+        errors: list[str] = []
         correct = 0
         total = len(corpus)
-        e2e_latencies: List[float] = []
-        retrieval_latencies: List[float] = []
-        generation_latencies: List[float] = []
+        e2e_latencies: list[float] = []
+        retrieval_latencies: list[float] = []
+        generation_latencies: list[float] = []
 
         for i, item in enumerate(corpus):
             question = item["question"]
@@ -129,33 +128,41 @@ class RAGPipelineBenchmark(LLMBenchmark):
                 if is_correct:
                     correct += 1
 
-                outputs.append({
-                    "index": i,
-                    "question": question,
-                    "expected": expected,
-                    "answer": answer[:200],
-                    "correct": is_correct,
-                    "retrieved_docs": len(retrieved),
-                    "retrieval_ms": round(retrieval_ms, 2),
-                    "generation_ms": round(gen_ms, 2),
-                    "e2e_ms": round(e2e_ms, 2),
-                })
+                outputs.append(
+                    {
+                        "index": i,
+                        "question": question,
+                        "expected": expected,
+                        "answer": answer[:200],
+                        "correct": is_correct,
+                        "retrieved_docs": len(retrieved),
+                        "retrieval_ms": round(retrieval_ms, 2),
+                        "generation_ms": round(gen_ms, 2),
+                        "e2e_ms": round(e2e_ms, 2),
+                    }
+                )
 
             except Exception as e:
                 errors.append(f"Question {i}: {e}")
 
-        metrics: Dict[str, Any] = {
+        metrics: dict[str, Any] = {
             "answer_accuracy": round(correct / total, 4) if total else 0,
             "correct": correct,
             "total": total,
         }
 
         if e2e_latencies:
-            metrics["e2e_latency_ms"] = round(sum(e2e_latencies) / len(e2e_latencies), 2)
+            metrics["e2e_latency_ms"] = round(
+                sum(e2e_latencies) / len(e2e_latencies), 2
+            )
         if retrieval_latencies:
-            metrics["retrieval_latency_ms"] = round(sum(retrieval_latencies) / len(retrieval_latencies), 2)
+            metrics["retrieval_latency_ms"] = round(
+                sum(retrieval_latencies) / len(retrieval_latencies), 2
+            )
         if generation_latencies:
-            metrics["generation_latency_ms"] = round(sum(generation_latencies) / len(generation_latencies), 2)
+            metrics["generation_latency_ms"] = round(
+                sum(generation_latencies) / len(generation_latencies), 2
+            )
 
         return BenchmarkResult(
             test_name=self.name,

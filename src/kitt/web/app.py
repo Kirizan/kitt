@@ -2,7 +2,7 @@
 
 import json
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 try:
     from flask import Flask, jsonify, render_template_string, request
@@ -242,8 +242,8 @@ INDEX_TEMPLATE = """
 
 
 def create_app(
-    results_dir: Optional[str] = None,
-    result_store: Optional[Any] = None,
+    results_dir: str | None = None,
+    result_store: Any | None = None,
 ) -> "Flask":
     """Create the Flask application.
 
@@ -252,15 +252,13 @@ def create_app(
         result_store: Optional ResultStore backend. Falls back to file scan.
     """
     if not FLASK_AVAILABLE:
-        raise ImportError(
-            "Flask is not installed. Install with: pip install kitt[web]"
-        )
+        raise ImportError("Flask is not installed. Install with: pip install kitt[web]")
 
     app = Flask(__name__)
     base_dir = Path(results_dir) if results_dir else Path.cwd()
     store = result_store
 
-    def _get_results() -> List[Dict[str, Any]]:
+    def _get_results() -> list[dict[str, Any]]:
         """Get results from store or file scan."""
         if store is not None:
             return store.query()
@@ -322,7 +320,7 @@ def create_app(
             results = [r for r in results if r.get("engine") == filter_engine]
 
         # Group by model|engine
-        groups: Dict[str, Dict[str, Any]] = {}
+        groups: dict[str, dict[str, Any]] = {}
         for r in results:
             model = r.get("model", "unknown")
             engine = r.get("engine", "unknown")
@@ -350,7 +348,7 @@ def create_app(
     return app
 
 
-def _scan_results(base_dir: Path) -> List[Dict[str, Any]]:
+def _scan_results(base_dir: Path) -> list[dict[str, Any]]:
     """Scan for result files in kitt-results/ and karr-* directories."""
     results = []
 
@@ -371,7 +369,7 @@ def _scan_results(base_dir: Path) -> List[Dict[str, Any]]:
     return results
 
 
-def _load_json(path: Path) -> Optional[Dict[str, Any]]:
+def _load_json(path: Path) -> dict[str, Any] | None:
     """Load a JSON file, returning None on error."""
     try:
         with open(path) as f:

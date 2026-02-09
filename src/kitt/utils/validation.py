@@ -1,10 +1,9 @@
 """Input validation utilities."""
 
 from pathlib import Path
-from typing import List, Optional
 
 
-def validate_model_path(path: str) -> Optional[str]:
+def validate_model_path(path: str) -> str | None:
     """Validate a model path exists.
 
     Returns error message or None if valid.
@@ -15,7 +14,7 @@ def validate_model_path(path: str) -> Optional[str]:
     return None
 
 
-def validate_engine_name(name: str, available: List[str]) -> Optional[str]:
+def validate_engine_name(name: str, available: list[str]) -> str | None:
     """Validate an engine name.
 
     Returns error message or None if valid.

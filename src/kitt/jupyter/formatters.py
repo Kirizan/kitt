@@ -1,7 +1,7 @@
 """Rich HTML formatters for Jupyter notebook display."""
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 class NotebookFormatter:
     """Format KITT results for rich display in Jupyter notebooks."""
 
-    def format_results_table(self, results: List[Dict[str, Any]]) -> str:
+    def format_results_table(self, results: list[dict[str, Any]]) -> str:
         """Format results as an HTML table.
 
         Args:
@@ -43,8 +43,8 @@ class NotebookFormatter:
 
     def format_comparison(
         self,
-        current: Dict[str, Any],
-        baseline: Dict[str, Any],
+        current: dict[str, Any],
+        baseline: dict[str, Any],
     ) -> str:
         """Format a comparison between two results as HTML.
 
@@ -69,7 +69,11 @@ class NotebookFormatter:
             for key in curr_metrics:
                 cv = curr_metrics.get(key)
                 bv = base_metrics.get(key)
-                if isinstance(cv, (int, float)) and isinstance(bv, (int, float)) and bv != 0:
+                if (
+                    isinstance(cv, (int, float))
+                    and isinstance(bv, (int, float))
+                    and bv != 0
+                ):
                     change = ((cv - bv) / bv) * 100
                     color = "green" if change > 0 else "red" if change < 0 else "black"
                     rows.append(
@@ -92,7 +96,7 @@ class NotebookFormatter:
             + "</table>"
         )
 
-    def format_metrics_summary(self, result: Dict[str, Any]) -> str:
+    def format_metrics_summary(self, result: dict[str, Any]) -> str:
         """Format a single result's metrics as HTML summary.
 
         Args:

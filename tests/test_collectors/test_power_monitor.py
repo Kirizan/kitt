@@ -1,10 +1,7 @@
 """Tests for GPU power monitoring (mocked since no GPU on dev machine)."""
 
 import sys
-import time
 from unittest.mock import MagicMock, patch
-
-import pytest
 
 from kitt.collectors.power_monitor import PowerMonitor, PowerSample, PowerStats
 
@@ -140,10 +137,12 @@ class TestContextManager:
         monitor = PowerMonitor()
         monitor._initialized = False
 
-        with patch.object(monitor, "start") as mock_start, \
-             patch.object(monitor, "stop") as mock_stop:
-            with monitor:
-                pass
+        with (
+            patch.object(monitor, "start") as mock_start,
+            patch.object(monitor, "stop") as mock_stop,
+            monitor,
+        ):
+            pass
 
         mock_start.assert_called_once()
         mock_stop.assert_called_once()

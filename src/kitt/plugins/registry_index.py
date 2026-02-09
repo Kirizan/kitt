@@ -3,23 +3,23 @@
 import json
 import logging
 import urllib.request
-from typing import Any, Dict, List, Optional
-
-from .manifest import PluginManifest
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_INDEX_URL = "https://raw.githubusercontent.com/kirizan/kitt-plugins/main/index.json"
+DEFAULT_INDEX_URL = (
+    "https://raw.githubusercontent.com/kirizan/kitt-plugins/main/index.json"
+)
 
 
 class PluginIndex:
     """Remote plugin registry for discovering available plugins."""
 
-    def __init__(self, index_url: Optional[str] = None) -> None:
+    def __init__(self, index_url: str | None = None) -> None:
         self.index_url = index_url or DEFAULT_INDEX_URL
-        self._cache: Optional[List[Dict[str, Any]]] = None
+        self._cache: list[dict[str, Any]] | None = None
 
-    def _fetch_index(self) -> List[Dict[str, Any]]:
+    def _fetch_index(self) -> list[dict[str, Any]]:
         """Fetch the plugin index from remote."""
         if self._cache is not None:
             return self._cache
@@ -34,7 +34,9 @@ class PluginIndex:
             logger.error(f"Failed to fetch plugin index: {e}")
             return []
 
-    def search(self, query: str = "", plugin_type: Optional[str] = None) -> List[Dict[str, Any]]:
+    def search(
+        self, query: str = "", plugin_type: str | None = None
+    ) -> list[dict[str, Any]]:
         """Search for plugins.
 
         Args:
@@ -59,7 +61,7 @@ class PluginIndex:
 
         return results
 
-    def get_info(self, name: str) -> Optional[Dict[str, Any]]:
+    def get_info(self, name: str) -> dict[str, Any] | None:
         """Get detailed info for a plugin by name."""
         plugins = self._fetch_index()
         for p in plugins:
@@ -88,6 +90,7 @@ class PluginIndex:
         # Simple version comparison
         try:
             from packaging.version import Version
+
             return Version(kitt_version) >= Version(min_version)
         except ImportError:
             # Fallback: compare as tuples

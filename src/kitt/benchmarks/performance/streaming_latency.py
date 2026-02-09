@@ -2,7 +2,7 @@
 
 import logging
 import statistics
-from typing import Any, Dict, List
+from typing import Any
 
 from kitt.benchmarks.base import BenchmarkResult, LLMBenchmark
 from kitt.benchmarks.registry import register_benchmark
@@ -31,14 +31,14 @@ class StreamingLatencyBenchmark(LLMBenchmark):
     category = "performance"
     description = "Measure streaming TTFT and inter-token latency"
 
-    def _execute(self, engine, config: Dict[str, Any]) -> BenchmarkResult:
+    def _execute(self, engine, config: dict[str, Any]) -> BenchmarkResult:
         prompts = config.get("prompts", DEFAULT_PROMPTS)
         max_tokens = config.get("max_tokens", 128)
         temperature = config.get("temperature", 0.0)
         iterations = config.get("iterations", len(prompts))
 
-        outputs: List[Dict[str, Any]] = []
-        errors: List[str] = []
+        outputs: list[dict[str, Any]] = []
+        errors: list[str] = []
 
         # Check if engine supports streaming
         base_url = getattr(engine, "_base_url", None)
@@ -59,13 +59,15 @@ class StreamingLatencyBenchmark(LLMBenchmark):
         for i in range(iterations):
             prompt = prompts[i % len(prompts)]
             try:
-                chunks = list(openai_generate_stream(
-                    base_url,
-                    prompt,
-                    model=model_name,
-                    temperature=temperature,
-                    max_tokens=max_tokens,
-                ))
+                chunks = list(
+                    openai_generate_stream(
+                        base_url,
+                        prompt,
+                        model=model_name,
+                        temperature=temperature,
+                        max_tokens=max_tokens,
+                    )
+                )
 
                 if not chunks:
                     errors.append(f"No chunks received on iteration {i}")
@@ -80,24 +82,28 @@ class StreamingLatencyBenchmark(LLMBenchmark):
                 total_ms = chunks[-1].timestamp_ms
                 total_tokens = len(chunks)
 
-                outputs.append({
-                    "iteration": i,
-                    "prompt": prompt[:100],
-                    "total_tokens": total_tokens,
-                    "metrics": {
-                        "ttft_ms": round(ttft_ms, 2),
-                        "avg_inter_token_ms": round(
-                            statistics.mean(inter_token_ms), 2
-                        ) if inter_token_ms else 0,
-                        "max_inter_token_ms": round(
-                            max(inter_token_ms), 2
-                        ) if inter_token_ms else 0,
-                        "jitter_ms": round(
-                            statistics.stdev(inter_token_ms), 2
-                        ) if len(inter_token_ms) > 1 else 0,
-                        "total_latency_ms": round(total_ms, 2),
-                    },
-                })
+                outputs.append(
+                    {
+                        "iteration": i,
+                        "prompt": prompt[:100],
+                        "total_tokens": total_tokens,
+                        "metrics": {
+                            "ttft_ms": round(ttft_ms, 2),
+                            "avg_inter_token_ms": round(
+                                statistics.mean(inter_token_ms), 2
+                            )
+                            if inter_token_ms
+                            else 0,
+                            "max_inter_token_ms": round(max(inter_token_ms), 2)
+                            if inter_token_ms
+                            else 0,
+                            "jitter_ms": round(statistics.stdev(inter_token_ms), 2)
+                            if len(inter_token_ms) > 1
+                            else 0,
+                            "total_latency_ms": round(total_ms, 2),
+                        },
+                    }
+                )
 
             except Exception as e:
                 errors.append(f"Error on iteration {i}: {e}")
@@ -113,7 +119,7 @@ class StreamingLatencyBenchmark(LLMBenchmark):
             errors=errors,
         )
 
-    def _aggregate_metrics(self, outputs: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _aggregate_metrics(self, outputs: list[dict[str, Any]]) -> dict[str, Any]:
         if not outputs:
             return {}
 

@@ -1,7 +1,7 @@
 """Slack bot integration for KITT."""
 
 import logging
-from typing import Any, Optional
+from typing import Any
 
 from .base import BotInterface
 from .commands import BotCommandHandler
@@ -16,7 +16,7 @@ class SlackBot(BotInterface):
         self,
         token: str,
         app_token: str,
-        result_store: Optional[Any] = None,
+        result_store: Any | None = None,
     ) -> None:
         try:
             from slack_bolt import App
@@ -25,7 +25,7 @@ class SlackBot(BotInterface):
             raise ImportError(
                 "slack-bolt is required for Slack bot. "
                 "Install with: pip install slack-bolt"
-            )
+            ) from None
 
         self.app = App(token=token)
         self.handler = SocketModeHandler(self.app, app_token)

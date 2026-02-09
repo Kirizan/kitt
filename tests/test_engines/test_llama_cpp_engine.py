@@ -23,7 +23,9 @@ class TestLlamaCppEngineMetadata:
         assert "gguf" in LlamaCppEngine.supported_formats()
 
     def test_default_image(self):
-        assert LlamaCppEngine.default_image() == "ghcr.io/ggml-org/llama.cpp:server-cuda"
+        assert (
+            LlamaCppEngine.default_image() == "ghcr.io/ggml-org/llama.cpp:server-cuda"
+        )
 
     def test_default_port(self):
         assert LlamaCppEngine.default_port() == 8081
@@ -38,13 +40,19 @@ class TestLlamaCppEngineMetadata:
 class TestLlamaCppEngineAvailability:
     @patch("kitt.engines.image_resolver._detect_cc", return_value=None)
     @patch("kitt.engines.docker_manager.DockerManager.image_exists", return_value=True)
-    @patch("kitt.engines.docker_manager.DockerManager.is_docker_available", return_value=True)
+    @patch(
+        "kitt.engines.docker_manager.DockerManager.is_docker_available",
+        return_value=True,
+    )
     def test_is_available_true(self, mock_avail, mock_exists, mock_cc):
         assert LlamaCppEngine.is_available() is True
 
     @patch("kitt.engines.image_resolver._detect_cc", return_value=None)
     @patch("kitt.engines.docker_manager.DockerManager.image_exists", return_value=False)
-    @patch("kitt.engines.docker_manager.DockerManager.is_docker_available", return_value=True)
+    @patch(
+        "kitt.engines.docker_manager.DockerManager.is_docker_available",
+        return_value=True,
+    )
     def test_diagnose_image_not_pulled(self, mock_avail, mock_exists, mock_cc):
         diag = LlamaCppEngine.diagnose()
         assert diag.available is False
@@ -54,8 +62,13 @@ class TestLlamaCppEngineAvailability:
 
 class TestLlamaCppEngineInitialize:
     @patch("kitt.engines.image_resolver._detect_cc", return_value=None)
-    @patch("kitt.engines.docker_manager.DockerManager.wait_for_healthy", return_value=True)
-    @patch("kitt.engines.docker_manager.DockerManager.run_container", return_value="container123")
+    @patch(
+        "kitt.engines.docker_manager.DockerManager.wait_for_healthy", return_value=True
+    )
+    @patch(
+        "kitt.engines.docker_manager.DockerManager.run_container",
+        return_value="container123",
+    )
     def test_initialize_starts_container(self, mock_run, mock_wait, mock_cc):
         engine = LlamaCppEngine()
         engine.initialize("/models/model.gguf", {})
@@ -67,8 +80,13 @@ class TestLlamaCppEngineInitialize:
         mock_wait.assert_called_once()
 
     @patch("kitt.engines.image_resolver._detect_cc", return_value=None)
-    @patch("kitt.engines.docker_manager.DockerManager.wait_for_healthy", return_value=True)
-    @patch("kitt.engines.docker_manager.DockerManager.run_container", return_value="container123")
+    @patch(
+        "kitt.engines.docker_manager.DockerManager.wait_for_healthy", return_value=True
+    )
+    @patch(
+        "kitt.engines.docker_manager.DockerManager.run_container",
+        return_value="container123",
+    )
     def test_initialize_uses_host_port_for_server(self, mock_run, mock_wait, mock_cc):
         """With --network host, server must listen on the host port."""
         engine = LlamaCppEngine()
@@ -81,8 +99,13 @@ class TestLlamaCppEngineInitialize:
         assert config.command_args[idx + 1] == "8081"
 
     @patch("kitt.engines.image_resolver._detect_cc", return_value=None)
-    @patch("kitt.engines.docker_manager.DockerManager.wait_for_healthy", return_value=True)
-    @patch("kitt.engines.docker_manager.DockerManager.run_container", return_value="container123")
+    @patch(
+        "kitt.engines.docker_manager.DockerManager.wait_for_healthy", return_value=True
+    )
+    @patch(
+        "kitt.engines.docker_manager.DockerManager.run_container",
+        return_value="container123",
+    )
     def test_initialize_with_gpu_layers(self, mock_run, mock_wait, mock_cc):
         engine = LlamaCppEngine()
         engine.initialize("/models/model.gguf", {"n_gpu_layers": 32, "n_ctx": 8192})
@@ -94,9 +117,16 @@ class TestLlamaCppEngineInitialize:
         assert "8192" in config.command_args
 
     @patch("kitt.engines.image_resolver._detect_cc", return_value=None)
-    @patch("kitt.engines.docker_manager.DockerManager.wait_for_healthy", return_value=True)
-    @patch("kitt.engines.docker_manager.DockerManager.run_container", return_value="container123")
-    def test_initialize_sets_model_name_with_container_path(self, mock_run, mock_wait, mock_cc):
+    @patch(
+        "kitt.engines.docker_manager.DockerManager.wait_for_healthy", return_value=True
+    )
+    @patch(
+        "kitt.engines.docker_manager.DockerManager.run_container",
+        return_value="container123",
+    )
+    def test_initialize_sets_model_name_with_container_path(
+        self, mock_run, mock_wait, mock_cc
+    ):
         """Model name should include /models/ prefix for API consistency."""
         engine = LlamaCppEngine()
         engine.initialize("/path/to/my-model.gguf", {})

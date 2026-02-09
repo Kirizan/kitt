@@ -2,8 +2,6 @@
 
 import logging
 import subprocess
-from pathlib import Path
-from typing import Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -14,8 +12,8 @@ class SSHConnection:
     def __init__(
         self,
         host: str,
-        user: Optional[str] = None,
-        ssh_key: Optional[str] = None,
+        user: str | None = None,
+        ssh_key: str | None = None,
         port: int = 22,
     ) -> None:
         self.host = host
@@ -34,9 +32,12 @@ class SSHConnection:
         """Build common SSH arguments."""
         args = [
             "ssh",
-            "-o", "BatchMode=yes",
-            "-o", "StrictHostKeyChecking=accept-new",
-            "-p", str(self.port),
+            "-o",
+            "BatchMode=yes",
+            "-o",
+            "StrictHostKeyChecking=accept-new",
+            "-p",
+            str(self.port),
         ]
         if self.ssh_key:
             args.extend(["-i", self.ssh_key])
@@ -64,8 +65,8 @@ class SSHConnection:
     def run_command(
         self,
         command: str,
-        timeout: Optional[int] = None,
-    ) -> Tuple[int, str, str]:
+        timeout: int | None = None,
+    ) -> tuple[int, str, str]:
         """Execute a command on the remote host.
 
         Args:
@@ -101,8 +102,10 @@ class SSHConnection:
         """
         args = [
             "scp",
-            "-o", "BatchMode=yes",
-            "-P", str(self.port),
+            "-o",
+            "BatchMode=yes",
+            "-P",
+            str(self.port),
         ]
         if self.ssh_key:
             args.extend(["-i", self.ssh_key])
@@ -127,8 +130,10 @@ class SSHConnection:
         """
         args = [
             "scp",
-            "-o", "BatchMode=yes",
-            "-P", str(self.port),
+            "-o",
+            "BatchMode=yes",
+            "-P",
+            str(self.port),
         ]
         if self.ssh_key:
             args.extend(["-i", self.ssh_key])
@@ -154,8 +159,10 @@ class SSHConnection:
         args = [
             "scp",
             "-r",
-            "-o", "BatchMode=yes",
-            "-P", str(self.port),
+            "-o",
+            "BatchMode=yes",
+            "-P",
+            str(self.port),
         ]
         if self.ssh_key:
             args.extend(["-i", self.ssh_key])

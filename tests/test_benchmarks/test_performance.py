@@ -3,8 +3,6 @@
 from datetime import datetime
 from unittest.mock import MagicMock
 
-import pytest
-
 from kitt.benchmarks.performance.latency import LatencyBenchmark
 from kitt.benchmarks.performance.memory import MemoryBenchmark
 from kitt.benchmarks.performance.throughput import ThroughputBenchmark

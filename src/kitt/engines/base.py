@@ -3,7 +3,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 @dataclass
@@ -34,8 +34,8 @@ class EngineDiagnostics:
 
     available: bool
     image: str = ""
-    error: Optional[str] = None
-    guidance: Optional[str] = None
+    error: str | None = None
+    guidance: str | None = None
 
 
 class InferenceEngine(ABC):
@@ -44,6 +44,8 @@ class InferenceEngine(ABC):
     All engines run inside Docker containers and communicate via HTTP APIs.
     """
 
+    _container_id: str | None = None
+
     @classmethod
     @abstractmethod
     def name(cls) -> str:
@@ -51,7 +53,7 @@ class InferenceEngine(ABC):
 
     @classmethod
     @abstractmethod
-    def supported_formats(cls) -> List[str]:
+    def supported_formats(cls) -> list[str]:
         """Model formats this engine supports (e.g., ['safetensors', 'pytorch'])."""
 
     @classmethod
@@ -91,9 +93,8 @@ class InferenceEngine(ABC):
         """Check if Docker is available and the engine's image is pulled."""
         from .docker_manager import DockerManager
 
-        return (
-            DockerManager.is_docker_available()
-            and DockerManager.image_exists(cls.resolved_image())
+        return DockerManager.is_docker_available() and DockerManager.image_exists(
+            cls.resolved_image()
         )
 
     @classmethod
@@ -133,7 +134,7 @@ class InferenceEngine(ABC):
         return EngineDiagnostics(available=True, image=image)
 
     @abstractmethod
-    def initialize(self, model_path: str, config: Dict[str, Any]) -> None:
+    def initialize(self, model_path: str, config: dict[str, Any]) -> None:
         """Start Docker container and wait for healthy.
 
         Args:

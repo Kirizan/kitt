@@ -2,7 +2,7 @@
 
 import logging
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 import yaml
 
@@ -28,12 +28,12 @@ class YAMLBenchmark(LLMBenchmark):
         self.description = self.config.get("description", "")
         self._config_path = config_path
 
-    def _execute(self, engine, config: Dict[str, Any]) -> BenchmarkResult:
+    def _execute(self, engine, config: dict[str, Any]) -> BenchmarkResult:
         """Execute YAML-defined benchmark with error recovery and checkpointing."""
         prompts = self._load_prompts()
 
-        outputs: List[Dict[str, Any]] = []
-        errors: List[str] = []
+        outputs: list[dict[str, Any]] = []
+        errors: list[str] = []
         checkpoint_manager = CheckpointManager(self.name, config)
 
         # Resume from checkpoint if exists
@@ -89,7 +89,7 @@ class YAMLBenchmark(LLMBenchmark):
             errors=errors,
         )
 
-    def _load_prompts(self) -> List[str]:
+    def _load_prompts(self) -> list[str]:
         """Load prompts from dataset configuration."""
         dataset_config = self.config.get("dataset", {})
         source = dataset_config.get("source")
@@ -117,23 +117,17 @@ class YAMLBenchmark(LLMBenchmark):
 
         return []
 
-    def _calculate_metrics(self, outputs: List[Dict]) -> Dict[str, Any]:
+    def _calculate_metrics(self, outputs: list[dict]) -> dict[str, Any]:
         """Calculate benchmark metrics from outputs."""
         if not outputs:
             return {}
 
         latencies = [
-            o["metrics"]["total_latency_ms"]
-            for o in outputs
-            if "metrics" in o
+            o["metrics"]["total_latency_ms"] for o in outputs if "metrics" in o
         ]
-        tps_values = [
-            o["metrics"]["tps"]
-            for o in outputs
-            if "metrics" in o
-        ]
+        tps_values = [o["metrics"]["tps"] for o in outputs if "metrics" in o]
 
-        metrics: Dict[str, Any] = {
+        metrics: dict[str, Any] = {
             "total_samples": len(outputs),
         }
 
@@ -152,7 +146,7 @@ class BenchmarkLoader:
     """Load benchmarks from filesystem."""
 
     @staticmethod
-    def discover_benchmarks(test_dir: Path) -> List[LLMBenchmark]:
+    def discover_benchmarks(test_dir: Path) -> list[LLMBenchmark]:
         """Discover all benchmarks in directory.
 
         Args:
@@ -161,7 +155,7 @@ class BenchmarkLoader:
         Returns:
             List of loaded benchmark instances.
         """
-        benchmarks = []
+        benchmarks: list[LLMBenchmark] = []
 
         for yaml_file in test_dir.rglob("*.yaml"):
             try:

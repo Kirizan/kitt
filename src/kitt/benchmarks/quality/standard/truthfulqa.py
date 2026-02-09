@@ -1,7 +1,7 @@
 """TruthfulQA benchmark."""
 
 import logging
-from typing import Any, Dict, List
+from typing import Any
 
 from kitt.benchmarks.base import BenchmarkResult, LLMBenchmark
 from kitt.benchmarks.registry import register_benchmark
@@ -25,7 +25,7 @@ class TruthfulQABenchmark(LLMBenchmark):
     category = "quality_standard"
     description = "TruthfulQA - Measures truthfulness in model responses"
 
-    def _execute(self, engine, config: Dict[str, Any]) -> BenchmarkResult:
+    def _execute(self, engine, config: dict[str, Any]) -> BenchmarkResult:
         """Run TruthfulQA evaluation."""
         sampling = config.get("sampling", {})
         max_tokens = sampling.get("max_tokens", 256)
@@ -48,8 +48,8 @@ class TruthfulQABenchmark(LLMBenchmark):
                 errors=["No questions loaded - dataset may not be available"],
             )
 
-        outputs: List[Dict[str, Any]] = []
-        errors: List[str] = []
+        outputs: list[dict[str, Any]] = []
+        errors: list[str] = []
         correct = 0
         total = 0
 
@@ -79,16 +79,18 @@ class TruthfulQABenchmark(LLMBenchmark):
                     correct += 1
                 total += 1
 
-                outputs.append({
-                    "index": i,
-                    "question": q_text[:200],
-                    "output": result.output[:500],
-                    "correct": is_correct,
-                    "metrics": {
-                        "tps": result.metrics.tps,
-                        "total_latency_ms": result.metrics.total_latency_ms,
-                    },
-                })
+                outputs.append(
+                    {
+                        "index": i,
+                        "question": q_text[:200],
+                        "output": result.output[:500],
+                        "correct": is_correct,
+                        "metrics": {
+                            "tps": result.metrics.tps,
+                            "total_latency_ms": result.metrics.total_latency_ms,
+                        },
+                    }
+                )
 
             except Exception as e:
                 error_msg = f"Error on question {i}: {str(e)}"
@@ -115,7 +117,7 @@ class TruthfulQABenchmark(LLMBenchmark):
             errors=errors,
         )
 
-    def _load_questions(self, config: Dict[str, Any]) -> List[Dict[str, Any]]:
+    def _load_questions(self, config: dict[str, Any]) -> list[dict[str, Any]]:
         """Load TruthfulQA questions."""
         dataset_config = config.get("dataset", {})
         source = dataset_config.get("source")
@@ -125,6 +127,7 @@ class TruthfulQABenchmark(LLMBenchmark):
         if source:
             try:
                 from kitt.benchmarks.dataset_manager import DatasetManager
+
                 raw = DatasetManager.load_from_huggingface(
                     source,
                     split=dataset_config.get("split", "validation"),
@@ -138,7 +141,9 @@ class TruthfulQABenchmark(LLMBenchmark):
         if local_path:
             try:
                 from pathlib import Path
+
                 from kitt.benchmarks.dataset_manager import DatasetManager
+
                 raw = DatasetManager.load_from_directory(
                     Path(local_path), sample_size=sample_size
                 )
@@ -149,7 +154,7 @@ class TruthfulQABenchmark(LLMBenchmark):
 
         return []
 
-    def _parse_raw(self, raw_items: List[Any]) -> List[Dict[str, Any]]:
+    def _parse_raw(self, raw_items: list[Any]) -> list[dict[str, Any]]:
         """Parse raw dataset items."""
         questions = []
         for item in raw_items:
@@ -160,7 +165,7 @@ class TruthfulQABenchmark(LLMBenchmark):
         return questions
 
     @staticmethod
-    def _evaluate_mc1(output: str, mc1_targets: Dict[str, Any]) -> bool:
+    def _evaluate_mc1(output: str, mc1_targets: dict[str, Any]) -> bool:
         """Evaluate using MC1 (single true answer).
 
         mc1_targets has 'choices' and 'labels' where labels[0]=1 is correct.

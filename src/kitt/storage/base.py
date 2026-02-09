@@ -1,14 +1,14 @@
 """Abstract base class for result storage backends."""
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 class ResultStore(ABC):
     """Abstract interface for storing and querying benchmark results."""
 
     @abstractmethod
-    def save_result(self, result_data: Dict[str, Any]) -> str:
+    def save_result(self, result_data: dict[str, Any]) -> str:
         """Save a benchmark result.
 
         Args:
@@ -19,7 +19,7 @@ class ResultStore(ABC):
         """
 
     @abstractmethod
-    def get_result(self, result_id: str) -> Optional[Dict[str, Any]]:
+    def get_result(self, result_id: str) -> dict[str, Any] | None:
         """Retrieve a single result by ID.
 
         Args:
@@ -32,11 +32,11 @@ class ResultStore(ABC):
     @abstractmethod
     def query(
         self,
-        filters: Optional[Dict[str, Any]] = None,
-        order_by: Optional[str] = None,
-        limit: Optional[int] = None,
+        filters: dict[str, Any] | None = None,
+        order_by: str | None = None,
+        limit: int | None = None,
         offset: int = 0,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Query results with optional filtering, ordering, and pagination.
 
         Args:
@@ -51,7 +51,7 @@ class ResultStore(ABC):
         """
 
     @abstractmethod
-    def list_results(self) -> List[Dict[str, Any]]:
+    def list_results(self) -> list[dict[str, Any]]:
         """List all stored results (summary view).
 
         Returns:
@@ -62,8 +62,8 @@ class ResultStore(ABC):
     def aggregate(
         self,
         group_by: str,
-        metrics: Optional[List[str]] = None,
-    ) -> List[Dict[str, Any]]:
+        metrics: list[str] | None = None,
+    ) -> list[dict[str, Any]]:
         """Aggregate results grouped by a field.
 
         Args:
@@ -83,8 +83,8 @@ class ResultStore(ABC):
         """
 
     @abstractmethod
-    def count(self, filters: Optional[Dict[str, Any]] = None) -> int:
+    def count(self, filters: dict[str, Any] | None = None) -> int:
         """Count results matching optional filters."""
 
-    def close(self) -> None:
+    def close(self) -> None:  # noqa: B027
         """Release any held resources. Override if needed."""

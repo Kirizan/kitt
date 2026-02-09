@@ -1,7 +1,7 @@
 """Tests for DockerManager — all tests mock subprocess.run."""
 
 import subprocess
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -294,9 +294,7 @@ class TestWaitForHealthy:
         mock_urlopen.side_effect = urllib_error()
 
         with pytest.raises(RuntimeError, match="failed to become healthy"):
-            DockerManager.wait_for_healthy(
-                "http://localhost:8000/health", timeout=10
-            )
+            DockerManager.wait_for_healthy("http://localhost:8000/health", timeout=10)
 
 
 class TestExecInContainer:

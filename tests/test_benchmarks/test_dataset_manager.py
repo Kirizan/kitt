@@ -1,8 +1,9 @@
 """Tests for dataset manager."""
 
 import json
-import pytest
 from pathlib import Path
+
+import pytest
 
 from kitt.benchmarks.dataset_manager import DatasetManager
 

@@ -1,7 +1,7 @@
 """Tensor parallel benchmark — measure scaling across multiple GPUs."""
 
 import logging
-from typing import Any, Dict, List
+from typing import Any
 
 from kitt.benchmarks.base import BenchmarkResult, LLMBenchmark
 from kitt.benchmarks.registry import register_benchmark
@@ -20,10 +20,10 @@ class TensorParallelBenchmark(LLMBenchmark):
     category = "performance"
     description = "Measure inference scaling with tensor parallelism"
 
-    def required_config(self) -> List[str]:
+    def required_config(self) -> list[str]:
         return ["model_path"]
 
-    def _execute(self, engine, config: Dict[str, Any]) -> BenchmarkResult:
+    def _execute(self, engine, config: dict[str, Any]) -> BenchmarkResult:
         tp_sizes = config.get("tp_sizes", DEFAULT_TP_SIZES)
         max_tokens = config.get("max_tokens", 256)
         temperature = config.get("temperature", 0.0)
@@ -36,20 +36,22 @@ class TensorParallelBenchmark(LLMBenchmark):
         # Detect available GPUs
         available_gpus = self._detect_gpu_count()
 
-        outputs: List[Dict[str, Any]] = []
-        errors: List[str] = []
-        tp_results: Dict[int, Dict[str, float]] = {}
+        outputs: list[dict[str, Any]] = []
+        errors: list[str] = []
+        tp_results: dict[int, dict[str, float]] = {}
 
         for tp_size in tp_sizes:
             if tp_size > available_gpus:
                 logger.warning(
                     f"Skipping TP={tp_size}: only {available_gpus} GPUs available"
                 )
-                outputs.append({
-                    "tp_size": tp_size,
-                    "skipped": True,
-                    "reason": f"Requires {tp_size} GPUs, {available_gpus} available",
-                })
+                outputs.append(
+                    {
+                        "tp_size": tp_size,
+                        "skipped": True,
+                        "reason": f"Requires {tp_size} GPUs, {available_gpus} available",
+                    }
+                )
                 continue
 
             logger.info(f"Testing tensor_parallel_size={tp_size}")
@@ -63,7 +65,7 @@ class TensorParallelBenchmark(LLMBenchmark):
                 tps_values = []
                 latencies = []
 
-                for i in range(iterations):
+                for _i in range(iterations):
                     result = engine.generate(
                         prompt=prompt,
                         max_tokens=max_tokens,
@@ -91,11 +93,13 @@ class TensorParallelBenchmark(LLMBenchmark):
                 error_msg = f"TP={tp_size} failed: {e}"
                 logger.error(error_msg)
                 errors.append(error_msg)
-                outputs.append({
-                    "tp_size": tp_size,
-                    "skipped": False,
-                    "error": str(e),
-                })
+                outputs.append(
+                    {
+                        "tp_size": tp_size,
+                        "skipped": False,
+                        "error": str(e),
+                    }
+                )
 
         metrics = self._compute_scaling(tp_results)
 
@@ -109,14 +113,14 @@ class TensorParallelBenchmark(LLMBenchmark):
         )
 
     def _compute_scaling(
-        self, tp_results: Dict[int, Dict[str, float]]
-    ) -> Dict[str, Any]:
+        self, tp_results: dict[int, dict[str, float]]
+    ) -> dict[str, Any]:
         """Compute scaling efficiency metrics."""
         if not tp_results:
             return {}
 
         base_tps = tp_results.get(1, {}).get("avg_tps", 0)
-        metrics: Dict[str, Any] = {}
+        metrics: dict[str, Any] = {}
 
         for tp_size, data in tp_results.items():
             metrics[f"tps_tp{tp_size}"] = data["avg_tps"]
@@ -133,7 +137,18 @@ class TensorParallelBenchmark(LLMBenchmark):
             best_tp = max(tp_results, key=lambda k: tp_results[k]["avg_tps"])
             metrics["best_tp_size"] = best_tp
             metrics["best_tps"] = tp_results[best_tp]["avg_tps"]
-            overhead = (1 - (tp_results.get(2, {}).get("avg_tps", base_tps * 2) / (base_tps * 2))) * 100 if 2 in tp_results else 0
+            overhead = (
+                (
+                    1
+                    - (
+                        tp_results.get(2, {}).get("avg_tps", base_tps * 2)
+                        / (base_tps * 2)
+                    )
+                )
+                * 100
+                if 2 in tp_results
+                else 0
+            )
             metrics["communication_overhead_pct"] = round(max(0, overhead), 1)
 
         return metrics
@@ -142,6 +157,7 @@ class TensorParallelBenchmark(LLMBenchmark):
         """Detect number of available GPUs."""
         try:
             from kitt.hardware.detector import detect_gpu
+
             gpu_info = detect_gpu()
             if gpu_info:
                 return gpu_info.count

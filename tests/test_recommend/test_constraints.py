@@ -1,7 +1,5 @@
 """Tests for hardware constraints."""
 
-import pytest
-
 from kitt.recommend.constraints import HardwareConstraints
 
 

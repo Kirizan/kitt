@@ -1,14 +1,13 @@
 """Tests for individual hardware detectors."""
 
-from unittest.mock import patch, MagicMock
-from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 from kitt.hardware.detector import (
-    detect_environment_type,
-    detect_cpu,
-    detect_ram_gb,
-    detect_gpu,
     _extract_brand,
+    detect_cpu,
+    detect_environment_type,
+    detect_gpu,
+    detect_ram_gb,
 )
 
 
@@ -26,9 +25,7 @@ class TestDetectEnvironmentType:
         def path_side_effect(p):
             if p not in instances:
                 m = MagicMock()
-                if p == "/etc/dgx-release":
-                    m.exists.return_value = False
-                elif p == "/etc/nvidia/nvidia-dgs.conf":
+                if p == "/etc/dgx-release" or p == "/etc/nvidia/nvidia-dgs.conf":
                     m.exists.return_value = False
                 elif p == "/.dockerenv":
                     m.exists.return_value = True
@@ -69,10 +66,17 @@ class TestDetectGPU:
 
 class TestExtractBrand:
     def test_samsung(self):
-        assert _extract_brand("Samsung SSD 970 EVO Plus", ["Samsung", "WD"]) == "Samsung"
+        assert (
+            _extract_brand("Samsung SSD 970 EVO Plus", ["Samsung", "WD"]) == "Samsung"
+        )
 
     def test_western_digital(self):
-        assert _extract_brand("Western Digital WD Black SN850X", ["Samsung", "WD", "Western Digital"]) == "WD"
+        assert (
+            _extract_brand(
+                "Western Digital WD Black SN850X", ["Samsung", "WD", "Western Digital"]
+            )
+            == "WD"
+        )
 
     def test_unknown(self):
         assert _extract_brand("Some Random Drive", ["Samsung", "WD"]) == "Unknown"

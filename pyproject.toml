@@ -34,6 +34,9 @@ pytest = "^8.0"
 pytest-cov = "^6.0"
 pytest-mock = "^3.12"
 pytest-timeout = "^2.4.0"
+ruff = ">=0.8"
+mypy = "^1.10"
+types-pyyaml = "^6.0.12.20250915"
 
 [tool.poetry.extras]
 datasets = ["datasets"]
@@ -58,6 +61,24 @@ source = ["kitt"]
 [tool.coverage.report]
 show_missing = true
 fail_under = 40
+
+[tool.ruff]
+target-version = "py310"
+src = ["src"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+ignore = ["E501"]
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = false
+warn_unused_configs = true
+ignore_missing_imports = true
+no_implicit_optional = false
 
 [build-system]
 requires = ["poetry-core"]

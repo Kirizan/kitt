@@ -1,9 +1,10 @@
 """Tests for YAML benchmark loader."""
 
-import pytest
 from pathlib import Path
 
-from kitt.benchmarks.loader import YAMLBenchmark, BenchmarkLoader
+import pytest
+
+from kitt.benchmarks.loader import BenchmarkLoader, YAMLBenchmark
 
 
 @pytest.fixture
@@ -12,6 +13,7 @@ def tmp_yaml(tmp_path):
         path = tmp_path / filename
         path.write_text(content)
         return path
+
     return _create
 
 
@@ -36,9 +38,7 @@ description: "A test benchmark"
 
 class TestBenchmarkLoader:
     def test_discover_yaml_benchmarks(self, tmp_path):
-        (tmp_path / "bench1.yaml").write_text(
-            "name: bench1\ncategory: performance"
-        )
+        (tmp_path / "bench1.yaml").write_text("name: bench1\ncategory: performance")
         (tmp_path / "bench2.yaml").write_text(
             "name: bench2\ncategory: quality_standard"
         )
@@ -51,9 +51,7 @@ class TestBenchmarkLoader:
         assert "bench2" in names
 
     def test_discover_skips_invalid(self, tmp_path):
-        (tmp_path / "valid.yaml").write_text(
-            "name: valid\ncategory: performance"
-        )
+        (tmp_path / "valid.yaml").write_text("name: valid\ncategory: performance")
         (tmp_path / "invalid.yaml").write_text("not: valid: yaml: [broken")
 
         benchmarks = BenchmarkLoader.discover_benchmarks(tmp_path)

@@ -3,7 +3,6 @@
 import json
 import logging
 from pathlib import Path
-from typing import List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -15,9 +14,9 @@ class DatasetManager:
     def load_from_huggingface(
         dataset_id: str,
         split: str = "test",
-        sample_size: Optional[int] = None,
+        sample_size: int | None = None,
         text_field: str = "question",
-    ) -> List[str]:
+    ) -> list[str]:
         """Load prompts from a HuggingFace dataset.
 
         Args:
@@ -36,9 +35,8 @@ class DatasetManager:
             from datasets import load_dataset
         except ImportError:
             raise RuntimeError(
-                "HuggingFace datasets not installed. "
-                "Install with: pip install datasets"
-            )
+                "HuggingFace datasets not installed. Install with: pip install datasets"
+            ) from None
 
         logger.info(f"Loading dataset '{dataset_id}' split='{split}'...")
         dataset = load_dataset(dataset_id, split=split)
@@ -67,8 +65,8 @@ class DatasetManager:
     @staticmethod
     def load_from_directory(
         path: Path,
-        sample_size: Optional[int] = None,
-    ) -> List[str]:
+        sample_size: int | None = None,
+    ) -> list[str]:
         """Load prompts from a local directory.
 
         Supports:
@@ -100,7 +98,7 @@ class DatasetManager:
         return prompts
 
     @staticmethod
-    def _load_single_file(path: Path) -> List[str]:
+    def _load_single_file(path: Path) -> list[str]:
         """Load prompts from a single file."""
         suffix = path.suffix.lower()
 
@@ -115,7 +113,7 @@ class DatasetManager:
             return []
 
     @staticmethod
-    def _load_jsonl(path: Path) -> List[str]:
+    def _load_jsonl(path: Path) -> list[str]:
         """Load from JSONL (one JSON object per line)."""
         prompts = []
         with open(path) as f:
@@ -134,7 +132,7 @@ class DatasetManager:
         return prompts
 
     @staticmethod
-    def _load_json(path: Path) -> List[str]:
+    def _load_json(path: Path) -> list[str]:
         """Load from JSON file."""
         with open(path) as f:
             data = json.load(f)
@@ -154,7 +152,7 @@ class DatasetManager:
         return []
 
     @staticmethod
-    def _load_txt(path: Path) -> List[str]:
+    def _load_txt(path: Path) -> list[str]:
         """Load from text file (one prompt per line)."""
         with open(path) as f:
             return [line.strip() for line in f if line.strip()]

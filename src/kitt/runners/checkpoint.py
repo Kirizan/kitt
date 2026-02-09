@@ -5,7 +5,7 @@ import json
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 class CheckpointManager:
     """Manage benchmark checkpoints for recovery from failures."""
 
-    def __init__(self, test_name: str, config: Dict[str, Any]) -> None:
+    def __init__(self, test_name: str, config: dict[str, Any]) -> None:
         """Initialize checkpoint manager.
 
         Args:
@@ -28,7 +28,7 @@ class CheckpointManager:
             self.checkpoint_dir / f"{test_name}_{self.config_hash}.json"
         )
 
-    def _hash_config(self, config: Dict[str, Any]) -> str:
+    def _hash_config(self, config: dict[str, Any]) -> str:
         """Create hash of config to detect changes."""
         config_copy = config.copy()
         config_copy.pop("warmup", None)  # Warmup doesn't affect checkpoint validity
@@ -38,8 +38,8 @@ class CheckpointManager:
     def save_checkpoint(
         self,
         last_index: int,
-        partial_outputs: List[Dict],
-        error: Optional[str] = None,
+        partial_outputs: list[dict],
+        error: str | None = None,
     ) -> None:
         """Save checkpoint to disk.
 
@@ -80,7 +80,7 @@ class CheckpointManager:
             logger.warning(f"Could not load checkpoint: {e}")
             return 0
 
-    def load_partial_outputs(self) -> List[Dict]:
+    def load_partial_outputs(self) -> list[dict]:
         """Load partial outputs from checkpoint."""
         if not self.checkpoint_file.exists():
             return []

@@ -1,7 +1,7 @@
 """Discord bot integration for KITT."""
 
 import logging
-from typing import Any, Optional
+from typing import Any
 
 from .base import BotInterface
 from .commands import BotCommandHandler
@@ -15,7 +15,7 @@ class DiscordBot(BotInterface):
     def __init__(
         self,
         token: str,
-        result_store: Optional[Any] = None,
+        result_store: Any | None = None,
     ) -> None:
         try:
             import discord
@@ -24,7 +24,7 @@ class DiscordBot(BotInterface):
             raise ImportError(
                 "discord.py is required for Discord bot. "
                 "Install with: pip install discord.py"
-            )
+            ) from None
 
         intents = discord.Intents.default()
         intents.message_content = True
@@ -55,6 +55,7 @@ class DiscordBot(BotInterface):
     def stop(self) -> None:
         logger.info("Stopping Discord bot...")
         import asyncio
+
         asyncio.get_event_loop().run_until_complete(self.bot.close())
 
     def send_message(self, channel: str, text: str) -> bool:

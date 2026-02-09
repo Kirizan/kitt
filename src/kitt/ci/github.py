@@ -3,7 +3,7 @@
 import json
 import logging
 import urllib.request
-from typing import Any, Dict, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +15,7 @@ class GitHubReporter:
         self,
         token: str,
         repo: str,
-        pr_number: Optional[int] = None,
+        pr_number: int | None = None,
     ) -> None:
         """Initialize GitHub reporter.
 
@@ -75,7 +75,9 @@ class GitHubReporter:
         }
         return self._api_post(url, payload)
 
-    def update_or_create_comment(self, body: str, marker: str = "<!-- kitt-benchmark -->") -> bool:
+    def update_or_create_comment(
+        self, body: str, marker: str = "<!-- kitt-benchmark -->"
+    ) -> bool:
         """Update existing comment or create new one.
 
         Uses a hidden HTML marker to identify KITT comments.
@@ -91,7 +93,7 @@ class GitHubReporter:
         else:
             return self.post_comment(f"{marker}\n{body}")
 
-    def _find_comment(self, marker: str) -> Optional[int]:
+    def _find_comment(self, marker: str) -> int | None:
         """Find existing KITT comment on PR."""
         if not self.pr_number:
             return None
@@ -109,7 +111,7 @@ class GitHubReporter:
 
         return None
 
-    def _api_post(self, url: str, payload: Dict[str, Any]) -> bool:
+    def _api_post(self, url: str, payload: dict[str, Any]) -> bool:
         data = json.dumps(payload).encode("utf-8")
         try:
             req = urllib.request.Request(
@@ -124,7 +126,7 @@ class GitHubReporter:
             logger.error(f"GitHub API POST failed: {e}")
             return False
 
-    def _api_patch(self, url: str, payload: Dict[str, Any]) -> bool:
+    def _api_patch(self, url: str, payload: dict[str, Any]) -> bool:
         data = json.dumps(payload).encode("utf-8")
         try:
             req = urllib.request.Request(
@@ -139,7 +141,7 @@ class GitHubReporter:
             logger.error(f"GitHub API PATCH failed: {e}")
             return False
 
-    def _headers(self) -> Dict[str, str]:
+    def _headers(self) -> dict[str, str]:
         return {
             "Authorization": f"token {self.token}",
             "Accept": "application/vnd.github.v3+json",

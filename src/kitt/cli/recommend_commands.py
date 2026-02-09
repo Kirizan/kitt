@@ -13,14 +13,28 @@ logger = logging.getLogger(__name__)
 @click.command()
 @click.option("--max-vram", type=float, default=None, help="Maximum VRAM in GB")
 @click.option("--max-ram", type=float, default=None, help="Maximum RAM in GB")
-@click.option("--min-throughput", type=float, default=None, help="Minimum throughput (tokens/sec)")
+@click.option(
+    "--min-throughput", type=float, default=None, help="Minimum throughput (tokens/sec)"
+)
 @click.option("--min-accuracy", type=float, default=None, help="Minimum accuracy (0-1)")
 @click.option("--max-latency", type=float, default=None, help="Maximum latency (ms)")
 @click.option("--engine", default=None, help="Restrict to engine")
-@click.option("--sort", type=click.Choice(["score", "throughput", "accuracy"]), default="score")
+@click.option(
+    "--sort", type=click.Choice(["score", "throughput", "accuracy"]), default="score"
+)
 @click.option("--pareto", is_flag=True, help="Show only Pareto-optimal models")
 @click.option("--limit", default=10, help="Number of recommendations")
-def recommend(max_vram, max_ram, min_throughput, min_accuracy, max_latency, engine, sort, pareto, limit):
+def recommend(
+    max_vram,
+    max_ram,
+    min_throughput,
+    min_accuracy,
+    max_latency,
+    engine,
+    sort,
+    pareto,
+    limit,
+):
     """Recommend models based on benchmark history."""
     from kitt.recommend.constraints import HardwareConstraints
     from kitt.recommend.engine import ModelRecommender
@@ -28,15 +42,17 @@ def recommend(max_vram, max_ram, min_throughput, min_accuracy, max_latency, engi
     # Try to get a result store
     try:
         from kitt.storage.sqlite_store import SQLiteStore
+
         store = SQLiteStore()
     except Exception:
         try:
             from kitt.storage.json_store import JsonStore
+
             store = JsonStore()
         except Exception:
             console.print("[red]No storage backend available.[/red]")
             console.print("Run 'kitt storage init' first.")
-            raise SystemExit(1)
+            raise SystemExit(1) from None
 
     constraints = HardwareConstraints(
         max_vram_gb=max_vram,
@@ -53,7 +69,9 @@ def recommend(max_vram, max_ram, min_throughput, min_accuracy, max_latency, engi
         results = recommender.pareto_frontier(constraints=constraints)
         title = "Pareto-Optimal Models"
     else:
-        results = recommender.recommend(constraints=constraints, limit=limit, sort_by=sort)
+        results = recommender.recommend(
+            constraints=constraints, limit=limit, sort_by=sort
+        )
         title = "Model Recommendations"
 
     if not results:

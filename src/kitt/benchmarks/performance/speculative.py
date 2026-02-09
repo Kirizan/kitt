@@ -1,7 +1,7 @@
 """Speculative decoding benchmark — compare with/without draft models."""
 
 import logging
-from typing import Any, Dict, List
+from typing import Any
 
 from kitt.benchmarks.base import BenchmarkResult, LLMBenchmark
 from kitt.benchmarks.registry import register_benchmark
@@ -18,10 +18,10 @@ class SpeculativeDecodingBenchmark(LLMBenchmark):
     category = "performance"
     description = "Compare inference with and without speculative decoding"
 
-    def required_config(self) -> List[str]:
+    def required_config(self) -> list[str]:
         return ["model_path"]
 
-    def _execute(self, engine, config: Dict[str, Any]) -> BenchmarkResult:
+    def _execute(self, engine, config: dict[str, Any]) -> BenchmarkResult:
         max_tokens = config.get("max_tokens", 256)
         temperature = config.get("temperature", 0.0)
         iterations = config.get("iterations", 5)
@@ -32,8 +32,8 @@ class SpeculativeDecodingBenchmark(LLMBenchmark):
             "Write a detailed explanation of how neural networks learn from data.",
         )
 
-        outputs: List[Dict[str, Any]] = []
-        errors: List[str] = []
+        outputs: list[dict[str, Any]] = []
+        errors: list[str] = []
 
         # Run baseline (no speculative decoding)
         logger.info("Running baseline (no speculative decoding)...")
@@ -43,10 +43,12 @@ class SpeculativeDecodingBenchmark(LLMBenchmark):
         if baseline_results["errors"]:
             errors.extend(baseline_results["errors"])
 
-        outputs.append({
-            "mode": "baseline",
-            **baseline_results["stats"],
-        })
+        outputs.append(
+            {
+                "mode": "baseline",
+                **baseline_results["stats"],
+            }
+        )
 
         # Run with speculative decoding (if configured)
         spec_results = None
@@ -70,12 +72,14 @@ class SpeculativeDecodingBenchmark(LLMBenchmark):
                 if spec_results["errors"]:
                     errors.extend(spec_results["errors"])
 
-                outputs.append({
-                    "mode": "speculative",
-                    "draft_model": speculative_model,
-                    "num_speculative_tokens": num_speculative_tokens,
-                    **spec_results["stats"],
-                })
+                outputs.append(
+                    {
+                        "mode": "speculative",
+                        "draft_model": speculative_model,
+                        "num_speculative_tokens": num_speculative_tokens,
+                        **spec_results["stats"],
+                    }
+                )
             except Exception as e:
                 errors.append(f"Speculative decoding failed: {e}")
         else:
@@ -102,12 +106,12 @@ class SpeculativeDecodingBenchmark(LLMBenchmark):
         max_tokens: int,
         temperature: float,
         iterations: int,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Run multiple iterations and collect stats."""
-        tps_values: List[float] = []
-        latencies: List[float] = []
-        gen_outputs: List[str] = []
-        errors: List[str] = []
+        tps_values: list[float] = []
+        latencies: list[float] = []
+        gen_outputs: list[str] = []
+        errors: list[str] = []
 
         for i in range(iterations):
             try:
@@ -136,11 +140,11 @@ class SpeculativeDecodingBenchmark(LLMBenchmark):
 
     def _compute_metrics(
         self,
-        baseline: Dict[str, Any],
-        speculative: Dict[str, Any] | None,
-    ) -> Dict[str, Any]:
+        baseline: dict[str, Any],
+        speculative: dict[str, Any] | None,
+    ) -> dict[str, Any]:
         """Compute comparison metrics."""
-        metrics: Dict[str, Any] = {}
+        metrics: dict[str, Any] = {}
 
         baseline_stats = baseline.get("stats", {})
         metrics["baseline_avg_tps"] = baseline_stats.get("avg_tps", 0)
@@ -163,7 +167,9 @@ class SpeculativeDecodingBenchmark(LLMBenchmark):
             spec_outputs = speculative.get("outputs", [])
             if base_outputs and spec_outputs:
                 matches = sum(
-                    1 for a, b in zip(base_outputs, spec_outputs) if a == b
+                    1
+                    for a, b in zip(base_outputs, spec_outputs, strict=False)
+                    if a == b
                 )
                 metrics["output_match_rate"] = round(
                     matches / min(len(base_outputs), len(spec_outputs)), 3

@@ -25,6 +25,7 @@ def install(package, version, upgrade):
 
         # Show what was discovered
         from kitt.plugins.discovery import discover_plugins
+
         plugins = discover_plugins()
         for group, items in plugins.items():
             if items:
@@ -57,6 +58,7 @@ def list_plugins():
 
     # Also show entry-point discovered plugins
     from kitt.plugins.discovery import discover_plugins
+
     plugins = discover_plugins()
     total = sum(len(v) for v in plugins.values())
     if total:

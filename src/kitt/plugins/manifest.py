@@ -1,7 +1,5 @@
 """Plugin manifest model."""
 
-from typing import Optional
-
 from pydantic import BaseModel, Field
 
 
@@ -18,5 +16,5 @@ class PluginManifest(BaseModel):
     )
     description: str = ""
     author: str = ""
-    min_kitt_version: Optional[str] = None
-    homepage: Optional[str] = None
+    min_kitt_version: str | None = None
+    homepage: str | None = None

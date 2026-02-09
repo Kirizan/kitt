@@ -2,10 +2,10 @@
 
 import logging
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import yaml
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 
@@ -31,15 +31,15 @@ class HostConfig(BaseModel):
 class HostManager:
     """CRUD operations on the host registry."""
 
-    def __init__(self, hosts_path: Optional[Path] = None) -> None:
+    def __init__(self, hosts_path: Path | None = None) -> None:
         self.hosts_path = hosts_path or DEFAULT_HOSTS_PATH
 
-    def _load(self) -> Dict[str, Any]:
+    def _load(self) -> dict[str, Any]:
         if self.hosts_path.exists():
             return yaml.safe_load(self.hosts_path.read_text()) or {}
         return {}
 
-    def _save(self, data: Dict[str, Any]) -> None:
+    def _save(self, data: dict[str, Any]) -> None:
         self.hosts_path.parent.mkdir(parents=True, exist_ok=True)
         self.hosts_path.write_text(yaml.dump(data, default_flow_style=False))
 
@@ -68,7 +68,7 @@ class HostManager:
             return True
         return False
 
-    def get(self, name: str) -> Optional[HostConfig]:
+    def get(self, name: str) -> HostConfig | None:
         """Get a host configuration by name."""
         data = self._load()
         hosts = data.get("hosts", {})
@@ -76,7 +76,7 @@ class HostManager:
             return HostConfig(**hosts[name])
         return None
 
-    def list_hosts(self) -> List[HostConfig]:
+    def list_hosts(self) -> list[HostConfig]:
         """List all configured hosts."""
         data = self._load()
         hosts = data.get("hosts", {})

@@ -1,7 +1,7 @@
 """Interactive TUI campaign builder using Textual."""
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import yaml
 
@@ -16,7 +16,7 @@ class CampaignBuilderApp:
     """
 
     def __init__(self) -> None:
-        self.config: Dict[str, Any] = {
+        self.config: dict[str, Any] = {
             "campaign_name": "",
             "description": "",
             "models": [],
@@ -24,7 +24,7 @@ class CampaignBuilderApp:
             "disk": {"reserve_gb": 50.0, "cleanup_after_run": True},
         }
 
-    def run_simple(self) -> Dict[str, Any]:
+    def run_simple(self) -> dict[str, Any]:
         """Run the builder in simple CLI mode (no TUI).
 
         Returns:
@@ -32,7 +32,9 @@ class CampaignBuilderApp:
         """
         import click
 
-        self.config["campaign_name"] = click.prompt("Campaign name", default="my-campaign")
+        self.config["campaign_name"] = click.prompt(
+            "Campaign name", default="my-campaign"
+        )
         self.config["description"] = click.prompt("Description", default="")
 
         # Models
@@ -60,7 +62,7 @@ class CampaignBuilderApp:
 
         return self.config
 
-    def run_tui(self) -> Optional[Dict[str, Any]]:
+    def run_tui(self) -> dict[str, Any] | None:
         """Run the full TUI builder.
 
         Returns:
@@ -68,8 +70,8 @@ class CampaignBuilderApp:
         """
         try:
             from textual.app import App, ComposeResult
-            from textual.widgets import Header, Footer, Input, Button, Static
             from textual.containers import Vertical
+            from textual.widgets import Button, Footer, Header, Input, Static
         except ImportError:
             logger.info("Textual not available, falling back to simple mode")
             return self.run_simple()
@@ -90,15 +92,23 @@ class CampaignBuilderApp:
                     yield Static("KITT Campaign Builder", classes="title")
                     yield Input(placeholder="Campaign name", id="name")
                     yield Input(placeholder="Description", id="desc")
-                    yield Input(placeholder="Model (e.g. Qwen/Qwen2.5-7B-Instruct)", id="model")
+                    yield Input(
+                        placeholder="Model (e.g. Qwen/Qwen2.5-7B-Instruct)", id="model"
+                    )
                     yield Input(placeholder="Engine (e.g. vllm)", id="engine")
-                    yield Input(placeholder="Suite (default: standard)", id="suite", value="standard")
+                    yield Input(
+                        placeholder="Suite (default: standard)",
+                        id="suite",
+                        value="standard",
+                    )
                     yield Button("Generate YAML", id="generate")
                 yield Footer()
 
             def on_button_pressed(self, event: Button.Pressed) -> None:
                 if event.button.id == "generate":
-                    builder.config["campaign_name"] = self.query_one("#name", Input).value or "my-campaign"
+                    builder.config["campaign_name"] = (
+                        self.query_one("#name", Input).value or "my-campaign"
+                    )
                     builder.config["description"] = self.query_one("#desc", Input).value
                     model = self.query_one("#model", Input).value
                     engine = self.query_one("#engine", Input).value
@@ -107,7 +117,9 @@ class CampaignBuilderApp:
                     if model:
                         builder.config["models"].append({"name": model, "params": ""})
                     if engine:
-                        builder.config["engines"].append({"name": engine, "suite": suite})
+                        builder.config["engines"].append(
+                            {"name": engine, "suite": suite}
+                        )
 
                     self.exit()
 
@@ -122,5 +134,6 @@ class CampaignBuilderApp:
     def save(self, path: str) -> None:
         """Save config to YAML file."""
         from pathlib import Path
+
         Path(path).write_text(self.to_yaml())
         logger.info(f"Campaign config saved to {path}")

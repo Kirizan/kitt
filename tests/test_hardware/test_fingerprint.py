@@ -1,7 +1,5 @@
 """Tests for hardware fingerprinting."""
 
-from unittest.mock import patch
-
 from kitt.hardware.detector import CPUInfo, GPUInfo, StorageInfo
 from kitt.hardware.fingerprint import HardwareFingerprint, SystemInfo
 

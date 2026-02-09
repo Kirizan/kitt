@@ -3,7 +3,7 @@
 import json
 import logging
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -11,14 +11,14 @@ logger = logging.getLogger(__name__)
 class AutoComparer:
     """Compare campaign results with previous runs automatically."""
 
-    def __init__(self, results_dir: Optional[Path] = None) -> None:
+    def __init__(self, results_dir: Path | None = None) -> None:
         self.results_dir = results_dir or Path.cwd()
 
     def compare_with_previous(
         self,
-        current_result: Dict[str, Any],
+        current_result: dict[str, Any],
         campaign_name: str,
-    ) -> Optional[Dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         """Compare current result with the most recent previous run.
 
         Args:
@@ -38,9 +38,7 @@ class AutoComparer:
 
         return self._compare(current_result, baseline)
 
-    def _find_previous_result(
-        self, model: str, engine: str
-    ) -> Optional[Dict[str, Any]]:
+    def _find_previous_result(self, model: str, engine: str) -> dict[str, Any] | None:
         """Find the most recent result for the same model/engine combo."""
         candidates = []
         for metrics_file in self.results_dir.glob("kitt-results/**/metrics.json"):
@@ -60,11 +58,11 @@ class AutoComparer:
 
     def _compare(
         self,
-        current: Dict[str, Any],
-        baseline: Dict[str, Any],
-    ) -> Dict[str, Any]:
+        current: dict[str, Any],
+        baseline: dict[str, Any],
+    ) -> dict[str, Any]:
         """Compare two result sets."""
-        comparison = {
+        comparison: dict[str, Any] = {
             "model": current.get("model"),
             "engine": current.get("engine"),
             "current_timestamp": current.get("timestamp"),
@@ -86,7 +84,11 @@ class AutoComparer:
             for key in curr_metrics:
                 cv = curr_metrics.get(key)
                 bv = base_metrics.get(key)
-                if isinstance(cv, (int, float)) and isinstance(bv, (int, float)) and bv != 0:
+                if (
+                    isinstance(cv, (int, float))
+                    and isinstance(bv, (int, float))
+                    and bv != 0
+                ):
                     pct_change = ((cv - bv) / abs(bv)) * 100
                     entry = {
                         "benchmark": name,

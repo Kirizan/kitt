@@ -53,7 +53,9 @@ class TestFunctionCallingBenchmark:
             output='{"name": "get_weather", "arguments": {"location": "Tokyo"}}'
         )
         config = {
-            "test_cases": [("What's the weather in Tokyo?", "get_weather", {"location": "Tokyo"})],
+            "test_cases": [
+                ("What's the weather in Tokyo?", "get_weather", {"location": "Tokyo"})
+            ],
         }
         result = bench._execute(engine, config)
         assert result.metrics["correct_function_selection_rate"] == 1.0
@@ -63,13 +65,17 @@ class TestFunctionCallingBenchmark:
             output='{"name": "search_web", "arguments": {"query": "Tokyo weather"}}'
         )
         config = {
-            "test_cases": [("What's the weather in Tokyo?", "get_weather", {"location": "Tokyo"})],
+            "test_cases": [
+                ("What's the weather in Tokyo?", "get_weather", {"location": "Tokyo"})
+            ],
         }
         result = bench._execute(engine, config)
         assert result.metrics["correct_function_selection_rate"] == 0.0
 
     def test_json_parse_failure(self, bench, engine):
-        engine.generate.return_value = MockResult(output="I'll check the weather for you")
+        engine.generate.return_value = MockResult(
+            output="I'll check the weather for you"
+        )
         config = {
             "test_cases": [("Weather?", "get_weather", {})],
         }

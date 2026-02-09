@@ -80,6 +80,7 @@ class TestSpeculativeDecodingBenchmark:
 
     def test_handles_speculative_failure(self, bench, engine):
         call_count = [0]
+
         def side_effect(*args, **kwargs):
             call_count[0] += 1
             if call_count[0] > 3:
@@ -114,7 +115,10 @@ class TestSpeculativeDecodingBenchmark:
 
     def test_compute_metrics_with_speculative(self, bench):
         baseline = {"stats": {"avg_tps": 50, "avg_latency_ms": 200}, "outputs": ["a"]}
-        speculative = {"stats": {"avg_tps": 75, "avg_latency_ms": 140}, "outputs": ["a"]}
+        speculative = {
+            "stats": {"avg_tps": 75, "avg_latency_ms": 140},
+            "outputs": ["a"],
+        }
         metrics = bench._compute_metrics(baseline, speculative)
         assert metrics["speedup_ratio"] == 1.5
         assert metrics["output_match_rate"] == 1.0

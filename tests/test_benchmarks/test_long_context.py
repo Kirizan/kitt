@@ -18,8 +18,11 @@ def make_gen_result(text: str, prompt_tokens: int = 100) -> GenerationResult:
     return GenerationResult(
         output=text,
         metrics=GenerationMetrics(
-            ttft_ms=0, tps=10, total_latency_ms=500,
-            gpu_memory_peak_gb=0, gpu_memory_avg_gb=0,
+            ttft_ms=0,
+            tps=10,
+            total_latency_ms=500,
+            gpu_memory_peak_gb=0,
+            gpu_memory_avg_gb=0,
             timestamp=datetime.now(),
         ),
         prompt_tokens=prompt_tokens,
@@ -38,10 +41,13 @@ class TestLongContextBenchmark:
             "The secret code is KITT-42-BENCHMARK."
         )
 
-        result = benchmark._execute(engine, {
-            "context_lengths": [4096],
-            "needle_positions": [0.5],
-        })
+        result = benchmark._execute(
+            engine,
+            {
+                "context_lengths": [4096],
+                "needle_positions": [0.5],
+            },
+        )
 
         assert result.passed
         assert len(result.outputs) == 1
@@ -49,14 +55,15 @@ class TestLongContextBenchmark:
 
     def test_needle_not_found(self, benchmark):
         engine = MagicMock()
-        engine.generate.return_value = make_gen_result(
-            "I don't know the answer."
-        )
+        engine.generate.return_value = make_gen_result("I don't know the answer.")
 
-        result = benchmark._execute(engine, {
-            "context_lengths": [4096],
-            "needle_positions": [0.5],
-        })
+        result = benchmark._execute(
+            engine,
+            {
+                "context_lengths": [4096],
+                "needle_positions": [0.5],
+            },
+        )
 
         assert result.passed  # Still passes — just reports accuracy
         assert result.outputs[0]["found_needle"] is False
@@ -65,10 +72,13 @@ class TestLongContextBenchmark:
         engine = MagicMock()
         engine.generate.return_value = make_gen_result("KITT-42")
 
-        result = benchmark._execute(engine, {
-            "context_lengths": [4096, 8192, 16384],
-            "needle_positions": [0.5],
-        })
+        result = benchmark._execute(
+            engine,
+            {
+                "context_lengths": [4096, 8192, 16384],
+                "needle_positions": [0.5],
+            },
+        )
 
         assert len(result.outputs) == 3
         assert result.metrics["total_tests"] == 3
@@ -88,10 +98,13 @@ class TestLongContextBenchmark:
         engine = MagicMock()
         engine.generate.side_effect = mock_generate
 
-        result = benchmark._execute(engine, {
-            "context_lengths": [4096, 8192, 16384, 32768],
-            "needle_positions": [0.5],
-        })
+        result = benchmark._execute(
+            engine,
+            {
+                "context_lengths": [4096, 8192, 16384, 32768],
+                "needle_positions": [0.5],
+            },
+        )
 
         assert result.metrics["overall_accuracy"] == 0.5
         assert "4096" in result.metrics["accuracy_by_context_length"]
