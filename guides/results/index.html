@@ -80,7 +80,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#results-storage" class="md-skip">
+        <a href="#results-karr" class="md-skip">
           Skip to content
         </a>
       
@@ -808,15 +808,15 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#database-storage-primary" class="md-nav__link">
+  <a href="#database-storage-default" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Database Storage (Primary)
+        Database Storage (Default)
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Database Storage (Primary)">
+    <nav class="md-nav" aria-label="Database Storage (Default)">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -980,22 +980,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#legacy-git-backed-karr" class="md-nav__link">
+  <a href="#git-backed-storage-legacy" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Legacy: Git-Backed KARR
+        Git-Backed Storage (Legacy)
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Legacy: Git-Backed KARR">
+    <nav class="md-nav" aria-label="Git-Backed Storage (Legacy)">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#karr-directory-structure" class="md-nav__link">
+  <a href="#directory-structure-gen-2" class="md-nav__link">
     <span class="md-ellipsis">
       
-        KARR Directory Structure
+        Directory Structure (Gen 2)
       
     </span>
   </a>
@@ -2113,15 +2113,15 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#database-storage-primary" class="md-nav__link">
+  <a href="#database-storage-default" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Database Storage (Primary)
+        Database Storage (Default)
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Database Storage (Primary)">
+    <nav class="md-nav" aria-label="Database Storage (Default)">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -2285,22 +2285,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#legacy-git-backed-karr" class="md-nav__link">
+  <a href="#git-backed-storage-legacy" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Legacy: Git-Backed KARR
+        Git-Backed Storage (Legacy)
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Legacy: Git-Backed KARR">
+    <nav class="md-nav" aria-label="Git-Backed Storage (Legacy)">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#karr-directory-structure" class="md-nav__link">
+  <a href="#directory-structure-gen-2" class="md-nav__link">
     <span class="md-ellipsis">
       
-        KARR Directory Structure
+        Directory Structure (Gen 2)
       
     </span>
   </a>
@@ -2343,11 +2343,12 @@
   
 
 
-<h1 id="results-storage">Results &amp; Storage<a class="headerlink" href="#results-storage" title="Permanent link">&para;</a></h1>
-<p>KITT persists benchmark results in a <strong>database</strong> (SQLite or PostgreSQL) as the
-primary storage path. Flat JSON files are still written for convenience, and the
-legacy Git-backed KARR system remains available but is deprecated for production.</p>
-<h2 id="database-storage-primary">Database Storage (Primary)<a class="headerlink" href="#database-storage-primary" title="Permanent link">&para;</a></h2>
+<h1 id="results-karr">Results &amp; KARR<a class="headerlink" href="#results-karr" title="Permanent link">&para;</a></h1>
+<p>KARR (Kitt's AI Results Repository) persists all benchmark results. The
+current backend is a relational database (SQLite by default, PostgreSQL for
+production). Flat JSON files are still written for convenience, and the legacy
+Git-backed backend remains available.</p>
+<h2 id="database-storage-default">Database Storage (Default)<a class="headerlink" href="#database-storage-default" title="Permanent link">&para;</a></h2>
 <h3 id="initialize-the-database">Initialize the Database<a class="headerlink" href="#initialize-the-database" title="Permanent link">&para;</a></h3>
 <p>Create tables in the default SQLite database (<code>~/.kitt/kitt.db</code>) or in a
 PostgreSQL instance pointed to by <code>KITT_DB_DSN</code>:</p>
@@ -2356,23 +2357,23 @@ PostgreSQL instance pointed to by <code>KITT_DB_DSN</code>:</p>
 <p>Results are saved to the database automatically after every <code>kitt run</code>. No extra
 flags are needed.</p>
 <h3 id="import-existing-json-results">Import Existing JSON Results<a class="headerlink" href="#import-existing-json-results" title="Permanent link">&para;</a></h3>
-<p>Bring previously exported or flat-file results into the database:</p>
+<p>Bring previously exported or flat-file results into KARR:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>kitt<span class="w"> </span>storage<span class="w"> </span>import<span class="w"> </span>./kitt-results/run1/metrics.json
 <a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>kitt<span class="w"> </span>storage<span class="w"> </span>import<span class="w"> </span>./kitt-results/<span class="w">               </span><span class="c1"># imports all runs found</span>
 </code></pre></div>
 <h3 id="export-results">Export Results<a class="headerlink" href="#export-results" title="Permanent link">&para;</a></h3>
-<p>Export runs from the database back to JSON files:</p>
+<p>Export runs from KARR back to JSON files:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>kitt<span class="w"> </span>storage<span class="w"> </span><span class="nb">export</span><span class="w"> </span>--output<span class="w"> </span>./export/
 <a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>kitt<span class="w"> </span>storage<span class="w"> </span><span class="nb">export</span><span class="w"> </span>--model<span class="w"> </span>llama<span class="w"> </span>--engine<span class="w"> </span>vllm<span class="w"> </span>--output<span class="w"> </span>./export/
 </code></pre></div>
 <h3 id="list-stored-runs">List Stored Runs<a class="headerlink" href="#list-stored-runs" title="Permanent link">&para;</a></h3>
-<p>Browse what is in the database with optional filters:</p>
+<p>Browse what is stored in KARR with optional filters:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>kitt<span class="w"> </span>storage<span class="w"> </span>list
 <a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>kitt<span class="w"> </span>storage<span class="w"> </span>list<span class="w"> </span>--model<span class="w"> </span>llama<span class="w"> </span>--engine<span class="w"> </span>vllm<span class="w"> </span>--limit<span class="w"> </span><span class="m">20</span>
 </code></pre></div>
 <p>Output includes run ID, model, engine, suite, timestamp, and pass/fail counts.</p>
 <h3 id="database-statistics">Database Statistics<a class="headerlink" href="#database-statistics" title="Permanent link">&para;</a></h3>
-<p>Get a high-level summary of the database contents:</p>
+<p>Get a high-level summary of KARR contents:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>kitt<span class="w"> </span>storage<span class="w"> </span>stats
 </code></pre></div>
 <p>This shows total runs, unique models, unique engines, date range, and storage
@@ -2422,20 +2423,20 @@ or exported database runs.</p>
 </code></pre></div>
 <p>Both <code>kitt results compare</code> and <code>kitt compare</code> work with flat-file directories
 and database-exported results interchangeably.</p>
-<h2 id="legacy-git-backed-karr">Legacy: Git-Backed KARR<a class="headerlink" href="#legacy-git-backed-karr" title="Permanent link">&para;</a></h2>
-<div class="admonition warning">
-<p class="admonition-title">Deprecated</p>
-<p>KARR is <strong>deprecated for production use</strong>. Database storage is the
-recommended path for all new deployments. KARR remains available for
-backward compatibility with existing workflows.</p>
+<h2 id="git-backed-storage-legacy">Git-Backed Storage (Legacy)<a class="headerlink" href="#git-backed-storage-legacy" title="Permanent link">&para;</a></h2>
+<div class="admonition note">
+<p class="admonition-title">Legacy Backend</p>
+<p>Git-backed KARR storage is the previous generation (Gen 2). It remains
+available via <code>--store-karr</code> for backward compatibility, but the database
+backend is recommended for all new deployments.</p>
 </div>
-<p>KARR (Kirizan's AI Results Repo) stores results in a Git repository with LFS
+<p>The previous generation of KARR stored results in a Git repository with LFS
 tracking. To use it, add <code>--store-karr</code> to a run:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>kitt<span class="w"> </span>results<span class="w"> </span>init<span class="w"> </span>--path<span class="w"> </span>./my-results
 <a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>kitt<span class="w"> </span>run<span class="w"> </span>-m<span class="w"> </span>/models/llama-7b<span class="w"> </span>-e<span class="w"> </span>vllm<span class="w"> </span>-s<span class="w"> </span>standard<span class="w"> </span>--store-karr<span class="w"> </span>./my-results
 <a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>kitt<span class="w"> </span>results<span class="w"> </span>list<span class="w"> </span>--karr<span class="w"> </span>./my-results
 </code></pre></div>
-<h3 id="karr-directory-structure">KARR Directory Structure<a class="headerlink" href="#karr-directory-structure" title="Permanent link">&para;</a></h3>
+<h3 id="directory-structure-gen-2">Directory Structure (Gen 2)<a class="headerlink" href="#directory-structure-gen-2" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>karr-&lt;fingerprint&gt;/
 <a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>  &lt;model&gt;/
 <a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>    &lt;engine&gt;/
@@ -2447,10 +2448,10 @@ tracking. To use it, add <code>--store-karr</code> to a run:</p>
 <a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a>        outputs/          # compressed .jsonl.gz, tracked by Git LFS
 </code></pre></div>
 <p>For Docker-based deployments, Git repos are cumbersome to mount and manage.
-The database layer removes this friction entirely.</p>
+The database backend removes this friction entirely.</p>
 <h2 id="next-steps">Next Steps<a class="headerlink" href="#next-steps" title="Permanent link">&para;</a></h2>
 <ul>
-<li><a href="../../concepts/karr/">Results Storage Concepts</a> -- architecture and design decisions</li>
+<li><a href="../../concepts/karr/">KARR — Results Storage</a> -- architecture and design decisions</li>
 <li><a href="../../reference/database/">Database Schema Reference</a> -- full table and column documentation</li>
 <li><a href="../../concepts/hardware-fingerprinting/">Hardware Fingerprinting</a> -- how system identity is captured</li>
 </ul>
