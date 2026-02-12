@@ -105,6 +105,7 @@ def create_app(
     # --- Initialize services ---
     from kitt.web.services.agent_manager import AgentManager
     from kitt.web.services.campaign_service import CampaignService
+    from kitt.web.services.model_service import ModelService
     from kitt.web.services.result_service import ResultService
 
     global _services
@@ -112,6 +113,7 @@ def create_app(
         "result_service": ResultService(store),
         "agent_manager": AgentManager(db_conn),
         "campaign_service": CampaignService(db_conn),
+        "model_service": ModelService(),
         "db_conn": db_conn,
         "store": store,
     }
@@ -120,12 +122,16 @@ def create_app(
     from kitt.web.blueprints.agents import bp as agents_bp
     from kitt.web.blueprints.campaigns import bp as campaigns_bp
     from kitt.web.blueprints.dashboard import bp as dashboard_bp
+    from kitt.web.blueprints.models import bp as models_bp
+    from kitt.web.blueprints.quicktest import bp as quicktest_bp
     from kitt.web.blueprints.results import bp as results_bp
     from kitt.web.blueprints.settings import bp as settings_bp
 
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(agents_bp)
+    app.register_blueprint(models_bp)
     app.register_blueprint(campaigns_bp)
+    app.register_blueprint(quicktest_bp)
     app.register_blueprint(results_bp)
     app.register_blueprint(settings_bp)
 
@@ -134,12 +140,16 @@ def create_app(
     from kitt.web.api.v1.campaigns import bp as api_campaigns_bp
     from kitt.web.api.v1.events import bp as api_events_bp
     from kitt.web.api.v1.health import bp as health_bp
+    from kitt.web.api.v1.models import bp as api_models_bp
+    from kitt.web.api.v1.quicktest import bp as api_quicktest_bp
     from kitt.web.api.v1.results import bp as api_results_bp
 
     app.register_blueprint(health_bp)
     app.register_blueprint(api_agents_bp)
     app.register_blueprint(api_campaigns_bp)
     app.register_blueprint(api_results_bp)
+    app.register_blueprint(api_models_bp)
+    app.register_blueprint(api_quicktest_bp)
     app.register_blueprint(api_events_bp)
 
     # --- HTMX partial routes ---
