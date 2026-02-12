@@ -1,8 +1,20 @@
-# Results Storage
+# KARR — Results Storage
 
-KITT stores benchmark results in a **relational database** by default, providing fast queries, aggregation, and a normalized schema alongside the full raw JSON for every run. The abstract `ResultStore` interface makes storage pluggable -- SQLite ships as the zero-configuration default, PostgreSQL is available for distributed and production deployments, and flat JSON files are still written for quick inspection.
+KARR (Kitt's AI Results Repository) is KITT's results storage system. Every benchmark run, hardware snapshot, and metric is persisted through KARR, giving you a queryable history of all testing activity.
 
-## Storage Architecture
+KARR has evolved alongside KITT through multiple generations:
+
+| Generation | Backend | Status |
+|------------|---------|--------|
+| Gen 1 | Flat JSON files | Still written for convenience |
+| Gen 2 | Git repository with LFS | Legacy, available via `--store-karr` |
+| Gen 3 | Relational database (SQLite / PostgreSQL) | **Current default** |
+
+The underlying storage mechanism has changed, but the purpose has not: KARR is where your results live.
+
+## Current Backend — Database
+
+The current generation of KARR uses a relational database accessed through the abstract `ResultStore` interface. This makes the backend pluggable while keeping the API consistent.
 
 ```
 ResultStore (abstract interface)
@@ -22,7 +34,7 @@ The `ResultStore` interface exposes a small, consistent API:
 | `delete_result()` | Remove a run and its related rows (CASCADE) |
 | `count()` | Return the total number of stored runs |
 
-## SQLite (Default)
+### SQLite (Default)
 
 SQLite is the default backend. No configuration is required -- KITT creates `~/.kitt/kitt.db` on first use.
 
@@ -32,9 +44,9 @@ Key characteristics:
 - **Foreign keys with CASCADE DELETE** -- deleting a run automatically removes its benchmarks, metrics, and hardware rows.
 - **Indexes on common query columns** -- model, engine, suite name, and timestamp are indexed for fast filtering.
 
-## PostgreSQL (Production / Distributed)
+### PostgreSQL (Production / Distributed)
 
-For multi-agent or web-scale deployments, KITT supports PostgreSQL. Install the extra dependency and provide a DSN connection string:
+For multi-agent or web-scale deployments, KARR supports PostgreSQL. Install the extra dependency and provide a DSN connection string:
 
 ```bash
 poetry install -E postgres        # installs psycopg2
@@ -72,20 +84,20 @@ The current schema version is **2**. Migrations are forward-only; downgrades are
 | `kitt storage list` | List stored runs with optional filters |
 | `kitt storage stats` | Show summary statistics (run count, models, engines) |
 
-## Flat File Output (Dev / CLI)
+## Flat File Output (Gen 1)
 
-When you run `kitt run`, JSON result files are still written to the `kitt-results/` directory in the current working directory. These files are useful for quick inspection, piping into `jq`, or archiving -- but they are not the primary storage mechanism. The database is the source of truth.
+When you run `kitt run`, JSON result files are still written to the `kitt-results/` directory in the current working directory. These files are useful for quick inspection, piping into `jq`, or archiving. The database is the primary storage mechanism and source of truth, but flat files remain as a convenience layer.
 
-## Legacy: Git-Backed KARR Repositories
+## Git-Backed Storage (Gen 2)
 
-!!! warning "Deprecated"
-    Git-backed KARR storage is **deprecated for production use**. It remains functional
-    for backward compatibility and may suit single-machine dev/test workflows, but
-    **database storage is the recommended path** for all new deployments.
+!!! note "Legacy"
+    Git-backed KARR storage is the previous generation. It remains functional
+    and may suit single-machine dev/test workflows, but the database backend
+    (Gen 3) is recommended for all new deployments.
 
-KARR (Kirizan's AI Results Repo) stored results in a Git repository with LFS tracking. You can still enable it with `--store-karr`, but it is no longer actively developed.
+The second generation of KARR stored results in a Git repository with LFS tracking. You can still enable it with `--store-karr`.
 
-### KARR Directory Structure (Legacy)
+### Directory Structure (Gen 2)
 
 ```
 karr-{fingerprint[:40]}/
@@ -100,7 +112,7 @@ karr-{fingerprint[:40]}/
           *.jsonl.gz
 ```
 
-Large output files in `outputs/` were compressed in 50 MB chunks and tracked by Git LFS. For Docker-based production deployments this approach introduces unnecessary complexity -- mounting Git repos, configuring LFS, and managing repository growth -- that the database layer eliminates entirely.
+Large output files in `outputs/` were compressed in 50 MB chunks and tracked by Git LFS. For Docker-based production deployments this approach introduces unnecessary complexity -- mounting Git repos, configuring LFS, and managing repository growth -- that the database backend eliminates entirely.
 
 ## Next Steps
 

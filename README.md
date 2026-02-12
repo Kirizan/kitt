@@ -11,7 +11,7 @@ End-to-end testing suite for LLM inference engines. Measures quality consistency
 - **Quality benchmarks** — MMLU, GSM8K, TruthfulQA, and HellaSwag evaluations
 - **Performance benchmarks** — throughput, latency, memory usage, and warmup analysis
 - **Hardware fingerprinting** — automatic system identification for reproducible results
-- **Database results storage** — SQLite (default) or PostgreSQL with queryable schema and full JSON round-tripping
+- **[KARR results storage](https://kirizan.github.io/kitt/concepts/karr/)** — Kitt's AI Results Repository. SQLite (default) or PostgreSQL with queryable schema and full JSON round-tripping
 - **Docker deployment stacks** — composable `docker-compose` stacks via `kitt stack`
 - **Web dashboard & REST API** — browse results with TLS and token auth
 - **Monitoring** — Prometheus + Grafana + InfluxDB stack generation

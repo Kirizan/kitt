@@ -1,7 +1,7 @@
 # Tutorial: First Benchmark
 
 This tutorial walks through a complete benchmark run -- from checking your
-hardware to storing results in a KARR repository.
+hardware to storing results in KARR.
 
 !!! note "Prerequisites"
     KITT must be installed and your GPU must be accessible to Docker. See the
@@ -98,7 +98,7 @@ KITT will:
 2. Wait for the health check to pass
 3. Execute the throughput benchmark
 4. Tear down the container
-5. Write results to `kitt-results/`
+5. Write results to `kitt-results/` and store them in KARR
 
 !!! warning
     Make sure the model format matches the engine. vLLM and TGI accept
@@ -131,31 +131,32 @@ kitt results list --model llama-7b --engine vllm
 
 ---
 
-## 7. Store Results in KARR
+## 7. Browse Results in KARR
 
-KARR (KITT Artifact Results Repository) is a git-backed store that versions
-every benchmark run. Initialize it once:
+Results are stored in KARR automatically. Initialize the database if this is
+your first run:
 
 ```bash
-kitt results init
+kitt storage init
 ```
 
-Then re-run the benchmark with the `--store-karr` flag:
+Then browse and query your stored results:
 
 ```bash
-kitt run -m /path/to/model -e vllm -s quick --store-karr
+kitt storage list
+kitt storage stats
 ```
 
-KITT commits the result artifacts to the KARR repository automatically. You can
-browse stored results with:
+You can also import any flat-file results from previous runs:
 
 ```bash
-kitt results list
+kitt storage import ./kitt-results/
 ```
 
 !!! tip
-    KARR uses Git LFS for large files. Make sure `git-lfs` is installed on your
-    system (`git lfs install`) before initializing the repository.
+    KARR uses SQLite by default (`~/.kitt/kitt.db`) with zero configuration.
+    For production or multi-agent setups, see the
+    [KARR concepts page](../concepts/karr.md) for PostgreSQL configuration.
 
 ---
 

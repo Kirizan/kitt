@@ -1,10 +1,11 @@
-# Results & Storage
+# Results & KARR
 
-KITT persists benchmark results in a **database** (SQLite or PostgreSQL) as the
-primary storage path. Flat JSON files are still written for convenience, and the
-legacy Git-backed KARR system remains available but is deprecated for production.
+KARR (Kitt's AI Results Repository) persists all benchmark results. The
+current backend is a relational database (SQLite by default, PostgreSQL for
+production). Flat JSON files are still written for convenience, and the legacy
+Git-backed backend remains available.
 
-## Database Storage (Primary)
+## Database Storage (Default)
 
 ### Initialize the Database
 
@@ -20,7 +21,7 @@ flags are needed.
 
 ### Import Existing JSON Results
 
-Bring previously exported or flat-file results into the database:
+Bring previously exported or flat-file results into KARR:
 
 ```bash
 kitt storage import ./kitt-results/run1/metrics.json
@@ -29,7 +30,7 @@ kitt storage import ./kitt-results/               # imports all runs found
 
 ### Export Results
 
-Export runs from the database back to JSON files:
+Export runs from KARR back to JSON files:
 
 ```bash
 kitt storage export --output ./export/
@@ -38,7 +39,7 @@ kitt storage export --model llama --engine vllm --output ./export/
 
 ### List Stored Runs
 
-Browse what is in the database with optional filters:
+Browse what is stored in KARR with optional filters:
 
 ```bash
 kitt storage list
@@ -49,7 +50,7 @@ Output includes run ID, model, engine, suite, timestamp, and pass/fail counts.
 
 ### Database Statistics
 
-Get a high-level summary of the database contents:
+Get a high-level summary of KARR contents:
 
 ```bash
 kitt storage stats
@@ -131,14 +132,14 @@ kitt compare ./run1 ./run2
 Both `kitt results compare` and `kitt compare` work with flat-file directories
 and database-exported results interchangeably.
 
-## Legacy: Git-Backed KARR
+## Git-Backed Storage (Legacy)
 
-!!! warning "Deprecated"
-    KARR is **deprecated for production use**. Database storage is the
-    recommended path for all new deployments. KARR remains available for
-    backward compatibility with existing workflows.
+!!! note "Legacy Backend"
+    Git-backed KARR storage is the previous generation (Gen 2). It remains
+    available via `--store-karr` for backward compatibility, but the database
+    backend is recommended for all new deployments.
 
-KARR (Kirizan's AI Results Repo) stores results in a Git repository with LFS
+The previous generation of KARR stored results in a Git repository with LFS
 tracking. To use it, add `--store-karr` to a run:
 
 ```bash
@@ -147,7 +148,7 @@ kitt run -m /models/llama-7b -e vllm -s standard --store-karr ./my-results
 kitt results list --karr ./my-results
 ```
 
-### KARR Directory Structure
+### Directory Structure (Gen 2)
 
 ```
 karr-<fingerprint>/
@@ -162,10 +163,10 @@ karr-<fingerprint>/
 ```
 
 For Docker-based deployments, Git repos are cumbersome to mount and manage.
-The database layer removes this friction entirely.
+The database backend removes this friction entirely.
 
 ## Next Steps
 
-- [Results Storage Concepts](../concepts/karr.md) -- architecture and design decisions
+- [KARR — Results Storage](../concepts/karr.md) -- architecture and design decisions
 - [Database Schema Reference](../reference/database.md) -- full table and column documentation
 - [Hardware Fingerprinting](../concepts/hardware-fingerprinting.md) -- how system identity is captured

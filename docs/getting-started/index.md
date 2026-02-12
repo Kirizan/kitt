@@ -15,7 +15,7 @@ prerequisites, optional extras, and GPU setup.
 ### [Tutorial: First Benchmark](first-benchmark.md)
 
 A step-by-step walkthrough from hardware fingerprinting through benchmark
-execution to storing results in a KARR repository.
+execution to storing results in KARR.
 
 ### [Tutorial: Docker Quickstart](docker-quickstart.md)
 

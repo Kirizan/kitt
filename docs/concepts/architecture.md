@@ -86,7 +86,7 @@ src/kitt/
 ├── runners/       # Suite/single test runners + checkpoint recovery
 ├── collectors/    # GPU memory tracking, system metrics
 ├── reporters/     # JSON, Markdown, comparison output
-├── git_ops/       # KARR repository management
+├── git_ops/       # KARR legacy Git-backed storage
 ├── monitoring/    # Monitoring stack config, generator, deployer
 ├── stack/         # Composable Docker stack config + generator
 ├── agent/         # Agent daemon, heartbeat, executor, log streamer
