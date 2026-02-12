@@ -10,13 +10,13 @@
       
       
       
-        <link rel="canonical" href="https://kirizan.github.io/kitt/guides/agents/">
+        <link rel="canonical" href="https://kirizan.github.io/kitt/reference/database/">
       
       
-        <link rel="prev" href="../monitoring/">
+        <link rel="prev" href="../configuration/benchmarks/">
       
       
-        <link rel="next" href="../remote-execution/">
+        <link rel="next" href="../docker-files/">
       
       
         
@@ -27,7 +27,7 @@
     
     
       
-        <title>Agent Daemon - KITT Documentation</title>
+        <title>Database Schema - KITT Documentation</title>
       
     
     
@@ -80,7 +80,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#agent-daemon" class="md-skip">
+        <a href="#database-schema-reference" class="md-skip">
           Skip to content
         </a>
       
@@ -114,7 +114,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Agent Daemon
+              Database Schema
             
           </span>
         </div>
@@ -266,13 +266,11 @@
   
   
   
-    
-  
   
     
     
-      <li class="md-tabs__item md-tabs__item--active">
-        <a href="../" class="md-tabs__link">
+      <li class="md-tabs__item">
+        <a href="../../guides/" class="md-tabs__link">
           
   
   
@@ -290,11 +288,13 @@
   
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
-        <a href="../../reference/" class="md-tabs__link">
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../" class="md-tabs__link">
           
   
   
@@ -589,8 +589,6 @@
       
   
   
-    
-  
   
   
     
@@ -632,23 +630,20 @@
     
     
       
-        
-        
-      
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../" class="md-nav__link ">
+            <a href="../../guides/" class="md-nav__link ">
               
   
   
@@ -666,13 +661,13 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_3" id="__nav_3_label" tabindex="">
+              <label class="md-nav__link " for="__nav_3" id="__nav_3_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_3">
             <span class="md-nav__icon md-icon"></span>
             
@@ -692,7 +687,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../engines/" class="md-nav__link">
+      <a href="../../guides/engines/" class="md-nav__link">
         
   
   
@@ -720,7 +715,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../benchmarks/" class="md-nav__link">
+      <a href="../../guides/benchmarks/" class="md-nav__link">
         
   
   
@@ -748,7 +743,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../results/" class="md-nav__link">
+      <a href="../../guides/results/" class="md-nav__link">
         
   
   
@@ -776,7 +771,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../campaigns/" class="md-nav__link">
+      <a href="../../guides/campaigns/" class="md-nav__link">
         
   
   
@@ -804,7 +799,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../deployment/" class="md-nav__link">
+      <a href="../../guides/deployment/" class="md-nav__link">
         
   
   
@@ -832,7 +827,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../web-dashboard/" class="md-nav__link">
+      <a href="../../guides/web-dashboard/" class="md-nav__link">
         
   
   
@@ -860,7 +855,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../monitoring/" class="md-nav__link">
+      <a href="../../guides/monitoring/" class="md-nav__link">
         
   
   
@@ -885,37 +880,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Agent Daemon
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../guides/agents/" class="md-nav__link">
         
   
   
@@ -931,125 +899,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#how-it-works" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        How It Works
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#initializing-the-agent" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Initializing the Agent
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#starting-the-agent" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Starting the Agent
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#mtls-communication" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        mTLS Communication
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#systemd-service" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Systemd Service
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#heartbeat-and-health-monitoring" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Heartbeat and Health Monitoring
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#log-streaming" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Log Streaming
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#checking-status" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Checking Status
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#stopping-the-agent" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Stopping the Agent
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1062,7 +911,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../remote-execution/" class="md-nav__link">
+      <a href="../../guides/remote-execution/" class="md-nav__link">
         
   
   
@@ -1090,7 +939,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../ci-integration/" class="md-nav__link">
+      <a href="../../guides/ci-integration/" class="md-nav__link">
         
   
   
@@ -1118,7 +967,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../plugins/" class="md-nav__link">
+      <a href="../../guides/plugins/" class="md-nav__link">
         
   
   
@@ -1146,7 +995,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../bots/" class="md-nav__link">
+      <a href="../../guides/bots/" class="md-nav__link">
         
   
   
@@ -1174,7 +1023,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../charts/" class="md-nav__link">
+      <a href="../../guides/charts/" class="md-nav__link">
         
   
   
@@ -1202,7 +1051,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../dgx-spark/" class="md-nav__link">
+      <a href="../../guides/dgx-spark/" class="md-nav__link">
         
   
   
@@ -1234,6 +1083,8 @@
       
   
   
+    
+  
   
   
     
@@ -1259,20 +1110,23 @@
     
     
       
+        
+        
+      
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../reference/" class="md-nav__link ">
+            <a href="../" class="md-nav__link ">
               
   
   
@@ -1290,13 +1144,13 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_4">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1328,10 +1182,13 @@
       
       
         
+          
+          
+        
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
       
         
         
@@ -1339,7 +1196,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../reference/cli/" class="md-nav__link ">
+            <a href="../cli/" class="md-nav__link ">
               
   
   
@@ -1406,10 +1263,13 @@
       
       
         
+          
+          
+        
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
       
         
         
@@ -1417,7 +1277,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../reference/configuration/" class="md-nav__link ">
+            <a href="../configuration/" class="md-nav__link ">
               
   
   
@@ -1435,7 +1295,7 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_4_3" id="__nav_4_3_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_4_3" id="__nav_4_3_label" tabindex="">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
@@ -1461,7 +1321,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/configuration/suites/" class="md-nav__link">
+      <a href="../configuration/suites/" class="md-nav__link">
         
   
   
@@ -1489,7 +1349,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/configuration/engines/" class="md-nav__link">
+      <a href="../configuration/engines/" class="md-nav__link">
         
   
   
@@ -1517,7 +1377,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/configuration/campaigns/" class="md-nav__link">
+      <a href="../configuration/campaigns/" class="md-nav__link">
         
   
   
@@ -1545,7 +1405,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/configuration/benchmarks/" class="md-nav__link">
+      <a href="../configuration/benchmarks/" class="md-nav__link">
         
   
   
@@ -1578,10 +1438,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../reference/database/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Database Schema
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -1597,6 +1484,164 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#migration-system" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Migration System
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tables
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Tables">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#runs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        runs
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#benchmarks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        benchmarks
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        metrics
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#hardware" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        hardware
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#agents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        agents
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#web_campaigns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        web_campaigns
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#quick_tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        quick_tests
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#events" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        events
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#indexes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Indexes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#postgresql-differences" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PostgreSQL Differences
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1609,7 +1654,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/docker-files/" class="md-nav__link">
+      <a href="../docker-files/" class="md-nav__link">
         
   
   
@@ -1637,7 +1682,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/api/" class="md-nav__link">
+      <a href="../api/" class="md-nav__link">
         
   
   
@@ -1665,7 +1710,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/environment/" class="md-nav__link">
+      <a href="../environment/" class="md-nav__link">
         
   
   
@@ -2001,10 +2046,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#how-it-works" class="md-nav__link">
+  <a href="#migration-system" class="md-nav__link">
     <span class="md-ellipsis">
       
-        How It Works
+        Migration System
       
     </span>
   </a>
@@ -2012,10 +2057,115 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#initializing-the-agent" class="md-nav__link">
+  <a href="#tables" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Initializing the Agent
+        Tables
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Tables">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#runs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        runs
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#benchmarks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        benchmarks
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        metrics
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#hardware" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        hardware
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#agents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        agents
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#web_campaigns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        web_campaigns
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#quick_tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        quick_tests
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#events" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        events
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#indexes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Indexes
       
     </span>
   </a>
@@ -2023,76 +2173,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#starting-the-agent" class="md-nav__link">
+  <a href="#postgresql-differences" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Starting the Agent
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#mtls-communication" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        mTLS Communication
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#systemd-service" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Systemd Service
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#heartbeat-and-health-monitoring" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Heartbeat and Health Monitoring
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#log-streaming" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Log Streaming
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#checking-status" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Checking Status
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#stopping-the-agent" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Stopping the Agent
+        PostgreSQL Differences
       
     </span>
   </a>
@@ -2119,130 +2203,751 @@
   
 
 
-<h1 id="agent-daemon">Agent Daemon<a class="headerlink" href="#agent-daemon" title="Permanent link">&para;</a></h1>
-<p>The KITT agent daemon runs on GPU servers and receives benchmark jobs from a
-central KITT server. This distributed model lets you manage a fleet of GPU
-machines from a single control plane -- the server dispatches work and agents
-execute it.</p>
-<hr />
-<h2 id="how-it-works">How It Works<a class="headerlink" href="#how-it-works" title="Permanent link">&para;</a></h2>
-<p>The agent is a lightweight Flask application that listens for commands over
-HTTPS. When the server sends a <code>run_test</code> command, the agent starts a benchmark
-in a background thread and streams logs back via Server-Sent Events (SSE). A
-heartbeat thread runs alongside the daemon, reporting status and GPU utilization
-to the server at a configurable interval (default 30 seconds).</p>
-<hr />
-<h2 id="initializing-the-agent">Initializing the Agent<a class="headerlink" href="#initializing-the-agent" title="Permanent link">&para;</a></h2>
-<p>Before starting the agent you must register it with a KITT server:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>kitt<span class="w"> </span>agent<span class="w"> </span>init<span class="w"> </span>--server<span class="w"> </span>https://server:8080<span class="w"> </span>--token<span class="w"> </span>&lt;BEARER_TOKEN&gt;
-</code></pre></div>
-<p>This command:</p>
-<ol>
-<li>Writes <code>~/.kitt/agent.yaml</code> with the server URL, token, and agent name.</li>
-<li>If the server uses HTTPS, generates an agent TLS certificate signed by the
-   server CA (requires <code>ca.pem</code> in <code>~/.kitt/certs/</code>).</li>
-</ol>
-<p>Optional flags:</p>
+<h1 id="database-schema-reference">Database Schema Reference<a class="headerlink" href="#database-schema-reference" title="Permanent link">&para;</a></h1>
+<p>KITT uses a relational database to store benchmark results, agent state, campaign
+progress, and event logs. The schema is versioned and managed through an
+automatic migration system.</p>
+<p><strong>Current schema version:</strong> 2</p>
+<h2 id="migration-system">Migration System<a class="headerlink" href="#migration-system" title="Permanent link">&para;</a></h2>
+<p>The <code>schema_version</code> table tracks which migrations have been applied:</p>
 <table>
 <thead>
 <tr>
-<th>Flag</th>
-<th>Default</th>
+<th>Column</th>
+<th>Type</th>
 <th>Description</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>--name</code></td>
-<td>hostname</td>
-<td>Friendly agent name</td>
+<td><code>version</code></td>
+<td>INTEGER</td>
+<td>Migration version number</td>
 </tr>
 <tr>
-<td><code>--port</code></td>
-<td>8090</td>
-<td>Port the agent listens on</td>
+<td><code>applied_at</code></td>
+<td>TEXT</td>
+<td>ISO-8601 timestamp when the migration was applied</td>
 </tr>
 </tbody>
 </table>
-<hr />
-<h2 id="starting-the-agent">Starting the Agent<a class="headerlink" href="#starting-the-agent" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>kitt<span class="w"> </span>agent<span class="w"> </span>start
-</code></pre></div>
-<p>On startup the agent:</p>
-<ol>
-<li>Loads <code>~/.kitt/agent.yaml</code> (override with <code>--config</code>).</li>
-<li>Registers with the server via <code>POST /api/v1/agents/register</code>.</li>
-<li>Starts a <code>HeartbeatThread</code> that sends periodic status, GPU utilization, and
-   memory usage to the server.</li>
-<li>Launches the Flask app on the configured port with optional TLS.</li>
-</ol>
-<p>Use <code>--foreground</code> to keep the process in the foreground (useful for debugging).
-Use <code>--insecure</code> to skip TLS verification during development.</p>
-<hr />
-<h2 id="mtls-communication">mTLS Communication<a class="headerlink" href="#mtls-communication" title="Permanent link">&para;</a></h2>
-<p>When the server uses HTTPS, agent-server communication is secured with mutual
-TLS. During <code>kitt agent init</code> KITT generates a client certificate and stores the
-paths in <code>agent.yaml</code> under the <code>tls</code> key:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nt">tls</span><span class="p">:</span>
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span><span class="nt">cert</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/home/user/.kitt/certs/agent.pem</span>
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">  </span><span class="nt">key</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/home/user/.kitt/certs/agent-key.pem</span>
-<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">  </span><span class="nt">ca</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/home/user/.kitt/certs/ca.pem</span>
-</code></pre></div>
-<p>Both the heartbeat and the registration request present the client certificate.
-The server validates it against the same CA.</p>
-<hr />
-<h2 id="systemd-service">Systemd Service<a class="headerlink" href="#systemd-service" title="Permanent link">&para;</a></h2>
-<p>For production deployments, run the agent as a systemd service:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="k">[Unit]</span>
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="na">Description</span><span class="o">=</span><span class="s">KITT Agent Daemon</span>
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="na">After</span><span class="o">=</span><span class="s">network-online.target docker.service</span>
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="na">Wants</span><span class="o">=</span><span class="s">network-online.target</span>
-<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>
-<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="k">[Service]</span>
-<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="na">Type</span><span class="o">=</span><span class="s">simple</span>
-<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="na">ExecStart</span><span class="o">=</span><span class="s">/usr/local/bin/kitt agent start --foreground</span>
-<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="na">Restart</span><span class="o">=</span><span class="s">on-failure</span>
-<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a><span class="na">RestartSec</span><span class="o">=</span><span class="s">10</span>
-<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a><span class="na">User</span><span class="o">=</span><span class="s">kitt</span>
-<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a><span class="na">Environment</span><span class="o">=</span><span class="s">HOME=/home/kitt</span>
-<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>
-<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a><span class="k">[Install]</span>
-<a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a><span class="na">WantedBy</span><span class="o">=</span><span class="s">multi-user.target</span>
-</code></pre></div>
-<p>Enable and start:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>sudo<span class="w"> </span>systemctl<span class="w"> </span><span class="nb">enable</span><span class="w"> </span>kitt-agent
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>sudo<span class="w"> </span>systemctl<span class="w"> </span>start<span class="w"> </span>kitt-agent
-</code></pre></div>
-<hr />
-<h2 id="heartbeat-and-health-monitoring">Heartbeat and Health Monitoring<a class="headerlink" href="#heartbeat-and-health-monitoring" title="Permanent link">&para;</a></h2>
-<p>The <code>HeartbeatThread</code> sends a JSON payload to
-<code>/api/v1/agents/&lt;agent_id&gt;/heartbeat</code> every 30 seconds (configurable by the
-server response at registration). The payload includes:</p>
-<ul>
-<li>Agent status (<code>idle</code>, <code>running</code>, <code>error</code>)</li>
-<li>Current task identifier</li>
-<li>GPU utilization percentage (via pynvml)</li>
-<li>GPU memory used in GB</li>
-<li>Agent uptime</li>
-</ul>
-<hr />
-<h2 id="log-streaming">Log Streaming<a class="headerlink" href="#log-streaming" title="Permanent link">&para;</a></h2>
-<p>When a benchmark runs, the agent captures output through a <code>LogStreamer</code> and
-exposes it as an SSE endpoint at <code>/api/logs/&lt;command_id&gt;</code>. The server or any
-authorized client can subscribe to this stream for real-time log output.</p>
-<hr />
-<h2 id="checking-status">Checking Status<a class="headerlink" href="#checking-status" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>kitt<span class="w"> </span>agent<span class="w"> </span>status
-</code></pre></div>
-<p>This reads <code>~/.kitt/agent.yaml</code> and probes the local agent at
-<code>http://127.0.0.1:&lt;port&gt;/api/status</code> to report whether the daemon is running
-and whether a benchmark is currently active.</p>
-<hr />
-<h2 id="stopping-the-agent">Stopping the Agent<a class="headerlink" href="#stopping-the-agent" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>kitt<span class="w"> </span>agent<span class="w"> </span>stop
-</code></pre></div>
-<p>Sends <code>SIGTERM</code> to the agent process using the PID stored in
-<code>~/.kitt/agent.pid</code>.</p>
+<p>Run <code>kitt storage migrate</code> to apply any pending migrations. Migrations are
+forward-only; downgrades are not supported.</p>
+<h2 id="tables">Tables<a class="headerlink" href="#tables" title="Permanent link">&para;</a></h2>
+<h3 id="runs">runs<a class="headerlink" href="#runs" title="Permanent link">&para;</a></h3>
+<p>Primary table for benchmark run results. Each row represents one complete
+<code>kitt run</code> execution.</p>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Type</th>
+<th>Constraints</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code></td>
+<td>TEXT</td>
+<td>PRIMARY KEY</td>
+<td>Unique run identifier (UUID)</td>
+</tr>
+<tr>
+<td><code>model</code></td>
+<td>TEXT</td>
+<td></td>
+<td>Model path or name</td>
+</tr>
+<tr>
+<td><code>engine</code></td>
+<td>TEXT</td>
+<td></td>
+<td>Inference engine used</td>
+</tr>
+<tr>
+<td><code>suite_name</code></td>
+<td>TEXT</td>
+<td></td>
+<td>Test suite that was executed</td>
+</tr>
+<tr>
+<td><code>timestamp</code></td>
+<td>TEXT</td>
+<td></td>
+<td>ISO-8601 run start time</td>
+</tr>
+<tr>
+<td><code>passed</code></td>
+<td>INTEGER</td>
+<td></td>
+<td>1 if the run passed overall, 0 otherwise</td>
+</tr>
+<tr>
+<td><code>total_benchmarks</code></td>
+<td>INTEGER</td>
+<td></td>
+<td>Number of benchmarks executed</td>
+</tr>
+<tr>
+<td><code>passed_count</code></td>
+<td>INTEGER</td>
+<td></td>
+<td>Number of benchmarks that passed</td>
+</tr>
+<tr>
+<td><code>failed_count</code></td>
+<td>INTEGER</td>
+<td></td>
+<td>Number of benchmarks that failed</td>
+</tr>
+<tr>
+<td><code>total_time_seconds</code></td>
+<td>REAL</td>
+<td></td>
+<td>Wall-clock duration of the entire run</td>
+</tr>
+<tr>
+<td><code>kitt_version</code></td>
+<td>TEXT</td>
+<td></td>
+<td>KITT version that produced the result</td>
+</tr>
+<tr>
+<td><code>raw_json</code></td>
+<td>TEXT</td>
+<td></td>
+<td>Full JSON output for lossless round-tripping</td>
+</tr>
+<tr>
+<td><code>created_at</code></td>
+<td>TEXT</td>
+<td></td>
+<td>ISO-8601 timestamp when the row was inserted</td>
+</tr>
+</tbody>
+</table>
+<h3 id="benchmarks">benchmarks<a class="headerlink" href="#benchmarks" title="Permanent link">&para;</a></h3>
+<p>Individual benchmark results within a run.</p>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Type</th>
+<th>Constraints</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code></td>
+<td>INTEGER</td>
+<td>PRIMARY KEY AUTOINCREMENT</td>
+<td>Row identifier</td>
+</tr>
+<tr>
+<td><code>run_id</code></td>
+<td>TEXT</td>
+<td>FOREIGN KEY -&gt; runs(id) ON DELETE CASCADE</td>
+<td>Parent run</td>
+</tr>
+<tr>
+<td><code>test_name</code></td>
+<td>TEXT</td>
+<td></td>
+<td>Benchmark name (e.g., <code>throughput</code>, <code>mmlu</code>)</td>
+</tr>
+<tr>
+<td><code>test_version</code></td>
+<td>TEXT</td>
+<td></td>
+<td>Benchmark version string</td>
+</tr>
+<tr>
+<td><code>run_number</code></td>
+<td>INTEGER</td>
+<td></td>
+<td>Iteration number within the suite</td>
+</tr>
+<tr>
+<td><code>passed</code></td>
+<td>INTEGER</td>
+<td></td>
+<td>1 if the benchmark passed, 0 otherwise</td>
+</tr>
+<tr>
+<td><code>timestamp</code></td>
+<td>TEXT</td>
+<td></td>
+<td>ISO-8601 benchmark start time</td>
+</tr>
+<tr>
+<td><code>created_at</code></td>
+<td>TEXT</td>
+<td></td>
+<td>Row insertion timestamp</td>
+</tr>
+</tbody>
+</table>
+<h3 id="metrics">metrics<a class="headerlink" href="#metrics" title="Permanent link">&para;</a></h3>
+<p>Numeric metric values attached to a benchmark result.</p>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Type</th>
+<th>Constraints</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code></td>
+<td>INTEGER</td>
+<td>PRIMARY KEY AUTOINCREMENT</td>
+<td>Row identifier</td>
+</tr>
+<tr>
+<td><code>benchmark_id</code></td>
+<td>INTEGER</td>
+<td>FOREIGN KEY -&gt; benchmarks(id) ON DELETE CASCADE</td>
+<td>Parent benchmark</td>
+</tr>
+<tr>
+<td><code>metric_name</code></td>
+<td>TEXT</td>
+<td></td>
+<td>Metric key (e.g., <code>tokens_per_second</code>, <code>accuracy</code>)</td>
+</tr>
+<tr>
+<td><code>metric_value</code></td>
+<td>REAL</td>
+<td></td>
+<td>Numeric value</td>
+</tr>
+</tbody>
+</table>
+<h3 id="hardware">hardware<a class="headerlink" href="#hardware" title="Permanent link">&para;</a></h3>
+<p>Hardware snapshot captured at the time of a run.</p>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Type</th>
+<th>Constraints</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code></td>
+<td>INTEGER</td>
+<td>PRIMARY KEY AUTOINCREMENT</td>
+<td>Row identifier</td>
+</tr>
+<tr>
+<td><code>run_id</code></td>
+<td>TEXT</td>
+<td>FOREIGN KEY -&gt; runs(id) ON DELETE CASCADE</td>
+<td>Parent run</td>
+</tr>
+<tr>
+<td><code>gpu_model</code></td>
+<td>TEXT</td>
+<td></td>
+<td>GPU model name</td>
+</tr>
+<tr>
+<td><code>gpu_vram_gb</code></td>
+<td>INTEGER</td>
+<td></td>
+<td>GPU VRAM in gigabytes</td>
+</tr>
+<tr>
+<td><code>gpu_count</code></td>
+<td>INTEGER</td>
+<td></td>
+<td>Number of GPUs</td>
+</tr>
+<tr>
+<td><code>cpu_model</code></td>
+<td>TEXT</td>
+<td></td>
+<td>CPU model name</td>
+</tr>
+<tr>
+<td><code>cpu_cores</code></td>
+<td>INTEGER</td>
+<td></td>
+<td>Number of CPU cores</td>
+</tr>
+<tr>
+<td><code>ram_gb</code></td>
+<td>INTEGER</td>
+<td></td>
+<td>System RAM in gigabytes</td>
+</tr>
+<tr>
+<td><code>environment_type</code></td>
+<td>TEXT</td>
+<td></td>
+<td>Environment (e.g., <code>native_linux</code>, <code>wsl2</code>, <code>dgx</code>)</td>
+</tr>
+<tr>
+<td><code>fingerprint</code></td>
+<td>TEXT</td>
+<td></td>
+<td>Full hardware fingerprint string</td>
+</tr>
+</tbody>
+</table>
+<h3 id="agents">agents<a class="headerlink" href="#agents" title="Permanent link">&para;</a></h3>
+<p>Registered agent daemons for distributed execution.</p>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Type</th>
+<th>Constraints</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code></td>
+<td>TEXT</td>
+<td>PRIMARY KEY</td>
+<td>Agent identifier (UUID)</td>
+</tr>
+<tr>
+<td><code>name</code></td>
+<td>TEXT</td>
+<td>UNIQUE</td>
+<td>Human-readable agent name</td>
+</tr>
+<tr>
+<td><code>hostname</code></td>
+<td>TEXT</td>
+<td></td>
+<td>Agent hostname or IP</td>
+</tr>
+<tr>
+<td><code>port</code></td>
+<td>INTEGER</td>
+<td></td>
+<td>Agent listen port</td>
+</tr>
+<tr>
+<td><code>token</code></td>
+<td>TEXT</td>
+<td></td>
+<td>Authentication token</td>
+</tr>
+<tr>
+<td><code>status</code></td>
+<td>TEXT</td>
+<td></td>
+<td>Current status (<code>online</code>, <code>offline</code>, <code>busy</code>)</td>
+</tr>
+<tr>
+<td><code>gpu_info</code></td>
+<td>TEXT</td>
+<td></td>
+<td>GPU description string</td>
+</tr>
+<tr>
+<td><code>gpu_count</code></td>
+<td>INTEGER</td>
+<td></td>
+<td>Number of GPUs on the agent</td>
+</tr>
+<tr>
+<td><code>cpu_info</code></td>
+<td>TEXT</td>
+<td></td>
+<td>CPU description string</td>
+</tr>
+<tr>
+<td><code>ram_gb</code></td>
+<td>INTEGER</td>
+<td></td>
+<td>System RAM in gigabytes</td>
+</tr>
+<tr>
+<td><code>environment_type</code></td>
+<td>TEXT</td>
+<td></td>
+<td>Environment type</td>
+</tr>
+<tr>
+<td><code>fingerprint</code></td>
+<td>TEXT</td>
+<td></td>
+<td>Hardware fingerprint</td>
+</tr>
+<tr>
+<td><code>kitt_version</code></td>
+<td>TEXT</td>
+<td></td>
+<td>KITT version running on the agent</td>
+</tr>
+<tr>
+<td><code>last_heartbeat</code></td>
+<td>TEXT</td>
+<td></td>
+<td>ISO-8601 timestamp of last heartbeat</td>
+</tr>
+<tr>
+<td><code>registered_at</code></td>
+<td>TEXT</td>
+<td></td>
+<td>ISO-8601 registration timestamp</td>
+</tr>
+<tr>
+<td><code>notes</code></td>
+<td>TEXT</td>
+<td></td>
+<td>Free-form notes</td>
+</tr>
+<tr>
+<td><code>tags</code></td>
+<td>TEXT</td>
+<td></td>
+<td>Comma-separated tags for filtering</td>
+</tr>
+</tbody>
+</table>
+<h3 id="web_campaigns">web_campaigns<a class="headerlink" href="#web_campaigns" title="Permanent link">&para;</a></h3>
+<p>Campaign definitions and progress tracking for the web dashboard.</p>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Type</th>
+<th>Constraints</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code></td>
+<td>TEXT</td>
+<td>PRIMARY KEY</td>
+<td>Campaign identifier (UUID)</td>
+</tr>
+<tr>
+<td><code>name</code></td>
+<td>TEXT</td>
+<td></td>
+<td>Campaign display name</td>
+</tr>
+<tr>
+<td><code>description</code></td>
+<td>TEXT</td>
+<td></td>
+<td>Human-readable description</td>
+</tr>
+<tr>
+<td><code>config_json</code></td>
+<td>TEXT</td>
+<td></td>
+<td>Full campaign configuration as JSON</td>
+</tr>
+<tr>
+<td><code>status</code></td>
+<td>TEXT</td>
+<td></td>
+<td>Current status (<code>pending</code>, <code>running</code>, <code>completed</code>, <code>failed</code>)</td>
+</tr>
+<tr>
+<td><code>agent_id</code></td>
+<td>TEXT</td>
+<td>FOREIGN KEY -&gt; agents(id)</td>
+<td>Assigned agent</td>
+</tr>
+<tr>
+<td><code>created_at</code></td>
+<td>TEXT</td>
+<td></td>
+<td>Creation timestamp</td>
+</tr>
+<tr>
+<td><code>started_at</code></td>
+<td>TEXT</td>
+<td></td>
+<td>Execution start timestamp</td>
+</tr>
+<tr>
+<td><code>completed_at</code></td>
+<td>TEXT</td>
+<td></td>
+<td>Completion timestamp</td>
+</tr>
+<tr>
+<td><code>total_runs</code></td>
+<td>INTEGER</td>
+<td></td>
+<td>Total runs planned</td>
+</tr>
+<tr>
+<td><code>succeeded</code></td>
+<td>INTEGER</td>
+<td></td>
+<td>Runs that succeeded</td>
+</tr>
+<tr>
+<td><code>failed</code></td>
+<td>INTEGER</td>
+<td></td>
+<td>Runs that failed</td>
+</tr>
+<tr>
+<td><code>skipped</code></td>
+<td>INTEGER</td>
+<td></td>
+<td>Runs that were skipped</td>
+</tr>
+<tr>
+<td><code>error</code></td>
+<td>TEXT</td>
+<td></td>
+<td>Error message if the campaign failed</td>
+</tr>
+</tbody>
+</table>
+<h3 id="quick_tests">quick_tests<a class="headerlink" href="#quick_tests" title="Permanent link">&para;</a></h3>
+<p>Single benchmark dispatches from the web UI.</p>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Type</th>
+<th>Constraints</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code></td>
+<td>TEXT</td>
+<td>PRIMARY KEY</td>
+<td>Quick test identifier (UUID)</td>
+</tr>
+<tr>
+<td><code>agent_id</code></td>
+<td>TEXT</td>
+<td>FOREIGN KEY -&gt; agents(id)</td>
+<td>Target agent</td>
+</tr>
+<tr>
+<td><code>model_path</code></td>
+<td>TEXT</td>
+<td></td>
+<td>Model path or name</td>
+</tr>
+<tr>
+<td><code>engine_name</code></td>
+<td>TEXT</td>
+<td></td>
+<td>Inference engine</td>
+</tr>
+<tr>
+<td><code>benchmark_name</code></td>
+<td>TEXT</td>
+<td></td>
+<td>Benchmark to run</td>
+</tr>
+<tr>
+<td><code>suite_name</code></td>
+<td>TEXT</td>
+<td></td>
+<td>Suite name (if applicable)</td>
+</tr>
+<tr>
+<td><code>status</code></td>
+<td>TEXT</td>
+<td></td>
+<td>Current status</td>
+</tr>
+<tr>
+<td><code>created_at</code></td>
+<td>TEXT</td>
+<td></td>
+<td>Creation timestamp</td>
+</tr>
+<tr>
+<td><code>started_at</code></td>
+<td>TEXT</td>
+<td></td>
+<td>Execution start timestamp</td>
+</tr>
+<tr>
+<td><code>completed_at</code></td>
+<td>TEXT</td>
+<td></td>
+<td>Completion timestamp</td>
+</tr>
+<tr>
+<td><code>result_id</code></td>
+<td>TEXT</td>
+<td>FOREIGN KEY -&gt; runs(id)</td>
+<td>Associated run result</td>
+</tr>
+<tr>
+<td><code>error</code></td>
+<td>TEXT</td>
+<td></td>
+<td>Error message on failure</td>
+</tr>
+</tbody>
+</table>
+<h3 id="events">events<a class="headerlink" href="#events" title="Permanent link">&para;</a></h3>
+<p>Append-only event log for auditing and real-time feeds.</p>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Type</th>
+<th>Constraints</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code></td>
+<td>INTEGER</td>
+<td>PRIMARY KEY AUTOINCREMENT</td>
+<td>Event sequence number</td>
+</tr>
+<tr>
+<td><code>event_type</code></td>
+<td>TEXT</td>
+<td></td>
+<td>Event category (e.g., <code>run.started</code>, <code>agent.registered</code>)</td>
+</tr>
+<tr>
+<td><code>source_id</code></td>
+<td>TEXT</td>
+<td></td>
+<td>ID of the entity that produced the event</td>
+</tr>
+<tr>
+<td><code>data</code></td>
+<td>TEXT</td>
+<td></td>
+<td>JSON payload with event-specific details</td>
+</tr>
+<tr>
+<td><code>created_at</code></td>
+<td>TEXT</td>
+<td></td>
+<td>ISO-8601 event timestamp</td>
+</tr>
+</tbody>
+</table>
+<h2 id="indexes">Indexes<a class="headerlink" href="#indexes" title="Permanent link">&para;</a></h2>
+<p>The following indexes are created to accelerate common query patterns:</p>
+<table>
+<thead>
+<tr>
+<th>Index</th>
+<th>Table</th>
+<th>Columns</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>idx_runs_model</code></td>
+<td>runs</td>
+<td><code>model</code></td>
+</tr>
+<tr>
+<td><code>idx_runs_engine</code></td>
+<td>runs</td>
+<td><code>engine</code></td>
+</tr>
+<tr>
+<td><code>idx_runs_suite_name</code></td>
+<td>runs</td>
+<td><code>suite_name</code></td>
+</tr>
+<tr>
+<td><code>idx_runs_timestamp</code></td>
+<td>runs</td>
+<td><code>timestamp</code></td>
+</tr>
+<tr>
+<td><code>idx_benchmarks_run_id</code></td>
+<td>benchmarks</td>
+<td><code>run_id</code></td>
+</tr>
+<tr>
+<td><code>idx_metrics_benchmark_id</code></td>
+<td>metrics</td>
+<td><code>benchmark_id</code></td>
+</tr>
+<tr>
+<td><code>idx_hardware_run_id</code></td>
+<td>hardware</td>
+<td><code>run_id</code></td>
+</tr>
+<tr>
+<td><code>idx_events_event_type</code></td>
+<td>events</td>
+<td><code>event_type</code></td>
+</tr>
+<tr>
+<td><code>idx_events_source_id</code></td>
+<td>events</td>
+<td><code>source_id</code></td>
+</tr>
+<tr>
+<td><code>idx_events_created_at</code></td>
+<td>events</td>
+<td><code>created_at</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="postgresql-differences">PostgreSQL Differences<a class="headerlink" href="#postgresql-differences" title="Permanent link">&para;</a></h2>
+<p>When using PostgreSQL instead of SQLite, the following type mappings apply:</p>
+<table>
+<thead>
+<tr>
+<th>SQLite</th>
+<th>PostgreSQL</th>
+<th>Affected columns</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>INTEGER PRIMARY KEY AUTOINCREMENT</code></td>
+<td><code>SERIAL PRIMARY KEY</code></td>
+<td><code>benchmarks.id</code>, <code>metrics.id</code>, <code>hardware.id</code>, <code>events.id</code></td>
+</tr>
+<tr>
+<td><code>TEXT</code> (timestamps)</td>
+<td><code>TIMESTAMPTZ</code></td>
+<td>All <code>*_at</code> and <code>timestamp</code> columns</td>
+</tr>
+<tr>
+<td><code>TEXT</code> (JSON)</td>
+<td><code>JSONB</code></td>
+<td><code>runs.raw_json</code>, <code>web_campaigns.config_json</code>, <code>events.data</code></td>
+</tr>
+<tr>
+<td><code>INTEGER</code> (booleans)</td>
+<td><code>BOOLEAN</code></td>
+<td><code>runs.passed</code>, <code>benchmarks.passed</code></td>
+</tr>
+<tr>
+<td><code>REAL</code></td>
+<td><code>DOUBLE PRECISION</code></td>
+<td><code>runs.total_time_seconds</code>, <code>metrics.metric_value</code></td>
+</tr>
+</tbody>
+</table>
+<p>PostgreSQL's <code>JSONB</code> type enables indexing and querying inside JSON columns
+directly with operators like <code>-&gt;</code>, <code>-&gt;&gt;</code>, and <code>@&gt;</code>.</p>
 
 
 

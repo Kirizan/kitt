@@ -27,7 +27,7 @@
     
     
       
-        <title>Results & KARR - KITT Documentation</title>
+        <title>Results & Storage - KITT Documentation</title>
       
     
     
@@ -80,7 +80,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#results-karr" class="md-skip">
+        <a href="#results-storage" class="md-skip">
           Skip to content
         </a>
       
@@ -114,7 +114,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Results & KARR
+              Results & Storage
             
           </span>
         </div>
@@ -764,7 +764,7 @@
   <span class="md-ellipsis">
     
   
-    Results & KARR
+    Results & Storage
   
 
     
@@ -782,7 +782,7 @@
   <span class="md-ellipsis">
     
   
-    Results & KARR
+    Results & Storage
   
 
     
@@ -808,10 +808,121 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#initialize-a-karr-repository" class="md-nav__link">
+  <a href="#database-storage-primary" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Initialize a KARR Repository
+        Database Storage (Primary)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Database Storage (Primary)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#initialize-the-database" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Initialize the Database
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#import-existing-json-results" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Import Existing JSON Results
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#export-results" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Export Results
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#list-stored-runs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        List Stored Runs
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#database-statistics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Database Statistics
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#querying-results" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Querying Results
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Querying Results">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#filter-by-model-engine-or-suite" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Filter by Model, Engine, or Suite
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#aggregation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Aggregation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#schema-migrations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Schema Migrations
       
     </span>
   </a>
@@ -819,10 +930,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#run-with-karr-storage" class="md-nav__link">
+  <a href="#flat-file-output" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Run with KARR Storage
+        Flat File Output
       
     </span>
   </a>
@@ -830,37 +941,15 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#list-results" class="md-nav__link">
+  <a href="#comparing-results" class="md-nav__link">
     <span class="md-ellipsis">
       
-        List Results
+        Comparing Results
       
     </span>
   </a>
   
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#import-results" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Import Results
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#compare-results" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Compare Results
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Compare Results">
+    <nav class="md-nav" aria-label="Comparing Results">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -891,28 +980,18 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#submit-results-via-pull-request" class="md-nav__link">
+  <a href="#legacy-git-backed-karr" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Submit Results via Pull Request
+        Legacy: Git-Backed KARR
       
     </span>
   </a>
   
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#clean-up-lfs-objects" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Clean Up LFS Objects
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
+    <nav class="md-nav" aria-label="Legacy: Git-Backed KARR">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
   <a href="#karr-directory-structure" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -922,12 +1001,17 @@
   </a>
   
 </li>
+        
+      </ul>
+    </nav>
+  
+</li>
       
         <li class="md-nav__item">
-  <a href="#typical-workflow" class="md-nav__link">
+  <a href="#next-steps" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Typical Workflow
+        Next Steps
       
     </span>
   </a>
@@ -1281,6 +1365,8 @@
       
         
       
+        
+      
     
     
     
@@ -1607,6 +1693,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../reference/database/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Database Schema
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../reference/docker-files/" class="md-nav__link">
         
   
@@ -1840,7 +1954,7 @@
   <span class="md-ellipsis">
     
   
-    KARR Repositories
+    Results Storage
   
 
     
@@ -1999,10 +2113,121 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#initialize-a-karr-repository" class="md-nav__link">
+  <a href="#database-storage-primary" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Initialize a KARR Repository
+        Database Storage (Primary)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Database Storage (Primary)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#initialize-the-database" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Initialize the Database
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#import-existing-json-results" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Import Existing JSON Results
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#export-results" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Export Results
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#list-stored-runs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        List Stored Runs
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#database-statistics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Database Statistics
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#querying-results" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Querying Results
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Querying Results">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#filter-by-model-engine-or-suite" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Filter by Model, Engine, or Suite
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#aggregation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Aggregation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#schema-migrations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Schema Migrations
       
     </span>
   </a>
@@ -2010,10 +2235,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#run-with-karr-storage" class="md-nav__link">
+  <a href="#flat-file-output" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Run with KARR Storage
+        Flat File Output
       
     </span>
   </a>
@@ -2021,37 +2246,15 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#list-results" class="md-nav__link">
+  <a href="#comparing-results" class="md-nav__link">
     <span class="md-ellipsis">
       
-        List Results
+        Comparing Results
       
     </span>
   </a>
   
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#import-results" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Import Results
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#compare-results" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Compare Results
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Compare Results">
+    <nav class="md-nav" aria-label="Comparing Results">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -2082,28 +2285,18 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#submit-results-via-pull-request" class="md-nav__link">
+  <a href="#legacy-git-backed-karr" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Submit Results via Pull Request
+        Legacy: Git-Backed KARR
       
     </span>
   </a>
   
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#clean-up-lfs-objects" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Clean Up LFS Objects
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
+    <nav class="md-nav" aria-label="Legacy: Git-Backed KARR">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
   <a href="#karr-directory-structure" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2113,12 +2306,17 @@
   </a>
   
 </li>
+        
+      </ul>
+    </nav>
+  
+</li>
       
         <li class="md-nav__item">
-  <a href="#typical-workflow" class="md-nav__link">
+  <a href="#next-steps" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Typical Workflow
+        Next Steps
       
     </span>
   </a>
@@ -2145,95 +2343,117 @@
   
 
 
-<h1 id="results-karr">Results &amp; KARR<a class="headerlink" href="#results-karr" title="Permanent link">&para;</a></h1>
-<p>Benchmark results can be stored in <strong>KARR (Kirizan's AI Results Repo)</strong>
-repositories -- Git-backed directories organized by hardware fingerprint,
-model, engine, and timestamp. KARR uses Git LFS for large output files and
-gives you a version-controlled history of every run.</p>
-<h2 id="initialize-a-karr-repository">Initialize a KARR Repository<a class="headerlink" href="#initialize-a-karr-repository" title="Permanent link">&para;</a></h2>
-<p>Create a new KARR repo in the current directory (or at a custom path):</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>kitt<span class="w"> </span>results<span class="w"> </span>init
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>kitt<span class="w"> </span>results<span class="w"> </span>init<span class="w"> </span>--path<span class="w"> </span>./my-results
+<h1 id="results-storage">Results &amp; Storage<a class="headerlink" href="#results-storage" title="Permanent link">&para;</a></h1>
+<p>KITT persists benchmark results in a <strong>database</strong> (SQLite or PostgreSQL) as the
+primary storage path. Flat JSON files are still written for convenience, and the
+legacy Git-backed KARR system remains available but is deprecated for production.</p>
+<h2 id="database-storage-primary">Database Storage (Primary)<a class="headerlink" href="#database-storage-primary" title="Permanent link">&para;</a></h2>
+<h3 id="initialize-the-database">Initialize the Database<a class="headerlink" href="#initialize-the-database" title="Permanent link">&para;</a></h3>
+<p>Create tables in the default SQLite database (<code>~/.kitt/kitt.db</code>) or in a
+PostgreSQL instance pointed to by <code>KITT_DB_DSN</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>kitt<span class="w"> </span>storage<span class="w"> </span>init
 </code></pre></div>
-<p>The directory is named <code>karr-&lt;fingerprint&gt;</code> by default, where <code>&lt;fingerprint&gt;</code>
-is derived from the first 40 characters of your hardware fingerprint.</p>
-<h2 id="run-with-karr-storage">Run with KARR Storage<a class="headerlink" href="#run-with-karr-storage" title="Permanent link">&para;</a></h2>
-<p>Add <code>--store-karr</code> to any <code>kitt run</code> command and results are automatically
-committed to the appropriate KARR repo:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>kitt<span class="w"> </span>run<span class="w"> </span>-m<span class="w"> </span>/models/llama2-7b<span class="w"> </span>-e<span class="w"> </span>vllm<span class="w"> </span>-s<span class="w"> </span>standard<span class="w"> </span>--store-karr
+<p>Results are saved to the database automatically after every <code>kitt run</code>. No extra
+flags are needed.</p>
+<h3 id="import-existing-json-results">Import Existing JSON Results<a class="headerlink" href="#import-existing-json-results" title="Permanent link">&para;</a></h3>
+<p>Bring previously exported or flat-file results into the database:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>kitt<span class="w"> </span>storage<span class="w"> </span>import<span class="w"> </span>./kitt-results/run1/metrics.json
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>kitt<span class="w"> </span>storage<span class="w"> </span>import<span class="w"> </span>./kitt-results/<span class="w">               </span><span class="c1"># imports all runs found</span>
 </code></pre></div>
-<h2 id="list-results">List Results<a class="headerlink" href="#list-results" title="Permanent link">&para;</a></h2>
-<p>Browse stored results with optional model and engine filters:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>kitt<span class="w"> </span>results<span class="w"> </span>list
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>kitt<span class="w"> </span>results<span class="w"> </span>list<span class="w"> </span>--model<span class="w"> </span>llama<span class="w"> </span>--engine<span class="w"> </span>vllm
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>kitt<span class="w"> </span>results<span class="w"> </span>list<span class="w"> </span>--karr<span class="w"> </span>./my-results
+<h3 id="export-results">Export Results<a class="headerlink" href="#export-results" title="Permanent link">&para;</a></h3>
+<p>Export runs from the database back to JSON files:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>kitt<span class="w"> </span>storage<span class="w"> </span><span class="nb">export</span><span class="w"> </span>--output<span class="w"> </span>./export/
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>kitt<span class="w"> </span>storage<span class="w"> </span><span class="nb">export</span><span class="w"> </span>--model<span class="w"> </span>llama<span class="w"> </span>--engine<span class="w"> </span>vllm<span class="w"> </span>--output<span class="w"> </span>./export/
 </code></pre></div>
-<p>KITT searches <code>kitt-results/</code> in the current directory and any <code>karr-*</code>
-repositories it finds.</p>
-<h2 id="import-results">Import Results<a class="headerlink" href="#import-results" title="Permanent link">&para;</a></h2>
-<p>Import an existing results directory into KARR:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>kitt<span class="w"> </span>results<span class="w"> </span>import<span class="w"> </span>./kitt-results/run1
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>kitt<span class="w"> </span>results<span class="w"> </span>import<span class="w"> </span>./kitt-results/run1<span class="w"> </span>--karr<span class="w"> </span>./my-results
+<h3 id="list-stored-runs">List Stored Runs<a class="headerlink" href="#list-stored-runs" title="Permanent link">&para;</a></h3>
+<p>Browse what is in the database with optional filters:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>kitt<span class="w"> </span>storage<span class="w"> </span>list
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>kitt<span class="w"> </span>storage<span class="w"> </span>list<span class="w"> </span>--model<span class="w"> </span>llama<span class="w"> </span>--engine<span class="w"> </span>vllm<span class="w"> </span>--limit<span class="w"> </span><span class="m">20</span>
 </code></pre></div>
-<p>The source directory must contain a <code>metrics.json</code> file.</p>
-<h2 id="compare-results">Compare Results<a class="headerlink" href="#compare-results" title="Permanent link">&para;</a></h2>
+<p>Output includes run ID, model, engine, suite, timestamp, and pass/fail counts.</p>
+<h3 id="database-statistics">Database Statistics<a class="headerlink" href="#database-statistics" title="Permanent link">&para;</a></h3>
+<p>Get a high-level summary of the database contents:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>kitt<span class="w"> </span>storage<span class="w"> </span>stats
+</code></pre></div>
+<p>This shows total runs, unique models, unique engines, date range, and storage
+size.</p>
+<h2 id="querying-results">Querying Results<a class="headerlink" href="#querying-results" title="Permanent link">&para;</a></h2>
+<p>The <code>ResultStore</code> interface supports filtered queries and aggregation from the
+CLI or programmatically.</p>
+<h3 id="filter-by-model-engine-or-suite">Filter by Model, Engine, or Suite<a class="headerlink" href="#filter-by-model-engine-or-suite" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>kitt<span class="w"> </span>storage<span class="w"> </span>list<span class="w"> </span>--model<span class="w"> </span><span class="s2">&quot;Llama-3.1-8B&quot;</span><span class="w"> </span>--engine<span class="w"> </span>vllm
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>kitt<span class="w"> </span>storage<span class="w"> </span>list<span class="w"> </span>--suite<span class="w"> </span>performance<span class="w"> </span>--limit<span class="w"> </span><span class="m">5</span>
+</code></pre></div>
+<h3 id="aggregation">Aggregation<a class="headerlink" href="#aggregation" title="Permanent link">&para;</a></h3>
+<p>Group results by model or engine to compare averages:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>kitt<span class="w"> </span>storage<span class="w"> </span>stats<span class="w"> </span>--group-by<span class="w"> </span>model
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>kitt<span class="w"> </span>storage<span class="w"> </span>stats<span class="w"> </span>--group-by<span class="w"> </span>engine
+</code></pre></div>
+<p>This is useful for spotting regressions across a fleet of models or engines.</p>
+<h2 id="schema-migrations">Schema Migrations<a class="headerlink" href="#schema-migrations" title="Permanent link">&para;</a></h2>
+<p>When upgrading KITT, apply any pending database migrations:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>kitt<span class="w"> </span>storage<span class="w"> </span>migrate
+</code></pre></div>
+<p>The current schema version is <strong>2</strong>. See the
+<a href="../../reference/database/">Database Schema Reference</a> for full table
+documentation.</p>
+<h2 id="flat-file-output">Flat File Output<a class="headerlink" href="#flat-file-output" title="Permanent link">&para;</a></h2>
+<p>Every <code>kitt run</code> writes JSON results to a <code>kitt-results/</code> directory in the
+current working directory, regardless of database settings. These files are
+handy for:</p>
+<ul>
+<li>Quick inspection with <code>jq</code> or a text editor</li>
+<li>Archiving to external storage</li>
+<li>Sharing individual run data without database access</li>
+</ul>
+<p>The flat files mirror the content stored in <code>runs.raw_json</code> in the database.</p>
+<h2 id="comparing-results">Comparing Results<a class="headerlink" href="#comparing-results" title="Permanent link">&para;</a></h2>
 <h3 id="cli-comparison">CLI Comparison<a class="headerlink" href="#cli-comparison" title="Permanent link">&para;</a></h3>
 <p>Compare metrics across two or more benchmark runs:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>kitt<span class="w"> </span>results<span class="w"> </span>compare<span class="w"> </span>./run1<span class="w"> </span>./run2
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>kitt<span class="w"> </span>results<span class="w"> </span>compare<span class="w"> </span>./run1<span class="w"> </span>./run2<span class="w"> </span>--additional<span class="w"> </span>./run3<span class="w"> </span>--format<span class="w"> </span>json
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>kitt<span class="w"> </span>results<span class="w"> </span>compare<span class="w"> </span>./run1<span class="w"> </span>./run2
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>kitt<span class="w"> </span>results<span class="w"> </span>compare<span class="w"> </span>./run1<span class="w"> </span>./run2<span class="w"> </span>--additional<span class="w"> </span>./run3<span class="w"> </span>--format<span class="w"> </span>json
 </code></pre></div>
 <p>The table output shows min, max, average, standard deviation, and coefficient
-of variation for each metric.</p>
+of variation for each metric. Paths can point to flat-file result directories
+or exported database runs.</p>
 <h3 id="interactive-tui">Interactive TUI<a class="headerlink" href="#interactive-tui" title="Permanent link">&para;</a></h3>
 <p>Launch a side-by-side terminal comparison (requires the <code>cli_ui</code> extra):</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>kitt<span class="w"> </span>compare<span class="w"> </span>./run1<span class="w"> </span>./run2
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>kitt<span class="w"> </span>compare<span class="w"> </span>./run1<span class="w"> </span>./run2
 </code></pre></div>
-<h2 id="submit-results-via-pull-request">Submit Results via Pull Request<a class="headerlink" href="#submit-results-via-pull-request" title="Permanent link">&para;</a></h2>
-<p>Package results into a branch and open a pull request against the KARR
-repository:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>kitt<span class="w"> </span>results<span class="w"> </span>submit
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>kitt<span class="w"> </span>results<span class="w"> </span>submit<span class="w"> </span>--repo<span class="w"> </span>./my-results
+<p>Both <code>kitt results compare</code> and <code>kitt compare</code> work with flat-file directories
+and database-exported results interchangeably.</p>
+<h2 id="legacy-git-backed-karr">Legacy: Git-Backed KARR<a class="headerlink" href="#legacy-git-backed-karr" title="Permanent link">&para;</a></h2>
+<div class="admonition warning">
+<p class="admonition-title">Deprecated</p>
+<p>KARR is <strong>deprecated for production use</strong>. Database storage is the
+recommended path for all new deployments. KARR remains available for
+backward compatibility with existing workflows.</p>
+</div>
+<p>KARR (Kirizan's AI Results Repo) stores results in a Git repository with LFS
+tracking. To use it, add <code>--store-karr</code> to a run:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>kitt<span class="w"> </span>results<span class="w"> </span>init<span class="w"> </span>--path<span class="w"> </span>./my-results
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>kitt<span class="w"> </span>run<span class="w"> </span>-m<span class="w"> </span>/models/llama-7b<span class="w"> </span>-e<span class="w"> </span>vllm<span class="w"> </span>-s<span class="w"> </span>standard<span class="w"> </span>--store-karr<span class="w"> </span>./my-results
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>kitt<span class="w"> </span>results<span class="w"> </span>list<span class="w"> </span>--karr<span class="w"> </span>./my-results
 </code></pre></div>
-<p>Git must be configured with a user name and email.</p>
-<h2 id="clean-up-lfs-objects">Clean Up LFS Objects<a class="headerlink" href="#clean-up-lfs-objects" title="Permanent link">&para;</a></h2>
-<p>Over time, Git LFS objects accumulate. Remove objects older than a
-threshold to reduce repository size:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>kitt<span class="w"> </span>results<span class="w"> </span>cleanup<span class="w"> </span>--days<span class="w"> </span><span class="m">60</span><span class="w"> </span>--dry-run<span class="w">   </span><span class="c1"># preview first</span>
-<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>kitt<span class="w"> </span>results<span class="w"> </span>cleanup<span class="w"> </span>--days<span class="w"> </span><span class="m">60</span><span class="w">             </span><span class="c1"># actually clean up</span>
-<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>kitt<span class="w"> </span>results<span class="w"> </span>cleanup<span class="w"> </span>--repo<span class="w"> </span>./my-results<span class="w"> </span>--days<span class="w"> </span><span class="m">30</span>
+<h3 id="karr-directory-structure">KARR Directory Structure<a class="headerlink" href="#karr-directory-structure" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>karr-&lt;fingerprint&gt;/
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>  &lt;model&gt;/
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>    &lt;engine&gt;/
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>      &lt;timestamp&gt;/
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>        metrics.json
+<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>        summary.md
+<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>        hardware.json
+<a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a>        config.json
+<a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a>        outputs/          # compressed .jsonl.gz, tracked by Git LFS
 </code></pre></div>
-<p>The default retention period is 90 days.</p>
-<h2 id="karr-directory-structure">KARR Directory Structure<a class="headerlink" href="#karr-directory-structure" title="Permanent link">&para;</a></h2>
-<p>Each KARR repo is organized by model, engine, and timestamp:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>karr-&lt;fingerprint&gt;/
-<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>  &lt;model&gt;/
-<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>    &lt;engine&gt;/
-<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>      &lt;timestamp&gt;/
-<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>        metrics.json      # Full benchmark metrics
-<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>        summary.md        # Human-readable summary
-<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>        hardware.json     # System information snapshot
-<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>        config.json       # Configuration used for the run
-<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>        outputs/          # Compressed benchmark outputs (chunked, LFS-tracked)
-</code></pre></div>
-<p>Large output files in <code>outputs/</code> are compressed in 50 MB chunks and tracked by
-Git LFS. This keeps the repository lightweight for cloning while preserving
-full output data for deep analysis.</p>
-<h2 id="typical-workflow">Typical Workflow<a class="headerlink" href="#typical-workflow" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="c1"># 1. Initialize a KARR repo</span>
-<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>kitt<span class="w"> </span>results<span class="w"> </span>init<span class="w"> </span>--path<span class="w"> </span>./my-results
-<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>
-<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="c1"># 2. Run benchmarks with KARR storage</span>
-<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>kitt<span class="w"> </span>run<span class="w"> </span>-m<span class="w"> </span>/models/llama2-7b<span class="w"> </span>-e<span class="w"> </span>vllm<span class="w"> </span>-s<span class="w"> </span>standard<span class="w"> </span>--store-karr
-<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>
-<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a><span class="c1"># 3. Run the same model on a different engine</span>
-<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>kitt<span class="w"> </span>run<span class="w"> </span>-m<span class="w"> </span>/models/llama2-7b<span class="w"> </span>-e<span class="w"> </span>tgi<span class="w"> </span>-s<span class="w"> </span>standard<span class="w"> </span>--store-karr
-<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>
-<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a><span class="c1"># 4. Compare the two runs</span>
-<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>kitt<span class="w"> </span>results<span class="w"> </span>compare<span class="w"> </span>./my-results/llama2-7b/vllm/2025-*<span class="w"> </span>./my-results/llama2-7b/tgi/2025-*
-<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a>
-<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a><span class="c1"># 5. Submit results upstream</span>
-<a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a>kitt<span class="w"> </span>results<span class="w"> </span>submit<span class="w"> </span>--repo<span class="w"> </span>./my-results
-</code></pre></div>
+<p>For Docker-based deployments, Git repos are cumbersome to mount and manage.
+The database layer removes this friction entirely.</p>
+<h2 id="next-steps">Next Steps<a class="headerlink" href="#next-steps" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="../../concepts/karr/">Results Storage Concepts</a> -- architecture and design decisions</li>
+<li><a href="../../reference/database/">Database Schema Reference</a> -- full table and column documentation</li>
+<li><a href="../../concepts/hardware-fingerprinting/">Hardware Fingerprinting</a> -- how system identity is captured</li>
+</ul>
 
 
 
