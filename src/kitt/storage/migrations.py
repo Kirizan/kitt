@@ -10,8 +10,80 @@ Migration = tuple[int, str, str]
 
 MIGRATIONS: list[Migration] = [
     # Version 1 is the initial schema — applied via schema.py.
-    # Future migrations go here:
-    # (2, "Add campaigns table", "CREATE TABLE IF NOT EXISTS campaigns (...)"),
+    (
+        2,
+        "Add agents, web_campaigns, quick_tests, events tables",
+        """
+        CREATE TABLE IF NOT EXISTS agents (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL UNIQUE,
+            hostname TEXT NOT NULL,
+            port INTEGER NOT NULL DEFAULT 8090,
+            token TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'offline',
+            gpu_info TEXT DEFAULT '',
+            gpu_count INTEGER DEFAULT 0,
+            cpu_info TEXT DEFAULT '',
+            ram_gb INTEGER DEFAULT 0,
+            environment_type TEXT DEFAULT '',
+            fingerprint TEXT DEFAULT '',
+            kitt_version TEXT DEFAULT '',
+            last_heartbeat TEXT DEFAULT '',
+            registered_at TEXT NOT NULL DEFAULT (datetime('now')),
+            notes TEXT DEFAULT '',
+            tags TEXT DEFAULT '[]'
+        );
+
+        CREATE TABLE IF NOT EXISTS web_campaigns (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            description TEXT DEFAULT '',
+            config_json TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'draft',
+            agent_id TEXT REFERENCES agents(id),
+            created_at TEXT NOT NULL DEFAULT (datetime('now')),
+            started_at TEXT DEFAULT '',
+            completed_at TEXT DEFAULT '',
+            total_runs INTEGER DEFAULT 0,
+            succeeded INTEGER DEFAULT 0,
+            failed INTEGER DEFAULT 0,
+            skipped INTEGER DEFAULT 0,
+            error TEXT DEFAULT ''
+        );
+
+        CREATE TABLE IF NOT EXISTS quick_tests (
+            id TEXT PRIMARY KEY,
+            agent_id TEXT NOT NULL REFERENCES agents(id),
+            model_path TEXT NOT NULL,
+            engine_name TEXT NOT NULL,
+            benchmark_name TEXT NOT NULL,
+            suite_name TEXT DEFAULT 'quick',
+            status TEXT NOT NULL DEFAULT 'queued',
+            created_at TEXT NOT NULL DEFAULT (datetime('now')),
+            started_at TEXT DEFAULT '',
+            completed_at TEXT DEFAULT '',
+            result_id TEXT REFERENCES runs(id),
+            error TEXT DEFAULT ''
+        );
+
+        CREATE TABLE IF NOT EXISTS events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            event_type TEXT NOT NULL,
+            source_id TEXT NOT NULL,
+            data TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_agents_name ON agents(name);
+        CREATE INDEX IF NOT EXISTS idx_agents_status ON agents(status);
+        CREATE INDEX IF NOT EXISTS idx_web_campaigns_status ON web_campaigns(status);
+        CREATE INDEX IF NOT EXISTS idx_web_campaigns_agent ON web_campaigns(agent_id);
+        CREATE INDEX IF NOT EXISTS idx_quick_tests_agent ON quick_tests(agent_id);
+        CREATE INDEX IF NOT EXISTS idx_quick_tests_status ON quick_tests(status);
+        CREATE INDEX IF NOT EXISTS idx_events_type ON events(event_type);
+        CREATE INDEX IF NOT EXISTS idx_events_source ON events(source_id);
+        """,
+    ),
 ]
 
 

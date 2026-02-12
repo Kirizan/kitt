@@ -1,8 +1,19 @@
-"""Flask web application for KITT results dashboard."""
+"""Flask web application for KITT — full UI and REST API.
+
+This is the main app factory for the KITT web UI. It registers all blueprints,
+sets up the database connection, and initializes services. The legacy read-only
+dashboard is preserved via create_legacy_app().
+"""
 
 import json
+import logging
+import os
+import secrets
+import sqlite3
 from pathlib import Path
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 try:
     from flask import Flask, jsonify, render_template_string, request
@@ -11,6 +22,185 @@ try:
 except ImportError:
     FLASK_AVAILABLE = False
 
+# ---------------------------------------------------------------------------
+# Service registry (accessed by blueprints via get_services())
+# ---------------------------------------------------------------------------
+_services: dict[str, Any] = {}
+
+
+def get_services() -> dict[str, Any]:
+    """Get the global service registry. Called by blueprints."""
+    return _services
+
+
+# ---------------------------------------------------------------------------
+# Main app factory
+# ---------------------------------------------------------------------------
+
+
+def create_app(
+    results_dir: str | None = None,
+    result_store: Any | None = None,
+    db_path: Path | None = None,
+    auth_token: str | None = None,
+    insecure: bool = False,
+    legacy: bool = False,
+) -> "Flask":
+    """Create the KITT Flask application.
+
+    Args:
+        results_dir: Directory to search for results. Defaults to cwd.
+        result_store: Optional ResultStore backend. Falls back to auto-init.
+        db_path: Path to SQLite database. Defaults to ~/.kitt/kitt.db.
+        auth_token: Bearer token for API authentication.
+        insecure: If True, skip TLS warnings.
+        legacy: If True, return the legacy read-only dashboard.
+    """
+    if not FLASK_AVAILABLE:
+        raise ImportError("Flask is not installed. Install with: pip install kitt[web]")
+
+    if legacy:
+        return create_legacy_app(results_dir, result_store)
+
+    # --- Flask app setup ---
+    app = Flask(
+        __name__,
+        template_folder=str(Path(__file__).parent / "templates"),
+        static_folder=str(Path(__file__).parent / "static"),
+    )
+    app.secret_key = os.environ.get("KITT_SECRET_KEY", secrets.token_hex(32))
+
+    # Store config values on app
+    base_dir = Path(results_dir) if results_dir else Path.cwd()
+    app.config["RESULTS_DIR"] = str(base_dir)
+    app.config["AUTH_TOKEN"] = auth_token or os.environ.get("KITT_AUTH_TOKEN", "")
+    app.config["INSECURE"] = insecure
+
+    # --- Database connection ---
+    _db_path = db_path or Path.home() / ".kitt" / "kitt.db"
+    _db_path.parent.mkdir(parents=True, exist_ok=True)
+
+    from kitt.storage.sqlite_store import SQLiteStore
+
+    store = result_store or SQLiteStore(db_path=_db_path)
+    app.config["DB_PATH"] = str(_db_path)
+
+    # Get a raw connection for the new v2 tables (agents, campaigns, etc.)
+    db_conn = sqlite3.connect(str(_db_path))
+    db_conn.row_factory = sqlite3.Row
+    db_conn.execute("PRAGMA journal_mode=WAL")
+    db_conn.execute("PRAGMA foreign_keys=ON")
+
+    # Ensure v2 schema is applied
+    from kitt.storage.migrations import (
+        get_current_version_sqlite,
+        run_migrations_sqlite,
+    )
+    from kitt.storage.schema import SCHEMA_VERSION
+
+    current = get_current_version_sqlite(db_conn)
+    if current < SCHEMA_VERSION:
+        run_migrations_sqlite(db_conn, current)
+
+    # --- Initialize services ---
+    from kitt.web.services.agent_manager import AgentManager
+    from kitt.web.services.campaign_service import CampaignService
+    from kitt.web.services.model_service import ModelService
+    from kitt.web.services.result_service import ResultService
+
+    global _services
+    _services = {
+        "result_service": ResultService(store),
+        "agent_manager": AgentManager(db_conn),
+        "campaign_service": CampaignService(db_conn),
+        "model_service": ModelService(),
+        "db_conn": db_conn,
+        "store": store,
+    }
+
+    # --- Register blueprints ---
+    from kitt.web.blueprints.agents import bp as agents_bp
+    from kitt.web.blueprints.campaigns import bp as campaigns_bp
+    from kitt.web.blueprints.dashboard import bp as dashboard_bp
+    from kitt.web.blueprints.models import bp as models_bp
+    from kitt.web.blueprints.quicktest import bp as quicktest_bp
+    from kitt.web.blueprints.results import bp as results_bp
+    from kitt.web.blueprints.settings import bp as settings_bp
+
+    app.register_blueprint(dashboard_bp)
+    app.register_blueprint(agents_bp)
+    app.register_blueprint(models_bp)
+    app.register_blueprint(campaigns_bp)
+    app.register_blueprint(quicktest_bp)
+    app.register_blueprint(results_bp)
+    app.register_blueprint(settings_bp)
+
+    # --- Register API blueprints ---
+    from kitt.web.api.v1.agents import bp as api_agents_bp
+    from kitt.web.api.v1.campaigns import bp as api_campaigns_bp
+    from kitt.web.api.v1.events import bp as api_events_bp
+    from kitt.web.api.v1.health import bp as health_bp
+    from kitt.web.api.v1.models import bp as api_models_bp
+    from kitt.web.api.v1.quicktest import bp as api_quicktest_bp
+    from kitt.web.api.v1.results import bp as api_results_bp
+
+    app.register_blueprint(health_bp)
+    app.register_blueprint(api_agents_bp)
+    app.register_blueprint(api_campaigns_bp)
+    app.register_blueprint(api_results_bp)
+    app.register_blueprint(api_models_bp)
+    app.register_blueprint(api_quicktest_bp)
+    app.register_blueprint(api_events_bp)
+
+    # --- HTMX partial routes ---
+    @app.route("/partials/agent_cards")
+    def partial_agent_cards():
+        agents = _services["agent_manager"].list_agents()
+        from flask import render_template
+
+        return render_template("partials/agent_card.html", agents=agents)
+
+    @app.route("/partials/campaign_rows")
+    def partial_campaign_rows():
+        campaigns = _services["campaign_service"].list_campaigns(per_page=5)
+        html_parts = []
+        for c in campaigns["items"]:
+            status_cls = {
+                "running": "bg-blue-900/50 text-blue-300",
+                "completed": "bg-green-900/50 text-green-300",
+                "failed": "bg-red-900/50 text-red-300",
+            }.get(c["status"], "bg-gray-800 text-gray-400")
+
+            html_parts.append(f"""
+            <div class="bg-kitt-bg/50 rounded-md p-3">
+                <div class="flex items-center justify-between">
+                    <a href="/campaigns/{c["id"]}" class="text-sm font-medium hover:text-kitt-accent">{c["name"]}</a>
+                    <span class="text-xs px-2 py-0.5 rounded {status_cls}">{c["status"]}</span>
+                </div>
+            </div>""")
+        return (
+            "\n".join(html_parts)
+            if html_parts
+            else '<p class="text-kitt-dim text-sm">No campaigns</p>'
+        )
+
+    # --- Legacy compat: /api/health ---
+    @app.route("/api/health")
+    def legacy_health():
+        return jsonify({"status": "ok", "version": "1.1.0"})
+
+    # --- Teardown ---
+    @app.teardown_appcontext
+    def close_db(exception):
+        pass  # Connection is shared; closed on shutdown
+
+    logger.info("KITT web app created")
+    return app
+
+
+# ---------------------------------------------------------------------------
+# Legacy app (read-only dashboard from v1)
+# ---------------------------------------------------------------------------
 
 INDEX_TEMPLATE = """
 <!DOCTYPE html>
@@ -241,15 +431,14 @@ INDEX_TEMPLATE = """
 """
 
 
-def create_app(
+def create_legacy_app(
     results_dir: str | None = None,
     result_store: Any | None = None,
 ) -> "Flask":
-    """Create the Flask application.
+    """Create the legacy read-only Flask dashboard.
 
-    Args:
-        results_dir: Directory to search for results. Defaults to cwd.
-        result_store: Optional ResultStore backend. Falls back to file scan.
+    This is the original KITT dashboard from v1. Kept for backward compatibility.
+    Use ``kitt web --legacy`` to launch this version.
     """
     if not FLASK_AVAILABLE:
         raise ImportError("Flask is not installed. Install with: pip install kitt[web]")
@@ -259,7 +448,6 @@ def create_app(
     store = result_store
 
     def _get_results() -> list[dict[str, Any]]:
-        """Get results from store or file scan."""
         if store is not None:
             return store.query()
         return _scan_results(base_dir)
@@ -270,7 +458,6 @@ def create_app(
         all_engines = sorted(set(r.get("engine", "") for r in all_results))
         all_models = sorted(set(r.get("model", "") for r in all_results))
 
-        # Apply filters
         filter_model = request.args.get("model", "")
         filter_engine = request.args.get("engine", "")
         results = all_results
@@ -299,8 +486,7 @@ def create_app(
 
     @app.route("/api/results")
     def api_results():
-        results = _get_results()
-        return jsonify(results)
+        return jsonify(_get_results())
 
     @app.route("/api/results/<int:idx>")
     def api_result_detail(idx):
@@ -319,7 +505,6 @@ def create_app(
         if filter_engine:
             results = [r for r in results if r.get("engine") == filter_engine]
 
-        # Group by model|engine
         groups: dict[str, dict[str, Any]] = {}
         for r in results:
             model = r.get("model", "unknown")
@@ -348,17 +533,20 @@ def create_app(
     return app
 
 
+# ---------------------------------------------------------------------------
+# File-scan helpers (used by legacy app)
+# ---------------------------------------------------------------------------
+
+
 def _scan_results(base_dir: Path) -> list[dict[str, Any]]:
     """Scan for result files in kitt-results/ and karr-* directories."""
     results = []
 
-    # kitt-results/
     for metrics_file in sorted(base_dir.glob("kitt-results/**/metrics.json")):
         data = _load_json(metrics_file)
         if data:
             results.append(data)
 
-    # karr-*/
     for karr_dir in sorted(base_dir.glob("karr-*")):
         if karr_dir.is_dir():
             for metrics_file in sorted(karr_dir.glob("**/metrics.json")):
