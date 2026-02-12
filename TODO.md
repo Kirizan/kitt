@@ -89,3 +89,10 @@ Longer-term ideas that aren't yet planned for a specific release.
 
 - [x] **Power consumption tracking** — Monitor and report GPU/system power draw during benchmarks for energy efficiency comparisons via pynvml
 - [x] **Quant quality curves** — Auto-generate quality-vs-size tradeoff charts showing how each quantization level affects accuracy and throughput for a given model family
+
+### Documentation
+
+- [ ] **PostgreSQL JSONB indexing note** — Add a note in `docs/reference/database.md` that PostgreSQL's `JSONB` type is natively indexable, making JSON queries much faster than SQLite for users choosing a backend
+- [ ] **Aggregation CLI flags** — Verify `--group-by` flags referenced in `docs/guides/results.md` exist in the CLI; if not yet implemented, add a "planned" note
+- [ ] **Schema version single source of truth** — Schema version is hardcoded as "2" in multiple doc pages; link to the actual `schema.py` constant or add a note to keep in sync
+- [ ] **Remove Git-backed KARR entirely** — Long-term: remove the Git/LFS storage concept. Database is the future for production; flat files remain for dev/test CLI-only installs

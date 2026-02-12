@@ -1,56 +1,111 @@
-# Results & KARR
+# Results & Storage
 
-Benchmark results can be stored in **KARR (Kirizan's AI Results Repo)**
-repositories -- Git-backed directories organized by hardware fingerprint,
-model, engine, and timestamp. KARR uses Git LFS for large output files and
-gives you a version-controlled history of every run.
+KITT persists benchmark results in a **database** (SQLite or PostgreSQL) as the
+primary storage path. Flat JSON files are still written for convenience, and the
+legacy Git-backed KARR system remains available but is deprecated for production.
 
-## Initialize a KARR Repository
+## Database Storage (Primary)
 
-Create a new KARR repo in the current directory (or at a custom path):
+### Initialize the Database
 
-```bash
-kitt results init
-kitt results init --path ./my-results
-```
-
-The directory is named `karr-<fingerprint>` by default, where `<fingerprint>`
-is derived from the first 40 characters of your hardware fingerprint.
-
-## Run with KARR Storage
-
-Add `--store-karr` to any `kitt run` command and results are automatically
-committed to the appropriate KARR repo:
+Create tables in the default SQLite database (`~/.kitt/kitt.db`) or in a
+PostgreSQL instance pointed to by `KITT_DB_DSN`:
 
 ```bash
-kitt run -m /models/llama2-7b -e vllm -s standard --store-karr
+kitt storage init
 ```
 
-## List Results
+Results are saved to the database automatically after every `kitt run`. No extra
+flags are needed.
 
-Browse stored results with optional model and engine filters:
+### Import Existing JSON Results
+
+Bring previously exported or flat-file results into the database:
 
 ```bash
-kitt results list
-kitt results list --model llama --engine vllm
-kitt results list --karr ./my-results
+kitt storage import ./kitt-results/run1/metrics.json
+kitt storage import ./kitt-results/               # imports all runs found
 ```
 
-KITT searches `kitt-results/` in the current directory and any `karr-*`
-repositories it finds.
+### Export Results
 
-## Import Results
-
-Import an existing results directory into KARR:
+Export runs from the database back to JSON files:
 
 ```bash
-kitt results import ./kitt-results/run1
-kitt results import ./kitt-results/run1 --karr ./my-results
+kitt storage export --output ./export/
+kitt storage export --model llama --engine vllm --output ./export/
 ```
 
-The source directory must contain a `metrics.json` file.
+### List Stored Runs
 
-## Compare Results
+Browse what is in the database with optional filters:
+
+```bash
+kitt storage list
+kitt storage list --model llama --engine vllm --limit 20
+```
+
+Output includes run ID, model, engine, suite, timestamp, and pass/fail counts.
+
+### Database Statistics
+
+Get a high-level summary of the database contents:
+
+```bash
+kitt storage stats
+```
+
+This shows total runs, unique models, unique engines, date range, and storage
+size.
+
+## Querying Results
+
+The `ResultStore` interface supports filtered queries and aggregation from the
+CLI or programmatically.
+
+### Filter by Model, Engine, or Suite
+
+```bash
+kitt storage list --model "Llama-3.1-8B" --engine vllm
+kitt storage list --suite performance --limit 5
+```
+
+### Aggregation
+
+Group results by model or engine to compare averages:
+
+```bash
+kitt storage stats --group-by model
+kitt storage stats --group-by engine
+```
+
+This is useful for spotting regressions across a fleet of models or engines.
+
+## Schema Migrations
+
+When upgrading KITT, apply any pending database migrations:
+
+```bash
+kitt storage migrate
+```
+
+The current schema version is **2**. See the
+[Database Schema Reference](../reference/database.md) for full table
+documentation.
+
+## Flat File Output
+
+Every `kitt run` writes JSON results to a `kitt-results/` directory in the
+current working directory, regardless of database settings. These files are
+handy for:
+
+- Quick inspection with `jq` or a text editor
+- Archiving to external storage
+- Sharing individual run data without database access
+
+The flat files mirror the content stored in `runs.raw_json` in the database.
+
+## Comparing Results
 
 ### CLI Comparison
 
@@ -62,7 +117,8 @@ kitt results compare ./run1 ./run2 --additional ./run3 --format json
 ```
 
 The table output shows min, max, average, standard deviation, and coefficient
-of variation for each metric.
+of variation for each metric. Paths can point to flat-file result directories
+or exported database runs.
 
 ### Interactive TUI
 
@@ -72,66 +128,44 @@ Launch a side-by-side terminal comparison (requires the `cli_ui` extra):
 kitt compare ./run1 ./run2
 ```
 
-## Submit Results via Pull Request
+Both `kitt results compare` and `kitt compare` work with flat-file directories
+and database-exported results interchangeably.
 
-Package results into a branch and open a pull request against the KARR
-repository:
+## Legacy: Git-Backed KARR
 
-```bash
-kitt results submit
-kitt results submit --repo ./my-results
-```
+!!! warning "Deprecated"
+    KARR is **deprecated for production use**. Database storage is the
+    recommended path for all new deployments. KARR remains available for
+    backward compatibility with existing workflows.
 
-Git must be configured with a user name and email.
-
-## Clean Up LFS Objects
-
-Over time, Git LFS objects accumulate. Remove objects older than a
-threshold to reduce repository size:
+KARR (Kirizan's AI Results Repo) stores results in a Git repository with LFS
+tracking. To use it, add `--store-karr` to a run:
 
 ```bash
-kitt results cleanup --days 60 --dry-run   # preview first
-kitt results cleanup --days 60             # actually clean up
-kitt results cleanup --repo ./my-results --days 30
+kitt results init --path ./my-results
+kitt run -m /models/llama-7b -e vllm -s standard --store-karr ./my-results
+kitt results list --karr ./my-results
 ```
 
-The default retention period is 90 days.
-
-## KARR Directory Structure
-
-Each KARR repo is organized by model, engine, and timestamp:
+### KARR Directory Structure
 
 ```
 karr-<fingerprint>/
   <model>/
     <engine>/
       <timestamp>/
-        metrics.json      # Full benchmark metrics
-        summary.md        # Human-readable summary
-        hardware.json     # System information snapshot
-        config.json       # Configuration used for the run
-        outputs/          # Compressed benchmark outputs (chunked, LFS-tracked)
+        metrics.json
+        summary.md
+        hardware.json
+        config.json
+        outputs/          # compressed .jsonl.gz, tracked by Git LFS
 ```
 
-Large output files in `outputs/` are compressed in 50 MB chunks and tracked by
-Git LFS. This keeps the repository lightweight for cloning while preserving
-full output data for deep analysis.
+For Docker-based deployments, Git repos are cumbersome to mount and manage.
+The database layer removes this friction entirely.
 
-## Typical Workflow
+## Next Steps
 
-```bash
-# 1. Initialize a KARR repo
-kitt results init --path ./my-results
-
-# 2. Run benchmarks with KARR storage
-kitt run -m /models/llama2-7b -e vllm -s standard --store-karr
-
-# 3. Run the same model on a different engine
-kitt run -m /models/llama2-7b -e tgi -s standard --store-karr
-
-# 4. Compare the two runs
-kitt results compare ./my-results/llama2-7b/vllm/2025-* ./my-results/llama2-7b/tgi/2025-*
-
-# 5. Submit results upstream
-kitt results submit --repo ./my-results
-```
+- [Results Storage Concepts](../concepts/karr.md) -- architecture and design decisions
+- [Database Schema Reference](../reference/database.md) -- full table and column documentation
+- [Hardware Fingerprinting](../concepts/hardware-fingerprinting.md) -- how system identity is captured

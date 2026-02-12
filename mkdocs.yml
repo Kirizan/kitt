@@ -67,7 +67,7 @@ nav:
       - guides/index.md
       - Engines: guides/engines.md
       - Benchmarks: guides/benchmarks.md
-      - Results & KARR: guides/results.md
+      - Results & Storage: guides/results.md
       - Campaigns: guides/campaigns.md
       - Docker Deployment: guides/deployment.md
       - Web Dashboard: guides/web-dashboard.md
@@ -89,6 +89,7 @@ nav:
           - Engine YAML: reference/configuration/engines.md
           - Campaign YAML: reference/configuration/campaigns.md
           - Benchmark YAML: reference/configuration/benchmarks.md
+      - Database Schema: reference/database.md
       - Docker Files: reference/docker-files.md
       - REST API: reference/api.md
       - Environment Variables: reference/environment.md
@@ -96,7 +97,7 @@ nav:
       - concepts/index.md
       - Architecture: concepts/architecture.md
       - Hardware Fingerprinting: concepts/hardware-fingerprinting.md
-      - KARR Repositories: concepts/karr.md
+      - Results Storage: concepts/karr.md
       - Engine Lifecycle: concepts/engine-lifecycle.md
       - Benchmark System: concepts/benchmark-system.md
       - Security & mTLS: concepts/security.md
