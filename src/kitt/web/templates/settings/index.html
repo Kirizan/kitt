@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}KITT - Settings{% endblock %}
+
+{% block content %}
+<div class="space-y-6 max-w-3xl">
+    <div>
+        <h1 class="text-2xl font-bold">Settings</h1>
+        <p class="text-kitt-dim text-sm mt-1">Server configuration</p>
+    </div>
+
+    <!-- Server config -->
+    <div class="bg-kitt-surface rounded-lg p-6">
+        <h2 class="text-lg font-semibold mb-4">Server</h2>
+        <dl class="space-y-3 text-sm">
+            <div class="flex justify-between">
+                <dt class="text-kitt-dim">Host</dt>
+                <dd class="font-mono">{{ config.host }}</dd>
+            </div>
+            <div class="flex justify-between">
+                <dt class="text-kitt-dim">Port</dt>
+                <dd class="font-mono">{{ config.port }}</dd>
+            </div>
+            <div class="flex justify-between">
+                <dt class="text-kitt-dim">Debug Mode</dt>
+                <dd>{% if config.debug %}<span class="text-yellow-400">Enabled</span>{% else %}Disabled{% endif %}</dd>
+            </div>
+            <div class="flex justify-between">
+                <dt class="text-kitt-dim">TLS</dt>
+                <dd>{% if config.tls_enabled %}<span class="text-green-400">Enabled</span>{% elif config.insecure %}<span class="text-red-400">Insecure (HTTP)</span>{% else %}Disabled{% endif %}</dd>
+            </div>
+        </dl>
+    </div>
+
+    <!-- Storage config -->
+    <div class="bg-kitt-surface rounded-lg p-6">
+        <h2 class="text-lg font-semibold mb-4">Storage</h2>
+        <dl class="space-y-3 text-sm">
+            <div class="flex justify-between">
+                <dt class="text-kitt-dim">Database Path</dt>
+                <dd class="font-mono text-xs truncate max-w-sm" title="{{ config.db_path }}">{{ config.db_path }}</dd>
+            </div>
+            <div class="flex justify-between">
+                <dt class="text-kitt-dim">Results Directory</dt>
+                <dd class="font-mono text-xs truncate max-w-sm" title="{{ config.results_dir }}">{{ config.results_dir }}</dd>
+            </div>
+        </dl>
+    </div>
+
+    <!-- Devon config -->
+    <div class="bg-kitt-surface rounded-lg p-6">
+        <h2 class="text-lg font-semibold mb-4">Devon Integration</h2>
+        <dl class="space-y-3 text-sm">
+            <div class="flex justify-between">
+                <dt class="text-kitt-dim">Status</dt>
+                <dd id="devon-status" hx-get="/api/v1/models/local" hx-trigger="load" hx-swap="innerHTML">
+                    Checking...
+                </dd>
+            </div>
+        </dl>
+    </div>
+</div>
+{% endblock %}

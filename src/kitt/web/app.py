@@ -114,13 +114,21 @@ def create_app(
 
     # --- Register blueprints ---
     from kitt.web.blueprints.dashboard import bp as dashboard_bp
+    from kitt.web.blueprints.results import bp as results_bp
+    from kitt.web.blueprints.settings import bp as settings_bp
 
     app.register_blueprint(dashboard_bp)
+    app.register_blueprint(results_bp)
+    app.register_blueprint(settings_bp)
 
     # --- Register API blueprints ---
+    from kitt.web.api.v1.events import bp as api_events_bp
     from kitt.web.api.v1.health import bp as health_bp
+    from kitt.web.api.v1.results import bp as api_results_bp
 
     app.register_blueprint(health_bp)
+    app.register_blueprint(api_results_bp)
+    app.register_blueprint(api_events_bp)
 
     # --- Legacy compat: /api/health ---
     @app.route("/api/health")
