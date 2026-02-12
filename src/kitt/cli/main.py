@@ -115,7 +115,23 @@ def compare(runs):
 @click.option("--results-dir", type=click.Path(exists=True), help="Results directory")
 @click.option("--debug", is_flag=True, help="Enable debug mode")
 @click.option("--legacy", is_flag=True, help="Use legacy read-only dashboard")
-def web(port, host, results_dir, debug, legacy):
+@click.option("--insecure", is_flag=True, help="Disable TLS (development only)")
+@click.option("--tls-cert", type=click.Path(), help="Path to TLS certificate")
+@click.option("--tls-key", type=click.Path(), help="Path to TLS private key")
+@click.option("--tls-ca", type=click.Path(), help="Path to CA certificate")
+@click.option("--auth-token", help="Bearer token for API auth")
+def web(
+    port,
+    host,
+    results_dir,
+    debug,
+    legacy,
+    insecure,
+    tls_cert,
+    tls_key,
+    tls_ca,
+    auth_token,
+):
     """Launch web dashboard for viewing results."""
     try:
         from kitt.web.app import create_app
@@ -124,15 +140,48 @@ def web(port, host, results_dir, debug, legacy):
         console.print("Install with: pip install kitt[web]")
         raise SystemExit(1) from None
 
+    app = create_app(
+        results_dir=results_dir,
+        insecure=insecure,
+        legacy=legacy,
+        auth_token=auth_token,
+    )
+
+    ssl_ctx = None
+    scheme = "http"
+
+    if not insecure and not legacy:
+        try:
+            from kitt.security.cert_manager import (
+                ensure_server_certs,
+                get_ca_fingerprint,
+            )
+
+            if tls_cert and tls_key:
+                ssl_ctx = (tls_cert, tls_key)
+                scheme = "https"
+            else:
+                ca_path, cert_path, key_path = ensure_server_certs()
+                ssl_ctx = (str(cert_path), str(key_path))
+                scheme = "https"
+                fingerprint = get_ca_fingerprint(ca_path)
+                console.print(f"  CA Fingerprint: [dim]{fingerprint}[/dim]")
+        except ImportError:
+            console.print(
+                "[yellow]cryptography not installed — running without TLS[/yellow]"
+            )
+            console.print("Install with: pip install 'kitt[web]'")
+
     console.print("[bold]KITT Web Dashboard[/bold]")
-    console.print(f"  URL: http://{host}:{port}")
+    console.print(f"  URL: {scheme}://{host}:{port}")
     console.print(f"  Results: {results_dir or 'current directory'}")
     if legacy:
         console.print("  Mode: legacy (read-only)")
+    if insecure:
+        console.print("  [yellow]WARNING: Running without TLS (--insecure)[/yellow]")
     console.print()
 
-    app = create_app(results_dir=results_dir, legacy=legacy)
-    app.run(host=host, port=port, debug=debug)
+    app.run(host=host, port=port, debug=debug, ssl_context=ssl_ctx)
 
 
 if __name__ == "__main__":
