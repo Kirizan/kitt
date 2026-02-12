@@ -45,7 +45,7 @@ def app(tmp_path):
     with open(results_dir / "metrics.json", "w") as f:
         json.dump(metrics, f)
 
-    flask_app = create_app(str(tmp_path))
+    flask_app = create_app(str(tmp_path), legacy=True)
     flask_app.config["TESTING"] = True
     return flask_app
 
@@ -90,7 +90,7 @@ def test_health_endpoint(client):
 
 
 def test_empty_results(tmp_path):
-    app = create_app(str(tmp_path))
+    app = create_app(str(tmp_path), legacy=True)
     app.config["TESTING"] = True
     client = app.test_client()
 
@@ -142,7 +142,7 @@ def multi_app(tmp_path):
         with open(results_dir / "metrics.json", "w") as f:
             json.dump(metrics, f)
 
-    flask_app = create_app(str(tmp_path))
+    flask_app = create_app(str(tmp_path), legacy=True)
     flask_app.config["TESTING"] = True
     return flask_app
 

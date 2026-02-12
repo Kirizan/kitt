@@ -109,10 +109,11 @@ def compare(runs):
 
 @cli.command()
 @click.option("--port", default=8080, help="Port for web UI")
-@click.option("--host", default="127.0.0.1", help="Host to bind to")
+@click.option("--host", default="0.0.0.0", help="Host to bind to")
 @click.option("--results-dir", type=click.Path(exists=True), help="Results directory")
 @click.option("--debug", is_flag=True, help="Enable debug mode")
-def web(port, host, results_dir, debug):
+@click.option("--legacy", is_flag=True, help="Use legacy read-only dashboard")
+def web(port, host, results_dir, debug, legacy):
     """Launch web dashboard for viewing results."""
     try:
         from kitt.web.app import create_app
@@ -124,9 +125,11 @@ def web(port, host, results_dir, debug):
     console.print("[bold]KITT Web Dashboard[/bold]")
     console.print(f"  URL: http://{host}:{port}")
     console.print(f"  Results: {results_dir or 'current directory'}")
+    if legacy:
+        console.print("  Mode: legacy (read-only)")
     console.print()
 
-    app = create_app(results_dir)
+    app = create_app(results_dir=results_dir, legacy=legacy)
     app.run(host=host, port=port, debug=debug)
 
 
