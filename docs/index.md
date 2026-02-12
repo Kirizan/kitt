@@ -14,22 +14,53 @@ collection, and result storage.
 
 ## Feature Highlights
 
-<div class="grid cards" markdown>
+**Multi-Engine Support**
+:   Test across vLLM, TGI, llama.cpp, and Ollama with a single command. Compare
+    results side by side across engines.
 
-- :material-engine: **Multi-Engine Support** -- vLLM, TGI, llama.cpp, Ollama
-- :material-docker: **Docker-Only Engines** -- every engine runs in a container, no host installs
-- :material-check-decagram: **Quality Benchmarks** -- MMLU, GSM8K, TruthfulQA, HellaSwag
-- :material-speedometer: **Performance Benchmarks** -- throughput, latency, memory, warmup analysis
-- :material-cpu-64-bit: **Hardware Fingerprinting** -- automatic GPU/CPU/RAM/storage detection
-- :material-git: **KARR Git-Backed Results** -- version-controlled benchmark history
-- :material-file-export: **Multiple Output Formats** -- JSON, Markdown, comparison tables
-- :material-file-cog: **Custom YAML Benchmarks** -- define your own test cases in YAML
-- :material-layers-triple: **Docker Deployment Stacks** -- composable `docker-compose.yaml` generation
-- :material-monitor-dashboard: **Web Dashboard + REST API** -- Flask-powered UI and endpoints
-- :material-chart-line: **Monitoring** -- Prometheus metrics with Grafana dashboards
-- :material-pipe: **CI Integration** -- JSON output and exit codes for automated pipelines
+**Docker-Only Engines**
+:   Every engine runs in a container -- no host installs required. KITT manages
+    the full container lifecycle automatically.
 
-</div>
+**Quality Benchmarks**
+:   Evaluate model accuracy with MMLU, GSM8K, TruthfulQA, and HellaSwag.
+    Checkpoint recovery keeps long runs safe.
+
+**Performance Benchmarks**
+:   Measure throughput, latency, memory usage, and warmup characteristics under
+    controlled conditions.
+
+**Hardware Fingerprinting**
+:   Automatic GPU, CPU, RAM, storage, and CUDA detection. Results are tagged with
+    a compact fingerprint for reproducibility.
+
+**KARR Git-Backed Results**
+:   Version-controlled benchmark history stored in a Git repository. Track
+    performance over time with full provenance.
+
+**Multiple Output Formats**
+:   Export results as JSON, Markdown summaries, or comparison tables. JSON output
+    integrates directly with CI pipelines.
+
+**Custom YAML Benchmarks**
+:   Define your own test cases in YAML. Mix custom benchmarks with built-in ones
+    in any suite configuration.
+
+**Docker Deployment Stacks**
+:   Generate composable `docker-compose.yaml` files with optional web dashboard,
+    monitoring, PostgreSQL, and agent components.
+
+**Web Dashboard + REST API**
+:   Flask-powered UI for browsing results and a REST API for programmatic access
+    to benchmark data.
+
+**Monitoring**
+:   Prometheus metrics collection with pre-built Grafana dashboards for real-time
+    engine and system observability.
+
+**CI Integration**
+:   JSON output and meaningful exit codes make KITT easy to integrate into
+    automated testing pipelines.
 
 ---
 
