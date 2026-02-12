@@ -27,6 +27,7 @@ from .recommend_commands import recommend  # noqa: E402
 from .remote_commands import remote  # noqa: E402
 from .results_commands import results  # noqa: E402
 from .run import run  # noqa: E402
+from .stack_commands import stack  # noqa: E402
 from .storage_commands import storage  # noqa: E402
 from .test_commands import test  # noqa: E402
 
@@ -44,6 +45,7 @@ cli.add_command(remote)
 cli.add_command(recommend)
 cli.add_command(charts)
 cli.add_command(agent)
+cli.add_command(stack)
 
 
 @cli.command()
