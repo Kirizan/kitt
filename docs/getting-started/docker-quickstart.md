@@ -138,7 +138,7 @@ kitt stack start --name prod
 docker run --rm --network host \
   -v /var/run/docker.sock:/var/run/docker.sock \
   -v /path/to/models:/models:ro \
-  kitt run -m /models/llama-7b -e vllm -s standard --store-karr
+  kitt run -m /models/llama-7b -e vllm -s standard
 
 # Check the web dashboard at http://localhost:5000
 # Check Grafana dashboards at http://localhost:3000

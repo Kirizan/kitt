@@ -1,4 +1,4 @@
-"""KARR (Kirizan's AI Results Repo) repository management."""
+"""KARR (Kitt's AI Results Repo) repository management."""
 
 import logging
 import subprocess
@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 class KARRRepoManager:
-    """Manage KARR (Kirizan's AI Results Repo) repositories."""
+    """Manage KARR (Kitt's AI Results Repo) repositories."""
 
     @staticmethod
     def create_results_repo(repo_path: Path, hardware_fingerprint: str) -> Repo:
@@ -102,7 +102,7 @@ __pycache__/
     @staticmethod
     def _create_readme(repo_path: Path, hardware_fingerprint: str) -> None:
         """Create README for KARR results repo."""
-        content = f"""# KARR - Kirizan's AI Results Repo
+        content = f"""# KARR - Kitt's AI Results Repo
 
 This repository contains LLM inference benchmark results for the following hardware:
 

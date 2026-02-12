@@ -50,7 +50,7 @@ kitt run -m MODEL -e ENGINE -s SUITE -o OUTPUT
 | `--runs` | | Override the number of runs per benchmark |
 | `--skip-warmup` | | Skip the warmup phase |
 | `--config` | | Path to custom engine configuration YAML |
-| `--store-karr` | | Store results in a KARR repository |
+| `--store-karr` | | Also store results in KARR's legacy Git-backed backend |
 
 Examples:
 
@@ -61,7 +61,7 @@ kitt run -m llama3 -e ollama
 # Full standard suite with vLLM
 kitt run -m /models/llama2-7b -e vllm -s standard -o ./my-results
 
-# Performance suite stored in KARR
+# Performance suite with legacy Git-backed KARR storage
 kitt run -m /models/mistral-7b -e llama_cpp -s performance --store-karr
 
 # Override run count

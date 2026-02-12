@@ -14,9 +14,9 @@ How KITT is structured: the engine plugin system, Docker-based container managem
 
 How KITT uniquely identifies the hardware it runs on, the fingerprint format, detection methods for GPUs, CPUs, RAM, and storage, and the supported environment types.
 
-### [KARR Repositories](karr.md)
+### [KARR — Results Storage](karr.md)
 
-Git-backed result storage using KARR (Kirizan's AI Results Repo). Covers the directory structure, file formats, Git LFS integration, and how results are organized by hardware fingerprint.
+KARR (Kitt's AI Results Repository) is KITT's results storage system. Covers the database backend (SQLite / PostgreSQL), the hybrid data model, schema migrations, and the evolution from flat files through Git-backed storage to the current database architecture.
 
 ### [Engine Lifecycle](engine-lifecycle.md)
 

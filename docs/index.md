@@ -34,9 +34,10 @@ collection, and result storage.
 :   Automatic GPU, CPU, RAM, storage, and CUDA detection. Results are tagged with
     a compact fingerprint for reproducibility.
 
-**KARR Git-Backed Results**
-:   Version-controlled benchmark history stored in a Git repository. Track
-    performance over time with full provenance.
+**KARR Results Storage**
+:   All benchmark results persisted through KARR (Kitt's AI Results
+    Repository). Database-backed by default (SQLite or PostgreSQL) with full
+    query, aggregation, and export support.
 
 **Multiple Output Formats**
 :   Export results as JSON, Markdown summaries, or comparison tables. JSON output
@@ -85,7 +86,7 @@ variables.
 
 ### [Concepts](concepts/index.md)
 
-Architecture overview, hardware fingerprinting, KARR repositories, engine
+Architecture overview, hardware fingerprinting, KARR results storage, engine
 lifecycle, and the benchmark system.
 
 ---

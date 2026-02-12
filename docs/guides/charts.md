@@ -70,7 +70,7 @@ kitt charts quant-curves --output curves.png
 
 Chart commands read from the KITT storage backend. KITT tries SQLite first
 (`SQLiteStore`) and falls back to the JSON store (`JsonStore`). Make sure you
-have stored results (via `kitt run --store-karr` or the results commands) before
+have stored results (via `kitt run` or the storage commands) before
 generating charts.
 
 ---

@@ -58,7 +58,7 @@ The token can also be set via the `KITT_AUTH_TOKEN` environment variable.
 ## Legacy Mode
 
 The legacy dashboard is a read-only single-page viewer from KITT v1. It
-scans `kitt-results/` and `karr-*` directories for `metrics.json` files and
+scans `kitt-results/` and legacy `karr-*` directories for `metrics.json` files and
 renders a summary table:
 
 ```bash

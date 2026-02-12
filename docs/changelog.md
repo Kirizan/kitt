@@ -16,6 +16,6 @@ All notable changes to KITT are documented on this page.
 - Quality benchmarks: MMLU, GSM8K, TruthfulQA, HellaSwag
 - Performance benchmarks: throughput, latency, memory, warmup
 - Hardware fingerprinting
-- KARR git-backed results repositories
+- KARR results storage
 - Web dashboard and REST API
 - CI integration
