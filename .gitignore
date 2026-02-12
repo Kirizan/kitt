@@ -57,5 +57,8 @@ campaign_output.log
 campaign_state.json
 rerun-failures*.log
 
+# MkDocs
+site/
+
 # pyenv
 .python-version

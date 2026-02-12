@@ -1,0 +1,118 @@
+# Architecture
+
+KITT is built around a plugin architecture for inference engines and benchmarks, with Docker containers as the execution environment for all engines. This page describes the major components and how they fit together.
+
+## High-Level Overview
+
+```
+Host (KITT CLI)                         Docker Container
++-------------------+                  +------------------+
+| kitt run           |   HTTP/JSON      | Engine Server    |
+|   engine.generate()| <==============> |   API endpoint   |
+|   GPUMemoryTracker |  localhost:PORT  |   /health        |
++-------------------+                  |   --gpus all     |
+                                       |   /models (mount)|
+                                       +------------------+
+```
+
+KITT runs on the host (or in its own container) and manages inference engine containers via the Docker CLI. All communication between KITT and engine containers happens over HTTP on localhost, using each engine's native API.
+
+## Engine Plugin System
+
+The engine system is built on three components:
+
+### InferenceEngine ABC
+
+The abstract base class in `engines/base.py` defines the contract every engine must fulfill:
+
+- **`initialize()`** -- Pull the Docker image, create and start the container, wait for the health check to pass.
+- **`generate(prompt, **kwargs)`** -- Send a generation request to the running engine via its HTTP API and return the result.
+- **`cleanup()`** -- Stop and remove the Docker container.
+
+### EngineRegistry
+
+The registry in `engines/registry.py` maintains a mapping of engine names to their implementation classes. Engines register themselves using the `@register_engine` decorator:
+
+```python
+@register_engine("vllm")
+class VLLMEngine(InferenceEngine):
+    ...
+```
+
+### Auto-Discovery
+
+`EngineRegistry.auto_discover()` imports all built-in engine modules from the `engines/` package. This is called at startup so that all engines are available without manual imports.
+
+### Built-in Engines
+
+| Engine    | Docker Image                                            | API Style             | Default Port |
+|-----------|---------------------------------------------------------|-----------------------|--------------|
+| vLLM      | `vllm/vllm-openai:latest`                              | OpenAI `/v1/completions` | 8000         |
+| TGI       | `ghcr.io/huggingface/text-generation-inference:latest`  | HF `/generate`        | 8080         |
+| llama.cpp | `ghcr.io/ggerganov/llama.cpp:server`                    | OpenAI `/v1/completions` | 8081         |
+| Ollama    | `ollama/ollama:latest`                                  | Ollama `/api/generate` | 11434        |
+
+## Docker Management
+
+### No Docker SDK
+
+KITT deliberately avoids the Docker Python SDK. Instead, `DockerManager` in `engines/docker_manager.py` provides static methods that call the `docker` CLI via `subprocess`. This keeps the dependency footprint small and avoids version-pinning issues with the SDK.
+
+### Container Naming
+
+Containers are named `kitt-{timestamp}` to allow multiple concurrent runs without conflicts.
+
+### Network Mode
+
+All engine containers use `--network host` so the engine server binds directly to localhost on the host. This avoids Docker's port-mapping overhead and simplifies connectivity.
+
+### GPU Access
+
+Engine containers are started with `--gpus all` to expose all host GPUs to the inference server.
+
+### Sibling Container Pattern
+
+KITT can itself run inside a Docker container. In this mode, the Docker socket (`/var/run/docker.sock`) is mounted into the KITT container, allowing it to create and manage engine containers as siblings rather than nested containers. This avoids Docker-in-Docker complexity.
+
+## Project Structure
+
+```
+src/kitt/
+├── cli/           # Click commands (run, engines, test, results, compare, web, fingerprint, stack, agent, monitoring)
+├── engines/       # Inference engine plugins (base ABC, registry, vllm, tgi, llama_cpp, ollama)
+├── benchmarks/    # Benchmark plugins (base ABC, registry, performance/*, quality/*)
+├── config/        # Pydantic models + YAML loader
+├── hardware/      # System fingerprinting (GPU, CPU, RAM, storage, CUDA)
+├── runners/       # Suite/single test runners + checkpoint recovery
+├── collectors/    # GPU memory tracking, system metrics
+├── reporters/     # JSON, Markdown, comparison output
+├── git_ops/       # KARR repository management
+├── monitoring/    # Monitoring stack config, generator, deployer
+├── stack/         # Composable Docker stack config + generator
+├── agent/         # Agent daemon, heartbeat, executor, log streamer
+├── security/      # TLS cert generation and config
+├── web/           # Flask dashboard + REST API + blueprints
+└── utils/         # Compression, validation, versioning
+```
+
+### Key Design Decisions
+
+- **Dataclasses** are used for result types and internal data structures.
+- **Pydantic v2** is used for configuration validation (YAML configs are loaded and validated through Pydantic models).
+- **Click** is the CLI framework; Rich provides tables, panels, and spinners for terminal output.
+- **Logging** uses `logging.getLogger(__name__)` throughout all modules.
+- **Full type hints** are required on all public methods.
+
+## Relationship to DEVON
+
+KITT tests models; DEVON manages and stores them. The two projects share the same technical stack (Poetry, Click, Rich, Python 3.10+, plugin registry pattern). DEVON can export model paths in a format KITT consumes:
+
+```bash
+devon export --format kitt -o models.txt
+```
+
+## Next Steps
+
+- [Engine Lifecycle](engine-lifecycle.md) -- detailed container lifecycle and health checks
+- [Benchmark System](benchmark-system.md) -- how benchmarks are defined and executed
+- [Hardware Fingerprinting](hardware-fingerprinting.md) -- system identification for result organization
