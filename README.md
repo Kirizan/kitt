@@ -511,6 +511,80 @@ kitt monitoring remote-status lab --host dgx01
 kitt monitoring remote-stop lab --host dgx01
 ```
 
+### `kitt stack`
+
+Generate and manage composable Docker deployment stacks. Dynamically builds `docker-compose.yaml` from component flags, supporting any combination of web UI, reporting dashboard, agent daemon, PostgreSQL, and monitoring.
+
+#### `kitt stack generate`
+
+Generate a stack at `~/.kitt/stacks/<name>/` with the selected components.
+
+```bash
+kitt stack generate <name> [OPTIONS]
+```
+
+| Option | Description |
+|---|---|
+| `--web` | Include web UI + REST API service |
+| `--reporting` | Include lightweight read-only dashboard (mutually exclusive with `--web`) |
+| `--agent` | Include agent daemon for GPU servers |
+| `--postgres` | Include PostgreSQL database |
+| `--monitoring` | Include Prometheus + Grafana + InfluxDB |
+| `--port` | Web/reporting port (default: 8080) |
+| `--agent-port` | Agent port (default: 8090) |
+| `--postgres-port` | PostgreSQL port (default: 5432) |
+| `--grafana-port` | Grafana port (default: 3000) |
+| `--prometheus-port` | Prometheus port (default: 9090) |
+| `--influxdb-port` | InfluxDB port (default: 8086) |
+| `--auth-token` | Bearer token for API auth |
+| `--secret-key` | Flask secret key |
+| `--postgres-password` | PostgreSQL password (default: kitt) |
+| `--server-url` | KITT server URL (for agent registration) |
+
+At least one component flag is required.
+
+#### `kitt stack start` / `stop` / `status`
+
+Manage a generated stack's lifecycle.
+
+```bash
+kitt stack start --name <name>
+kitt stack stop --name <name>
+kitt stack status --name <name>
+```
+
+#### `kitt stack list` / `remove`
+
+List all generated stacks or remove one by name.
+
+```bash
+kitt stack list
+kitt stack remove <name> [--delete-files]
+```
+
+#### Example workflow
+
+```bash
+# Full web stack with postgres
+kitt stack generate prod --web --postgres --port 8080 --auth-token mytoken
+
+# Reporting-only stack
+kitt stack generate reports --reporting --port 8080
+
+# Agent daemon for GPU server
+kitt stack generate gpu1 --agent --agent-port 8090 --server-url https://server:8080
+
+# Everything
+kitt stack generate full --web --postgres --monitoring --port 8080
+
+# Manage stacks
+kitt stack list
+kitt stack start --name prod
+kitt stack status --name prod
+kitt stack stop --name prod
+kitt stack remove prod --delete-files
+```
+
 ## Engine Architecture
 
 All engines run inside Docker containers. KITT manages the full container lifecycle automatically:
