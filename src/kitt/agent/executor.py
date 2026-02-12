@@ -55,7 +55,7 @@ class BenchmarkExecutor:
             result_output_dir = ""
             lines = []
 
-            for line in self._current_process.stdout:
+            for line in self._current_process.stdout or []:
                 line = line.rstrip()
                 lines.append(line)
                 if on_log:
