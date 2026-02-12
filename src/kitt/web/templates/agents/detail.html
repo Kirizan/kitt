@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block title %}KITT - Agent: {{ agent.name }}{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-bold">{{ agent.name }}</h1>
+            <p class="text-kitt-dim text-sm mt-1">{{ agent.hostname }}:{{ agent.port }}</p>
+        </div>
+        <div class="flex items-center space-x-3">
+            <span class="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-sm
+                  {% if agent.status == 'online' %}bg-green-900/50 text-green-300
+                  {% elif agent.status == 'busy' %}bg-yellow-900/50 text-yellow-300
+                  {% else %}bg-gray-800 text-gray-400{% endif %}">
+                <span class="w-2 h-2 rounded-full
+                      {% if agent.status == 'online' %}bg-green-400
+                      {% elif agent.status == 'busy' %}bg-yellow-400
+                      {% else %}bg-gray-500{% endif %}"></span>
+                <span>{{ agent.status }}</span>
+            </span>
+            <form action="/agents/{{ agent.id }}/delete" method="POST"
+                  onsubmit="return confirm('Remove this agent?')">
+                <button type="submit" class="text-red-400 hover:text-red-300 text-sm">Remove</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- Hardware info -->
+        <div class="bg-kitt-surface rounded-lg p-5">
+            <h2 class="text-lg font-semibold mb-4">Hardware</h2>
+            <dl class="space-y-3 text-sm">
+                {% if agent.gpu_info %}
+                <div class="flex justify-between">
+                    <dt class="text-kitt-dim">GPU</dt>
+                    <dd>{{ agent.gpu_info }}{% if agent.gpu_count > 1 %} x{{ agent.gpu_count }}{% endif %}</dd>
+                </div>
+                {% endif %}
+                {% if agent.cpu_info %}
+                <div class="flex justify-between">
+                    <dt class="text-kitt-dim">CPU</dt>
+                    <dd>{{ agent.cpu_info }}</dd>
+                </div>
+                {% endif %}
+                {% if agent.ram_gb %}
+                <div class="flex justify-between">
+                    <dt class="text-kitt-dim">RAM</dt>
+                    <dd>{{ agent.ram_gb }}GB</dd>
+                </div>
+                {% endif %}
+                {% if agent.environment_type %}
+                <div class="flex justify-between">
+                    <dt class="text-kitt-dim">Environment</dt>
+                    <dd>{{ agent.environment_type }}</dd>
+                </div>
+                {% endif %}
+                {% if agent.fingerprint %}
+                <div class="flex justify-between">
+                    <dt class="text-kitt-dim">Fingerprint</dt>
+                    <dd class="text-xs font-mono truncate max-w-xs" title="{{ agent.fingerprint }}">{{ agent.fingerprint }}</dd>
+                </div>
+                {% endif %}
+            </dl>
+        </div>
+
+        <!-- Connection info -->
+        <div class="bg-kitt-surface rounded-lg p-5">
+            <h2 class="text-lg font-semibold mb-4">Connection</h2>
+            <dl class="space-y-3 text-sm">
+                <div class="flex justify-between">
+                    <dt class="text-kitt-dim">Registered</dt>
+                    <dd>{{ agent.registered_at[:19] if agent.registered_at else '-' }}</dd>
+                </div>
+                <div class="flex justify-between">
+                    <dt class="text-kitt-dim">Last Heartbeat</dt>
+                    <dd>{{ agent.last_heartbeat[:19] if agent.last_heartbeat else '-' }}</dd>
+                </div>
+                <div class="flex justify-between">
+                    <dt class="text-kitt-dim">KITT Version</dt>
+                    <dd>{{ agent.kitt_version or '-' }}</dd>
+                </div>
+            </dl>
+        </div>
+    </div>
+
+    {% if agent.notes %}
+    <div class="bg-kitt-surface rounded-lg p-5">
+        <h2 class="text-lg font-semibold mb-2">Notes</h2>
+        <p class="text-sm text-kitt-dim">{{ agent.notes }}</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

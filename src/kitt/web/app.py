@@ -103,32 +103,46 @@ def create_app(
         run_migrations_sqlite(db_conn, current)
 
     # --- Initialize services ---
+    from kitt.web.services.agent_manager import AgentManager
     from kitt.web.services.result_service import ResultService
 
     global _services
     _services = {
         "result_service": ResultService(store),
+        "agent_manager": AgentManager(db_conn),
         "db_conn": db_conn,
         "store": store,
     }
 
     # --- Register blueprints ---
+    from kitt.web.blueprints.agents import bp as agents_bp
     from kitt.web.blueprints.dashboard import bp as dashboard_bp
     from kitt.web.blueprints.results import bp as results_bp
     from kitt.web.blueprints.settings import bp as settings_bp
 
     app.register_blueprint(dashboard_bp)
+    app.register_blueprint(agents_bp)
     app.register_blueprint(results_bp)
     app.register_blueprint(settings_bp)
 
     # --- Register API blueprints ---
+    from kitt.web.api.v1.agents import bp as api_agents_bp
     from kitt.web.api.v1.events import bp as api_events_bp
     from kitt.web.api.v1.health import bp as health_bp
     from kitt.web.api.v1.results import bp as api_results_bp
 
     app.register_blueprint(health_bp)
+    app.register_blueprint(api_agents_bp)
     app.register_blueprint(api_results_bp)
     app.register_blueprint(api_events_bp)
+
+    # --- HTMX partial routes ---
+    @app.route("/partials/agent_cards")
+    def partial_agent_cards():
+        agents = _services["agent_manager"].list_agents()
+        from flask import render_template
+
+        return render_template("partials/agent_card.html", agents=agents)
 
     # --- Legacy compat: /api/health ---
     @app.route("/api/health")

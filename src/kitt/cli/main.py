@@ -15,6 +15,7 @@ def cli():
     """
 
 
+from .agent_commands import agent  # noqa: E402
 from .bot_commands import bot  # noqa: E402
 from .campaign_commands import campaign  # noqa: E402
 from .charts_commands import charts  # noqa: E402
@@ -42,6 +43,7 @@ cli.add_command(bot)
 cli.add_command(remote)
 cli.add_command(recommend)
 cli.add_command(charts)
+cli.add_command(agent)
 
 
 @cli.command()

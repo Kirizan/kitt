@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}KITT - Add Agent{% endblock %}
+
+{% block content %}
+<div class="space-y-6 max-w-3xl">
+    <div>
+        <h1 class="text-2xl font-bold">Add Agent</h1>
+        <p class="text-kitt-dim text-sm mt-1">Set up a KITT agent on a GPU server</p>
+    </div>
+
+    <div class="bg-kitt-surface rounded-lg p-6 space-y-6">
+        <div>
+            <h2 class="text-lg font-semibold mb-3">1. Install KITT on the GPU server</h2>
+            <div class="bg-kitt-bg rounded-md p-4 font-mono text-sm">
+                <code>pip install "kitt[web]"</code>
+            </div>
+        </div>
+
+        <div>
+            <h2 class="text-lg font-semibold mb-3">2. Initialize the agent</h2>
+            <div class="bg-kitt-bg rounded-md p-4 font-mono text-sm break-all">
+                <code>kitt agent init --server {{ server_url }} --token {{ auth_token or '&lt;TOKEN&gt;' }}</code>
+            </div>
+            <p class="text-kitt-dim text-xs mt-2">This fetches the server's CA certificate and generates agent certificates.</p>
+        </div>
+
+        <div>
+            <h2 class="text-lg font-semibold mb-3">3. Start the agent</h2>
+            <div class="bg-kitt-bg rounded-md p-4 font-mono text-sm">
+                <code>kitt agent start</code>
+            </div>
+            <p class="text-kitt-dim text-xs mt-2">The agent will register with this server and begin sending heartbeats.</p>
+        </div>
+
+        <div>
+            <h2 class="text-lg font-semibold mb-3">4. Verify</h2>
+            <p class="text-kitt-dim text-sm">Once the agent starts, it will appear on the <a href="/agents" class="text-kitt-accent hover:underline">Agents page</a> within a few seconds.</p>
+        </div>
+    </div>
+
+    <div class="bg-kitt-surface rounded-lg p-6">
+        <h2 class="text-lg font-semibold mb-3">Alternative: Systemd service</h2>
+        <p class="text-kitt-dim text-sm mb-3">For persistent agent deployment, install as a systemd service:</p>
+        <div class="bg-kitt-bg rounded-md p-4 font-mono text-sm space-y-1">
+            <code>kitt agent init --server {{ server_url }} --token {{ auth_token or '&lt;TOKEN&gt;' }}</code><br>
+            <code>sudo cp ~/.kitt/kitt-agent.service /etc/systemd/system/</code><br>
+            <code>sudo systemctl enable --now kitt-agent</code>
+        </div>
+    </div>
+</div>
+{% endblock %}
