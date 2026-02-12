@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}KITT - Campaign: {{ campaign.name }}{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-bold">{{ campaign.name }}</h1>
+            {% if campaign.description %}
+            <p class="text-kitt-dim text-sm mt-1">{{ campaign.description }}</p>
+            {% endif %}
+        </div>
+        <div class="flex items-center space-x-3">
+            <span class="text-xs px-3 py-1 rounded-full
+                  {% if campaign.status == 'running' %}bg-blue-900/50 text-blue-300
+                  {% elif campaign.status == 'completed' %}bg-green-900/50 text-green-300
+                  {% elif campaign.status == 'failed' %}bg-red-900/50 text-red-300
+                  {% elif campaign.status == 'queued' %}bg-yellow-900/50 text-yellow-300
+                  {% else %}bg-gray-800 text-gray-400{% endif %}">
+                {{ campaign.status }}
+            </span>
+
+            {% if campaign.status == 'draft' %}
+            <button hx-post="/api/v1/campaigns/{{ campaign.id }}/launch" hx-swap="none"
+                    hx-confirm="Launch this campaign?"
+                    class="bg-green-600 hover:bg-green-500 text-white px-4 py-1.5 rounded-md text-sm transition-colors">
+                Launch
+            </button>
+            {% elif campaign.status in ('queued', 'running') %}
+            <button hx-post="/api/v1/campaigns/{{ campaign.id }}/cancel" hx-swap="none"
+                    hx-confirm="Cancel this campaign?"
+                    class="bg-red-600 hover:bg-red-500 text-white px-4 py-1.5 rounded-md text-sm transition-colors">
+                Cancel
+            </button>
+            {% endif %}
+
+            <form action="/campaigns/{{ campaign.id }}/delete" method="POST"
+                  onsubmit="return confirm('Delete this campaign?')">
+                <button type="submit" class="text-red-400 hover:text-red-300 text-sm">Delete</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Stats -->
+    {% if campaign.total_runs > 0 %}
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div class="bg-kitt-surface rounded-lg p-4 text-center">
+            <div class="text-2xl font-bold">{{ campaign.total_runs }}</div>
+            <div class="text-kitt-dim text-xs">Total Runs</div>
+        </div>
+        <div class="bg-kitt-surface rounded-lg p-4 text-center">
+            <div class="text-2xl font-bold text-green-400">{{ campaign.succeeded }}</div>
+            <div class="text-kitt-dim text-xs">Succeeded</div>
+        </div>
+        <div class="bg-kitt-surface rounded-lg p-4 text-center">
+            <div class="text-2xl font-bold text-red-400">{{ campaign.failed }}</div>
+            <div class="text-kitt-dim text-xs">Failed</div>
+        </div>
+        <div class="bg-kitt-surface rounded-lg p-4 text-center">
+            <div class="text-2xl font-bold text-yellow-400">{{ campaign.skipped }}</div>
+            <div class="text-kitt-dim text-xs">Skipped</div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Configuration -->
+    <div class="bg-kitt-surface rounded-lg p-5">
+        <h2 class="text-lg font-semibold mb-3">Configuration</h2>
+        <pre class="bg-kitt-bg rounded-md p-4 text-sm overflow-x-auto text-kitt-dim">{{ campaign.config | tojson(indent=2) }}</pre>
+    </div>
+
+    <!-- Timing -->
+    <div class="bg-kitt-surface rounded-lg p-5">
+        <h2 class="text-lg font-semibold mb-3">Timeline</h2>
+        <dl class="space-y-2 text-sm">
+            <div class="flex justify-between"><dt class="text-kitt-dim">Created</dt><dd>{{ campaign.created_at[:19] if campaign.created_at else '-' }}</dd></div>
+            <div class="flex justify-between"><dt class="text-kitt-dim">Started</dt><dd>{{ campaign.started_at[:19] if campaign.started_at else '-' }}</dd></div>
+            <div class="flex justify-between"><dt class="text-kitt-dim">Completed</dt><dd>{{ campaign.completed_at[:19] if campaign.completed_at else '-' }}</dd></div>
+        </dl>
+    </div>
+
+    {% if campaign.error %}
+    <div class="bg-red-900/30 border border-red-700 rounded-lg p-4">
+        <h2 class="text-sm font-semibold text-red-300 mb-1">Error</h2>
+        <pre class="text-sm text-red-200 whitespace-pre-wrap">{{ campaign.error }}</pre>
+    </div>
+    {% endif %}
+
+    <!-- Live log stream -->
+    {% if campaign.status in ('running', 'queued') %}
+    <div class="bg-kitt-surface rounded-lg p-5">
+        <h2 class="text-lg font-semibold mb-3">Live Logs</h2>
+        <div id="log-stream" class="bg-kitt-bg rounded-md p-4 h-64 overflow-y-auto font-mono text-xs text-kitt-dim"
+             hx-sse="connect:/api/v1/events/stream/{{ campaign.id }}">
+            <div hx-sse="swap:log" hx-swap="beforeend"></div>
+            <p class="text-kitt-dim">Waiting for logs...</p>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

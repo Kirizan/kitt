@@ -104,35 +104,41 @@ def create_app(
 
     # --- Initialize services ---
     from kitt.web.services.agent_manager import AgentManager
+    from kitt.web.services.campaign_service import CampaignService
     from kitt.web.services.result_service import ResultService
 
     global _services
     _services = {
         "result_service": ResultService(store),
         "agent_manager": AgentManager(db_conn),
+        "campaign_service": CampaignService(db_conn),
         "db_conn": db_conn,
         "store": store,
     }
 
     # --- Register blueprints ---
     from kitt.web.blueprints.agents import bp as agents_bp
+    from kitt.web.blueprints.campaigns import bp as campaigns_bp
     from kitt.web.blueprints.dashboard import bp as dashboard_bp
     from kitt.web.blueprints.results import bp as results_bp
     from kitt.web.blueprints.settings import bp as settings_bp
 
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(agents_bp)
+    app.register_blueprint(campaigns_bp)
     app.register_blueprint(results_bp)
     app.register_blueprint(settings_bp)
 
     # --- Register API blueprints ---
     from kitt.web.api.v1.agents import bp as api_agents_bp
+    from kitt.web.api.v1.campaigns import bp as api_campaigns_bp
     from kitt.web.api.v1.events import bp as api_events_bp
     from kitt.web.api.v1.health import bp as health_bp
     from kitt.web.api.v1.results import bp as api_results_bp
 
     app.register_blueprint(health_bp)
     app.register_blueprint(api_agents_bp)
+    app.register_blueprint(api_campaigns_bp)
     app.register_blueprint(api_results_bp)
     app.register_blueprint(api_events_bp)
 
@@ -143,6 +149,30 @@ def create_app(
         from flask import render_template
 
         return render_template("partials/agent_card.html", agents=agents)
+
+    @app.route("/partials/campaign_rows")
+    def partial_campaign_rows():
+        campaigns = _services["campaign_service"].list_campaigns(per_page=5)
+        html_parts = []
+        for c in campaigns["items"]:
+            status_cls = {
+                "running": "bg-blue-900/50 text-blue-300",
+                "completed": "bg-green-900/50 text-green-300",
+                "failed": "bg-red-900/50 text-red-300",
+            }.get(c["status"], "bg-gray-800 text-gray-400")
+
+            html_parts.append(f"""
+            <div class="bg-kitt-bg/50 rounded-md p-3">
+                <div class="flex items-center justify-between">
+                    <a href="/campaigns/{c["id"]}" class="text-sm font-medium hover:text-kitt-accent">{c["name"]}</a>
+                    <span class="text-xs px-2 py-0.5 rounded {status_cls}">{c["status"]}</span>
+                </div>
+            </div>""")
+        return (
+            "\n".join(html_parts)
+            if html_parts
+            else '<p class="text-kitt-dim text-sm">No campaigns</p>'
+        )
 
     # --- Legacy compat: /api/health ---
     @app.route("/api/health")
