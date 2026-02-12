@@ -1,108 +1,109 @@
-# KARR Repositories
+# Results Storage
 
-KARR (Kirizan's AI Results Repo) is KITT's system for storing, versioning, and sharing benchmark results using Git repositories. Every benchmark run produces structured output that is committed to a KARR repository, giving you full version history, diff-able results, and the ability to collaborate on benchmark data through standard Git workflows.
+KITT stores benchmark results in a **relational database** by default, providing fast queries, aggregation, and a normalized schema alongside the full raw JSON for every run. The abstract `ResultStore` interface makes storage pluggable -- SQLite ships as the zero-configuration default, PostgreSQL is available for distributed and production deployments, and flat JSON files are still written for quick inspection.
 
-## Why Git-Backed Storage?
+## Storage Architecture
 
-Benchmark results are valuable data that accumulate over time. Storing them in a Git repository provides several benefits:
-
-- **Version history** -- Every run is a commit. You can see exactly when results changed and what caused regressions.
-- **Collaboration** -- Share results by pushing to a remote. Review benchmark changes via pull requests.
-- **Diff-able** -- JSON and Markdown result files are text-based, so `git diff` shows exactly what changed between runs.
-- **Reproducibility** -- The full hardware configuration and test parameters are stored alongside results.
-- **Portability** -- Clone a KARR repo to any machine to analyze results locally.
-
-## Initialization
-
-Create a new KARR repository with `kitt results init`:
-
-```bash
-kitt results init --path ./my-results
+```
+ResultStore (abstract interface)
+├── SQLiteResultStore   -- default, ~/.kitt/kitt.db
+└── PostgresResultStore -- optional, requires psycopg2
 ```
 
-This creates a Git repository with the appropriate `.gitattributes` for LFS tracking and an initial directory structure.
+The `ResultStore` interface exposes a small, consistent API:
 
-## Directory Structure
+| Method | Purpose |
+|--------|---------|
+| `save_result()` | Persist a completed benchmark run |
+| `get_result()` | Retrieve a single run by ID |
+| `query()` | Filter runs by model, engine, date range, etc. |
+| `list_results()` | List runs with optional filters and pagination |
+| `aggregate()` | Group-by aggregation (e.g., average throughput per engine) |
+| `delete_result()` | Remove a run and its related rows (CASCADE) |
+| `count()` | Return the total number of stored runs |
 
-Results are organized by hardware fingerprint, model, engine, and timestamp:
+## SQLite (Default)
+
+SQLite is the default backend. No configuration is required -- KITT creates `~/.kitt/kitt.db` on first use.
+
+Key characteristics:
+
+- **WAL mode** -- concurrent readers do not block writers, so the web dashboard can query while a benchmark is running.
+- **Foreign keys with CASCADE DELETE** -- deleting a run automatically removes its benchmarks, metrics, and hardware rows.
+- **Indexes on common query columns** -- model, engine, suite name, and timestamp are indexed for fast filtering.
+
+## PostgreSQL (Production / Distributed)
+
+For multi-agent or web-scale deployments, KITT supports PostgreSQL. Install the extra dependency and provide a DSN connection string:
+
+```bash
+poetry install -E postgres        # installs psycopg2
+export KITT_DB_DSN="postgresql://user:pass@db-host:5432/kitt"
+kitt storage init                  # creates tables in the target database
+```
+
+PostgreSQL uses native types where SQLite uses text approximations -- `TIMESTAMPTZ` instead of `TEXT` for timestamps, `JSONB` instead of `TEXT` for raw JSON, `BOOLEAN` instead of `INTEGER`, and `DOUBLE PRECISION` instead of `REAL`.
+
+## Hybrid Data Model
+
+Every run is stored in **two complementary forms**:
+
+1. **Normalized tables** -- `runs`, `benchmarks`, `metrics`, and `hardware` break each run into queryable columns with proper types and foreign-key relationships. This powers filtered listing, cross-run comparison, and group-by aggregation.
+2. **`runs.raw_json`** -- the full JSON output produced by KITT is stored verbatim in a single column. This guarantees lossless round-tripping: export always returns exactly what was originally recorded, even if the schema evolves.
+
+## Schema Versioning & Migrations
+
+The database tracks its schema version in the `schema_version` table. KITT ships with an ordered set of migration scripts and applies any that are newer than the recorded version:
+
+```bash
+kitt storage migrate              # apply pending migrations
+```
+
+The current schema version is **2**. Migrations are forward-only; downgrades are not supported.
+
+## CLI Quick Reference
+
+| Command | Description |
+|---------|-------------|
+| `kitt storage init` | Create tables (SQLite file or PostgreSQL schema) |
+| `kitt storage migrate` | Apply pending schema migrations |
+| `kitt storage import` | Import JSON result files into the database |
+| `kitt storage export` | Export runs from the database as JSON |
+| `kitt storage list` | List stored runs with optional filters |
+| `kitt storage stats` | Show summary statistics (run count, models, engines) |
+
+## Flat File Output (Dev / CLI)
+
+When you run `kitt run`, JSON result files are still written to the `kitt-results/` directory in the current working directory. These files are useful for quick inspection, piping into `jq`, or archiving -- but they are not the primary storage mechanism. The database is the source of truth.
+
+## Legacy: Git-Backed KARR Repositories
+
+!!! warning "Deprecated"
+    Git-backed KARR storage is **deprecated for production use**. It remains functional
+    for backward compatibility and may suit single-machine dev/test workflows, but
+    **database storage is the recommended path** for all new deployments.
+
+KARR (Kirizan's AI Results Repo) stored results in a Git repository with LFS tracking. You can still enable it with `--store-karr`, but it is no longer actively developed.
+
+### KARR Directory Structure (Legacy)
 
 ```
 karr-{fingerprint[:40]}/
-  └── {model}/
-      └── {engine}/
-          └── {timestamp}/
-              ├── metrics.json
-              ├── summary.md
-              ├── hardware.json
-              ├── config.json
-              └── outputs/
-                  └── *.jsonl.gz
+  {model}/
+    {engine}/
+      {timestamp}/
+        metrics.json
+        summary.md
+        hardware.json
+        config.json
+        outputs/
+          *.jsonl.gz
 ```
 
-### Path Components
-
-| Component | Example | Description |
-|-----------|---------|-------------|
-| `fingerprint[:40]` | `rtx4090-24gb_i9-13900k-24c_64gb-ddr` | Truncated [hardware fingerprint](hardware-fingerprinting.md) |
-| `model` | `meta-llama--Llama-3.1-8B` | Model identifier (slashes replaced with `--`) |
-| `engine` | `vllm` | Inference engine name |
-| `timestamp` | `20250115-143022` | Run timestamp in `YYYYMMDD-HHMMSS` format |
-
-### Files Per Run
-
-| File | Contents |
-|------|----------|
-| `metrics.json` | Quantitative benchmark results (throughput, latency, accuracy scores) |
-| `summary.md` | Human-readable Markdown summary of the run |
-| `hardware.json` | Full `SystemInfo` snapshot including the complete hardware fingerprint |
-| `config.json` | Exact configuration used for this run (suite, engine settings, test parameters) |
-| `outputs/` | Raw model outputs, compressed as `.jsonl.gz` files |
-
-## Git LFS
-
-Large result files (particularly raw model outputs in `*.jsonl.gz` format) are tracked by Git LFS to keep the repository size manageable. The `.gitattributes` file is configured during `kitt results init` to automatically route these files through LFS.
-
-## Compression
-
-Raw outputs are compressed using gzip and split into 50MB chunks. This ensures that individual files stay within Git LFS and hosting platform limits while preserving the full output data.
-
-## Git Operations
-
-KARR uses GitPython for all Git operations:
-
-- **Committing results** -- After a benchmark run completes, results are staged and committed automatically when the `--store-karr` flag is used.
-- **Listing results** -- `kitt results list` reads the directory structure to enumerate stored runs, with optional `--model` and `--engine` filters.
-- **Comparing results** -- `kitt results compare` loads `metrics.json` from multiple runs for side-by-side comparison.
-
-## KARRRepoManager
-
-The `KARRRepoManager` class in `git_ops/repo_manager.py` handles all interactions with KARR repositories. It provides methods for:
-
-- Initializing new repositories with proper LFS configuration
-- Writing result files to the correct directory path
-- Committing results with descriptive commit messages
-- Querying the repository for stored runs
-
-## Workflow Example
-
-A typical workflow using KARR:
-
-```bash
-# Initialize a results repository
-kitt results init --path ./karr-results
-
-# Run benchmarks and store results
-kitt run -m meta-llama/Llama-3.1-8B -e vllm -s standard --store-karr ./karr-results
-
-# List stored results
-kitt results list --path ./karr-results
-
-# Compare two runs
-kitt results compare ./karr-results/karr-*/meta-llama--Llama-3.1-8B/vllm/20250115-*/ \
-                     ./karr-results/karr-*/meta-llama--Llama-3.1-8B/tgi/20250115-*/
-```
+Large output files in `outputs/` were compressed in 50 MB chunks and tracked by Git LFS. For Docker-based production deployments this approach introduces unnecessary complexity -- mounting Git repos, configuring LFS, and managing repository growth -- that the database layer eliminates entirely.
 
 ## Next Steps
 
-- [Hardware Fingerprinting](hardware-fingerprinting.md) -- how the fingerprint directory name is generated
-- [Benchmark System](benchmark-system.md) -- what produces the results stored in KARR
+- [Database Schema Reference](../reference/database.md) -- full table and column documentation
+- [Results Guide](../guides/results.md) -- practical workflows for storing, querying, and comparing results
+- [Hardware Fingerprinting](hardware-fingerprinting.md) -- how system identity is captured alongside results

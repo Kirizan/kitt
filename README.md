@@ -11,7 +11,7 @@ End-to-end testing suite for LLM inference engines. Measures quality consistency
 - **Quality benchmarks** — MMLU, GSM8K, TruthfulQA, and HellaSwag evaluations
 - **Performance benchmarks** — throughput, latency, memory usage, and warmup analysis
 - **Hardware fingerprinting** — automatic system identification for reproducible results
-- **KARR integration** — Git-backed results repositories for tracking runs over time
+- **Database results storage** — SQLite (default) or PostgreSQL with queryable schema and full JSON round-tripping
 - **Docker deployment stacks** — composable `docker-compose` stacks via `kitt stack`
 - **Web dashboard & REST API** — browse results with TLS and token auth
 - **Monitoring** — Prometheus + Grafana + InfluxDB stack generation
@@ -58,8 +58,9 @@ kitt fingerprint                  # detect hardware
 kitt engines setup vllm           # pull engine Docker image
 kitt engines list                 # check engine status
 kitt run -m /models/llama-7b -e vllm -s standard -o ./results
-kitt results init                 # initialize KARR repo
-kitt run -m /models/llama-7b -e vllm --store-karr
+kitt storage init                 # initialize results database
+kitt storage list                 # browse stored runs
+kitt storage stats                # summary statistics
 ```
 
 ## Documentation
@@ -69,7 +70,7 @@ kitt run -m /models/llama-7b -e vllm --store-karr
 | [Getting Started](https://kirizan.github.io/kitt/getting-started/) | Installation, first benchmark tutorial, Docker quickstart |
 | [Guides](https://kirizan.github.io/kitt/guides/) | Engines, benchmarks, results, campaigns, deployment, monitoring |
 | [Reference](https://kirizan.github.io/kitt/reference/) | CLI reference, config schemas, REST API, environment variables |
-| [Concepts](https://kirizan.github.io/kitt/concepts/) | Architecture, fingerprinting, KARR design, engine lifecycle |
+| [Concepts](https://kirizan.github.io/kitt/concepts/) | Architecture, fingerprinting, results storage, engine lifecycle |
 
 ## Development
 
