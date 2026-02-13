@@ -1,6 +1,8 @@
 """Remote campaign execution via SSH."""
 
 import logging
+import re
+import shlex
 import time
 from pathlib import Path
 
@@ -8,6 +10,15 @@ from .host_config import HostConfig
 from .ssh_connection import SSHConnection
 
 logger = logging.getLogger(__name__)
+
+_SAFE_PATH_RE = re.compile(r'^[a-zA-Z0-9_.~/@: -]+$')
+
+
+def _validate_remote_path(path: str) -> str:
+    """Validate that a remote path contains only safe characters."""
+    if not _SAFE_PATH_RE.match(path):
+        raise ValueError(f"Unsafe characters in remote path: {path!r}")
+    return path
 
 
 class RemoteCampaignExecutor:
@@ -20,6 +31,7 @@ class RemoteCampaignExecutor:
             user=host_config.user or None,
             ssh_key=host_config.ssh_key or None,
             port=host_config.port,
+            strict_host_key=host_config.strict_host_key,
         )
 
     def upload_config(self, local_config_path: str) -> str | None:
@@ -29,10 +41,11 @@ class RemoteCampaignExecutor:
             Remote path if successful, None otherwise.
         """
         remote_dir = "~/kitt-campaigns"
-        self.conn.run_command(f"mkdir -p {remote_dir}")
+        self.conn.run_command(f"mkdir -p {shlex.quote(remote_dir)}")
 
         filename = Path(local_config_path).name
         remote_path = f"{remote_dir}/{filename}"
+        _validate_remote_path(remote_path)
 
         if self.conn.upload_file(local_config_path, remote_path):
             logger.info(f"Config uploaded to {remote_path}")
@@ -52,7 +65,8 @@ class RemoteCampaignExecutor:
             True if campaign started.
         """
         kitt_cmd = self.host.kitt_path or "kitt"
-        cmd = f"{kitt_cmd} campaign run {remote_config_path}"
+        _validate_remote_path(remote_config_path)
+        cmd = f"{shlex.quote(kitt_cmd)} campaign run {shlex.quote(remote_config_path)}"
         if dry_run:
             cmd += " --dry-run"
 
@@ -62,6 +76,9 @@ class RemoteCampaignExecutor:
         rc, out, err = self.conn.run_command(full_cmd)
         if rc == 0 and out.strip():
             pid = out.strip()
+            if not pid.isdigit():
+                logger.warning(f"Unexpected PID value: {pid!r}")
+                return False
             logger.info(f"Campaign started on remote (PID: {pid})")
             return True
         else:
@@ -82,7 +99,7 @@ class RemoteCampaignExecutor:
             return "running"
 
         # Check campaign state
-        rc, out, _ = self.conn.run_command(f"{kitt_cmd} campaign status 2>/dev/null")
+        rc, out, _ = self.conn.run_command(f"{shlex.quote(kitt_cmd)} campaign status 2>/dev/null")
         if rc == 0:
             return out.strip()
 
@@ -98,7 +115,7 @@ class RemoteCampaignExecutor:
             Log output string.
         """
         rc, out, _ = self.conn.run_command(
-            f"tail -n {tail} ~/kitt-campaign.log 2>/dev/null"
+            f"tail -n {shlex.quote(str(tail))} ~/kitt-campaign.log 2>/dev/null"
         )
         return out if rc == 0 else "No logs available."
 

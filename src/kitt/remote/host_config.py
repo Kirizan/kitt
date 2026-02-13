@@ -26,6 +26,7 @@ class HostConfig(BaseModel):
     gpu_count: int = 0
     python_version: str = ""
     notes: str = ""
+    strict_host_key: bool = True
 
 
 class HostManager:
