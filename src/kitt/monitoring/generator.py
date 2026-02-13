@@ -108,7 +108,7 @@ class MonitoringStackGenerator:
                     "environment": [
                         "DOCKER_INFLUXDB_INIT_MODE=setup",
                         "DOCKER_INFLUXDB_INIT_USERNAME=kitt",
-                        "DOCKER_INFLUXDB_INIT_PASSWORD=kittpwd123",
+                        f"DOCKER_INFLUXDB_INIT_PASSWORD={self.influxdb_token}",
                         "DOCKER_INFLUXDB_INIT_ORG=kitt",
                         "DOCKER_INFLUXDB_INIT_BUCKET=benchmarks",
                         f"DOCKER_INFLUXDB_INIT_ADMIN_TOKEN={self.influxdb_token}",

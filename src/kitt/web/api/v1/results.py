@@ -50,6 +50,7 @@ def delete_result(result_id):
 
 
 @bp.route("/aggregate", methods=["GET"])
+@require_auth
 def aggregate():
     """Aggregate results by a field."""
     group_by = request.args.get("group_by", "model")
@@ -64,6 +65,7 @@ def aggregate():
 
 
 @bp.route("/compare", methods=["POST"])
+@require_auth
 def compare():
     """Compare multiple results."""
     data = request.get_json(silent=True)

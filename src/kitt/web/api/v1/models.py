@@ -2,6 +2,8 @@
 
 from flask import Blueprint, jsonify, request
 
+from kitt.web.auth import require_auth
+
 bp = Blueprint("api_models", __name__, url_prefix="/api/v1/models")
 
 
@@ -37,6 +39,7 @@ def list_local():
 
 
 @bp.route("/download", methods=["POST"])
+@require_auth
 def download():
     """Download a model via Devon."""
     data = request.get_json(silent=True)
@@ -55,6 +58,7 @@ def download():
 
 
 @bp.route("/<path:repo_id>", methods=["DELETE"])
+@require_auth
 def remove(repo_id):
     """Remove a locally downloaded model."""
     svc = _get_model_service()
