@@ -4,6 +4,8 @@ import logging
 
 from flask import Blueprint, jsonify, request
 
+from kitt.web.auth import require_auth
+
 logger = logging.getLogger(__name__)
 
 bp = Blueprint("api_campaigns", __name__, url_prefix="/api/v1/campaigns")
@@ -28,6 +30,7 @@ def list_campaigns():
 
 
 @bp.route("/", methods=["POST"])
+@require_auth
 def create_campaign():
     """Create a new campaign."""
     data = request.get_json(silent=True)
@@ -59,6 +62,7 @@ def get_campaign(campaign_id):
 
 
 @bp.route("/<campaign_id>", methods=["DELETE"])
+@require_auth
 def delete_campaign(campaign_id):
     """Delete a campaign."""
     svc = _get_campaign_service()
@@ -68,6 +72,7 @@ def delete_campaign(campaign_id):
 
 
 @bp.route("/<campaign_id>/launch", methods=["POST"])
+@require_auth
 def launch_campaign(campaign_id):
     """Launch a campaign on the assigned agent."""
     svc = _get_campaign_service()
@@ -88,6 +93,7 @@ def launch_campaign(campaign_id):
 
 
 @bp.route("/<campaign_id>/cancel", methods=["POST"])
+@require_auth
 def cancel_campaign(campaign_id):
     """Cancel a running campaign."""
     svc = _get_campaign_service()
@@ -105,6 +111,7 @@ def cancel_campaign(campaign_id):
 
 
 @bp.route("/<campaign_id>/config", methods=["PUT"])
+@require_auth
 def update_config(campaign_id):
     """Update campaign configuration (draft only)."""
     data = request.get_json(silent=True)

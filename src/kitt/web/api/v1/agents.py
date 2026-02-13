@@ -4,6 +4,7 @@ import logging
 
 from flask import Blueprint, jsonify, request
 
+from kitt.web.auth import require_auth
 from kitt.web.models.agent import AgentHeartbeat, AgentRegistration
 
 logger = logging.getLogger(__name__)
@@ -82,6 +83,7 @@ def get_agent(agent_id):
 
 
 @bp.route("/<agent_id>", methods=["DELETE"])
+@require_auth
 def delete_agent(agent_id):
     """Remove an agent."""
     mgr = _get_agent_manager()
@@ -91,6 +93,7 @@ def delete_agent(agent_id):
 
 
 @bp.route("/<agent_id>", methods=["PATCH"])
+@require_auth
 def update_agent(agent_id):
     """Update agent fields."""
     data = request.get_json(silent=True)

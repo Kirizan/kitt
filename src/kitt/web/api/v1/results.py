@@ -2,6 +2,8 @@
 
 from flask import Blueprint, jsonify, request
 
+from kitt.web.auth import require_auth
+
 bp = Blueprint("api_results", __name__, url_prefix="/api/v1/results")
 
 
@@ -38,6 +40,7 @@ def get_result(result_id):
 
 
 @bp.route("/<result_id>", methods=["DELETE"])
+@require_auth
 def delete_result(result_id):
     """Delete a result."""
     svc = _get_result_service()

@@ -4,6 +4,7 @@ Manages agent registration, heartbeats, command dispatch,
 and status tracking.
 """
 
+import hmac
 import logging
 import sqlite3
 import time
@@ -159,7 +160,7 @@ class AgentManager:
         ).fetchone()
         if row is None:
             return False
-        return row["token"] == token
+        return hmac.compare_digest(row["token"], token)
 
     def _check_stale_agents(self) -> None:
         """Mark agents as offline if heartbeat is stale."""
