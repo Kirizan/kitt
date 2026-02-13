@@ -15,6 +15,7 @@ def require_auth(f):
     Uses timing-safe comparison to prevent timing attacks.
     When AUTH_TOKEN is empty, auth is disabled (development mode).
     """
+
     @wraps(f)
     def decorated(*args, **kwargs):
         configured_token = current_app.config.get("AUTH_TOKEN", "")
@@ -30,4 +31,5 @@ def require_auth(f):
             return jsonify({"error": "Invalid authentication token"}), 403
 
         return f(*args, **kwargs)
+
     return decorated

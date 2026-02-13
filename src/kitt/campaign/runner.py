@@ -419,7 +419,9 @@ class CampaignRunner:
         if run_spec.include_pattern:
             args.extend(["--include", run_spec.include_pattern])
 
-        result = _run_subprocess_with_heartbeat(args, timeout=7200, label="devon download")
+        result = _run_subprocess_with_heartbeat(
+            args, timeout=7200, label="devon download"
+        )
         if result.returncode != 0:
             stderr = (result.stderr or "").strip()
             stdout = (result.stdout or "").strip()
@@ -464,6 +466,7 @@ class CampaignRunner:
         """Remove a downloaded model."""
         try:
             from .devon_bridge import DevonBridge, is_devon_available
+
             if is_devon_available() and self.config.devon_managed:
                 bridge = DevonBridge()
                 bridge.remove(repo_id)

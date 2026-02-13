@@ -193,13 +193,15 @@ def create_app(
                 "failed": "bg-red-900/50 text-red-300",
             }.get(c["status"], "bg-gray-800 text-gray-400")
 
-            html_parts.append(f"""
+            html_parts.append(
+                f"""
             <div class="bg-kitt-bg/50 rounded-md p-3">
                 <div class="flex items-center justify-between">
                     <a href="/campaigns/{c["id"]}" class="text-sm font-medium hover:text-kitt-accent">{c["name"]}</a>
                     <span class="text-xs px-2 py-0.5 rounded {status_cls}">{c["status"]}</span>
                 </div>
-            </div>""")
+            </div>"""
+            )
         return (
             "\n".join(html_parts)
             if html_parts

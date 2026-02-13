@@ -11,7 +11,7 @@ from .ssh_connection import SSHConnection
 
 logger = logging.getLogger(__name__)
 
-_SAFE_PATH_RE = re.compile(r'^[a-zA-Z0-9_.~/@: -]+$')
+_SAFE_PATH_RE = re.compile(r"^[a-zA-Z0-9_.~/@: -]+$")
 
 
 def _validate_remote_path(path: str) -> str:
@@ -99,7 +99,9 @@ class RemoteCampaignExecutor:
             return "running"
 
         # Check campaign state
-        rc, out, _ = self.conn.run_command(f"{shlex.quote(kitt_cmd)} campaign status 2>/dev/null")
+        rc, out, _ = self.conn.run_command(
+            f"{shlex.quote(kitt_cmd)} campaign status 2>/dev/null"
+        )
         if rc == 0:
             return out.strip()
 

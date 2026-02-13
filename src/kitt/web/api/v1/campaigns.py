@@ -81,9 +81,12 @@ def launch_campaign(campaign_id):
         return jsonify({"error": "Campaign not found"}), 404
 
     if campaign["status"] not in ("draft", "failed"):
-        return jsonify(
-            {"error": f"Cannot launch campaign in '{campaign['status']}' status"}
-        ), 400
+        return (
+            jsonify(
+                {"error": f"Cannot launch campaign in '{campaign['status']}' status"}
+            ),
+            400,
+        )
 
     if not campaign.get("agent_id"):
         return jsonify({"error": "No agent assigned to this campaign"}), 400
@@ -102,9 +105,12 @@ def cancel_campaign(campaign_id):
         return jsonify({"error": "Campaign not found"}), 404
 
     if campaign["status"] not in ("queued", "running"):
-        return jsonify(
-            {"error": f"Cannot cancel campaign in '{campaign['status']}' status"}
-        ), 400
+        return (
+            jsonify(
+                {"error": f"Cannot cancel campaign in '{campaign['status']}' status"}
+            ),
+            400,
+        )
 
     svc.update_status(campaign_id, "cancelled")
     return jsonify({"status": "cancelled"})

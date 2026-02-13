@@ -37,7 +37,9 @@ class SSHConnection:
             "-o",
             "BatchMode=yes",
             "-o",
-            "StrictHostKeyChecking=yes" if self.strict_host_key else "StrictHostKeyChecking=accept-new",
+            "StrictHostKeyChecking=yes"
+            if self.strict_host_key
+            else "StrictHostKeyChecking=accept-new",
             "-p",
             str(self.port),
         ]

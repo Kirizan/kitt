@@ -79,7 +79,9 @@ class ExLlamaV2Engine(InferenceEngine):
             port=port,
             container_port=self.container_port(),
             volumes={
-                model_abs if is_directory else model_dir: "/models"
+                model_abs
+                if is_directory
+                else model_dir: "/models"
                 if is_directory
                 else "/models"
             },
