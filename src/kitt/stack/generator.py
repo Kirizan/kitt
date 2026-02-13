@@ -96,7 +96,7 @@ class StackGenerator:
                 services[web_key]["depends_on"] = deps
                 env = services[web_key].get("environment", [])
                 env.append(
-                    "DATABASE_URL=postgresql://kitt:${POSTGRES_PASSWORD:-kitt}"
+                    "DATABASE_URL=postgresql://kitt:${POSTGRES_PASSWORD}"
                     "@postgres:5432/kitt"
                 )
                 services[web_key]["environment"] = env
@@ -123,8 +123,8 @@ class StackGenerator:
                     "kitt-results:/app/kitt-results",
                 ],
                 "environment": [
-                    "KITT_SECRET_KEY=${KITT_SECRET_KEY:-}",
-                    "KITT_AUTH_TOKEN=${KITT_AUTH_TOKEN:-changeme}",
+                    "KITT_SECRET_KEY=${KITT_SECRET_KEY}",
+                    "KITT_AUTH_TOKEN=${KITT_AUTH_TOKEN}",
                 ],
                 "restart": "unless-stopped",
                 "healthcheck": {
@@ -166,7 +166,7 @@ class StackGenerator:
                     "kitt-results:/app/kitt-results",
                 ],
                 "environment": [
-                    "KITT_AUTH_TOKEN=${KITT_AUTH_TOKEN:-changeme}",
+                    "KITT_AUTH_TOKEN=${KITT_AUTH_TOKEN}",
                 ],
                 "restart": "unless-stopped",
                 "healthcheck": {
@@ -204,8 +204,8 @@ class StackGenerator:
                     "/var/run/docker.sock:/var/run/docker.sock",
                 ],
                 "environment": [
-                    "KITT_AUTH_TOKEN=${KITT_AUTH_TOKEN:-changeme}",
-                    "KITT_SERVER_URL=${KITT_SERVER_URL:-}",
+                    "KITT_AUTH_TOKEN=${KITT_AUTH_TOKEN}",
+                    "KITT_SERVER_URL=${KITT_SERVER_URL}",
                 ],
                 "restart": "unless-stopped",
                 "deploy": {
@@ -236,7 +236,7 @@ class StackGenerator:
                 "environment": [
                     "POSTGRES_DB=kitt",
                     "POSTGRES_USER=kitt",
-                    "POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-kitt}",
+                    "POSTGRES_PASSWORD=${POSTGRES_PASSWORD}",
                 ],
                 "volumes": [
                     "postgres-data:/var/lib/postgresql/data",
@@ -272,7 +272,7 @@ class StackGenerator:
                 "image": "grafana/grafana:latest",
                 "container_name": f"kitt-grafana-{suffix}",
                 "environment": [
-                    f"GF_SECURITY_ADMIN_PASSWORD={self.config.grafana_password}",
+                    "GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD}",
                     "GF_SECURITY_ADMIN_USER=admin",
                     "GF_USERS_ALLOW_SIGN_UP=false",
                 ],
@@ -291,7 +291,7 @@ class StackGenerator:
                 "environment": [
                     "DOCKER_INFLUXDB_INIT_MODE=setup",
                     "DOCKER_INFLUXDB_INIT_USERNAME=kitt",
-                    "DOCKER_INFLUXDB_INIT_PASSWORD=kittpwd123",
+                    "DOCKER_INFLUXDB_INIT_PASSWORD=${INFLUXDB_PASSWORD}",
                     "DOCKER_INFLUXDB_INIT_ORG=kitt",
                     "DOCKER_INFLUXDB_INIT_BUCKET=benchmarks",
                     f"DOCKER_INFLUXDB_INIT_ADMIN_TOKEN={self.config.influxdb_token}",
@@ -316,10 +316,14 @@ class StackGenerator:
         ]
         if self.config.postgres:
             lines.append(f"POSTGRES_PASSWORD={self.config.postgres_password}")
+        if self.config.monitoring:
+            lines.append(f"INFLUXDB_PASSWORD={self.config.influxdb_token}")
+            lines.append(f"GRAFANA_PASSWORD={self.config.grafana_password}")
         if self.config.agent and self.config.server_url:
             lines.append(f"KITT_SERVER_URL={self.config.server_url}")
         env_path = stack_dir / ".env"
         env_path.write_text("\n".join(lines) + "\n")
+        env_path.chmod(0o600)
 
     def _copy_dockerfiles(self, stack_dir: Path) -> None:
         """Copy needed Dockerfiles into the stack directory."""

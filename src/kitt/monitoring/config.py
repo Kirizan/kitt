@@ -1,6 +1,7 @@
 """Monitoring stack configuration management."""
 
 import logging
+import secrets
 from pathlib import Path
 from typing import Any
 
@@ -21,10 +22,17 @@ class MonitoringStackConfig(BaseModel):
     grafana_port: int = 3000
     prometheus_port: int = 9090
     influxdb_port: int = 8086
-    grafana_password: str = "kitt"
-    influxdb_token: str = "kitt-influx-token"
+    grafana_password: str = ""
+    influxdb_token: str = ""
     deployed_to: str = ""
+
     remote_dir: str = ""
+
+    def model_post_init(self, __context: Any) -> None:
+        if not self.grafana_password:
+            self.grafana_password = secrets.token_urlsafe(16)
+        if not self.influxdb_token:
+            self.influxdb_token = secrets.token_hex(32)
 
 
 class MonitoringConfigManager:

@@ -2,6 +2,7 @@
 
 import json
 import logging
+import secrets
 import shutil
 from pathlib import Path
 
@@ -25,8 +26,8 @@ class MonitoringStackGenerator:
         grafana_port: int = 3000,
         prometheus_port: int = 9090,
         influxdb_port: int = 8086,
-        grafana_password: str = "kitt",
-        influxdb_token: str = "kitt-influx-token",
+        grafana_password: str = "",
+        influxdb_token: str = "",
         stacks_dir: Path | None = None,
         config_manager: MonitoringConfigManager | None = None,
     ) -> None:
@@ -35,8 +36,8 @@ class MonitoringStackGenerator:
         self.grafana_port = grafana_port
         self.prometheus_port = prometheus_port
         self.influxdb_port = influxdb_port
-        self.grafana_password = grafana_password
-        self.influxdb_token = influxdb_token
+        self.grafana_password = grafana_password or secrets.token_urlsafe(16)
+        self.influxdb_token = influxdb_token or secrets.token_hex(32)
         self.stacks_dir = stacks_dir or DEFAULT_STACKS_DIR
         self.config_manager = config_manager or MonitoringConfigManager()
 
