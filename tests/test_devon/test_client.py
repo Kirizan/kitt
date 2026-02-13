@@ -7,6 +7,8 @@ import pytest
 
 from kitt.devon.config import DevonConnectionConfig
 
+httpx = pytest.importorskip("httpx", reason="httpx not installed (optional dep)")
+
 
 class TestRemoteDevonClientInit:
     def test_requires_url(self):
@@ -190,7 +192,13 @@ class TestListModels:
 
 class TestRemove:
     def test_remove_success(self, mock_client, mock_response):
-        resp = mock_response(json_data={"deleted": True, "model_id": "test/repo", "source": "huggingface"})
+        resp = mock_response(
+            json_data={
+                "deleted": True,
+                "model_id": "test/repo",
+                "source": "huggingface",
+            }
+        )
         with patch.object(mock_client, "_client") as mock_ctx:
             mock_http = MagicMock()
             mock_http.delete.return_value = resp
