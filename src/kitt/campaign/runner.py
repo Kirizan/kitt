@@ -381,13 +381,41 @@ class CampaignRunner:
                 )
 
     def _download_model(self, run_spec: CampaignRunSpec) -> str | None:
-        """Download model via Devon or return path for Ollama."""
+        """Download model via Devon or return path for Ollama.
+
+        Resolution order:
+        1. Remote Devon (HTTP) — when devon_url is configured
+        2. Local DevonBridge — when Devon is installed as a Python package
+        3. Devon CLI — subprocess fallback
+        """
         if run_spec.engine_name == "ollama":
             return run_spec.repo_id  # Ollama pulls inside container
 
         if not run_spec.repo_id:
             return run_spec.model_path
 
+        # 1. Try remote Devon client
+        if self.config.devon_url and self.config.devon_managed:
+            try:
+                from kitt.devon import DevonConnectionConfig, RemoteDevonClient
+
+                remote_config = DevonConnectionConfig(
+                    url=self.config.devon_url,
+                    api_key=self.config.devon_api_key,
+                )
+                client = RemoteDevonClient(remote_config)
+                patterns = None
+                if run_spec.include_pattern:
+                    patterns = [run_spec.include_pattern]
+                path = client.download(run_spec.repo_id, allow_patterns=patterns)
+                logger.info(f"Downloaded {run_spec.repo_id} via remote Devon: {path}")
+                return str(path)
+            except ImportError:
+                logger.debug("httpx not available, skipping remote Devon")
+            except Exception as e:
+                logger.warning(f"Remote Devon download failed: {e}")
+
+        # 2. Try local DevonBridge
         try:
             from .devon_bridge import DevonBridge, is_devon_available
 
@@ -410,7 +438,7 @@ class CampaignRunner:
         except ImportError:
             pass
 
-        # Fallback: use Devon CLI via subprocess
+        # 3. Fallback: use Devon CLI via subprocess
         return self._download_via_cli(run_spec)
 
     def _download_via_cli(self, run_spec: CampaignRunSpec) -> str | None:
@@ -465,7 +493,29 @@ class CampaignRunner:
         return output_dir
 
     def _cleanup_model(self, repo_id: str) -> None:
-        """Remove a downloaded model."""
+        """Remove a downloaded model.
+
+        Resolution order mirrors _download_model:
+        1. Remote Devon (HTTP) → 2. Local DevonBridge → 3. CLI fallback
+        """
+        # 1. Try remote Devon client
+        if self.config.devon_url and self.config.devon_managed:
+            try:
+                from kitt.devon import DevonConnectionConfig, RemoteDevonClient
+
+                remote_config = DevonConnectionConfig(
+                    url=self.config.devon_url,
+                    api_key=self.config.devon_api_key,
+                )
+                client = RemoteDevonClient(remote_config)
+                client.remove(repo_id)
+                return
+            except ImportError:
+                pass
+            except Exception as e:
+                logger.warning(f"Failed to clean up model via remote Devon: {e}")
+
+        # 2. Try local DevonBridge
         try:
             from .devon_bridge import DevonBridge, is_devon_available
 
@@ -478,6 +528,7 @@ class CampaignRunner:
         except Exception as e:
             logger.warning(f"Failed to clean up model via Devon bridge: {e}")
 
+        # 3. Fallback: CLI
         try:
             subprocess.run(
                 ["devon", "remove", repo_id, "-y"],

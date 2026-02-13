@@ -100,6 +100,8 @@ class CampaignConfig(BaseModel):
     resource_limits: ResourceLimitsConfig = Field(default_factory=ResourceLimitsConfig)
     parallel: bool = False
     devon_managed: bool = True
+    devon_url: str | None = None
+    devon_api_key: str | None = None
     hf_token: str | None = None
     skip_gated: bool = True
     matching_rules: list[str] | None = None
