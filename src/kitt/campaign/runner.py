@@ -2,6 +2,7 @@
 
 import logging
 import subprocess
+import threading
 import time
 from datetime import datetime
 
@@ -19,6 +20,33 @@ from .scheduler import CampaignScheduler, estimate_quant_size_gb, parse_params
 from .state_manager import CampaignState, CampaignStateManager, RunState
 
 logger = logging.getLogger(__name__)
+
+
+def _run_subprocess_with_heartbeat(
+    args: list[str],
+    timeout: int,
+    label: str,
+    heartbeat_interval: int = 300,
+) -> subprocess.CompletedProcess:
+    """Run a subprocess with periodic heartbeat logging."""
+    stop_event = threading.Event()
+
+    def _heartbeat():
+        elapsed = 0
+        while not stop_event.wait(heartbeat_interval):
+            elapsed += heartbeat_interval
+            logger.info(
+                f"[heartbeat] {label} still running ({elapsed}s / {timeout}s timeout)"
+            )
+
+    monitor = threading.Thread(target=_heartbeat, daemon=True)
+    monitor.start()
+    try:
+        result = subprocess.run(args, capture_output=True, text=True, timeout=timeout)
+        return result
+    finally:
+        stop_event.set()
+        monitor.join(timeout=5)
 
 
 class CampaignRunner:
@@ -391,7 +419,7 @@ class CampaignRunner:
         if run_spec.include_pattern:
             args.extend(["--include", run_spec.include_pattern])
 
-        result = subprocess.run(args, capture_output=True, text=True, timeout=7200)  # type: ignore[arg-type]
+        result = _run_subprocess_with_heartbeat(args, timeout=7200, label="devon download")
         if result.returncode != 0:
             stderr = (result.stderr or "").strip()
             stdout = (result.stdout or "").strip()
@@ -407,7 +435,7 @@ class CampaignRunner:
         args = ["kitt", "run", "-m", model_path, "-e", engine, "-s", suite]
         logger.info(f"Running: {' '.join(args)}")
 
-        result = subprocess.run(args, capture_output=True, text=True, timeout=14400)
+        result = _run_subprocess_with_heartbeat(args, timeout=14400, label="kitt run")
 
         output_dir = ""
         for line in (result.stdout or "").splitlines():
@@ -436,20 +464,23 @@ class CampaignRunner:
         """Remove a downloaded model."""
         try:
             from .devon_bridge import DevonBridge, is_devon_available
-
             if is_devon_available() and self.config.devon_managed:
                 bridge = DevonBridge()
                 bridge.remove(repo_id)
                 return
         except ImportError:
             pass
+        except Exception as e:
+            logger.warning(f"Failed to clean up model via Devon bridge: {e}")
 
-        # Fallback: CLI
-        subprocess.run(
-            ["devon", "remove", repo_id, "-y"],
-            capture_output=True,
-            timeout=60,
-        )
+        try:
+            subprocess.run(
+                ["devon", "remove", repo_id, "-y"],
+                capture_output=True,
+                timeout=60,
+            )
+        except Exception as e:
+            logger.warning(f"Failed to clean up model via CLI: {e}")
 
     def _cleanup_docker(self) -> None:
         """Clean up leftover kitt Docker containers."""
