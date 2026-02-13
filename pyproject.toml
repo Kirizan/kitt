@@ -29,6 +29,7 @@ slack-bolt = {version = ">=1.18", optional = true}
 "discord.py" = {version = ">=2.3", optional = true}
 matplotlib = {version = ">=3.7", optional = true}
 cryptography = {version = ">=43.0", optional = true}
+httpx = {version = ">=0.27", optional = true}
 
 [tool.poetry.group.docs]
 optional = true
@@ -51,13 +52,13 @@ types-pyyaml = "^6.0.12.20250915"
 datasets = ["datasets"]
 web = ["flask", "cryptography"]
 cli_ui = ["textual"]
-devon = []
+devon = ["httpx"]
 parquet = ["pyarrow"]
 postgres = ["psycopg2-binary"]
 slack = ["slack-bolt"]
 discord = ["discord.py"]
 charts = ["matplotlib"]
-all = ["datasets", "flask", "cryptography", "textual", "pyarrow", "psycopg2-binary", "slack-bolt", "discord.py", "matplotlib"]
+all = ["datasets", "flask", "cryptography", "textual", "pyarrow", "psycopg2-binary", "slack-bolt", "discord.py", "matplotlib", "httpx"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

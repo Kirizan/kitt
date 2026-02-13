@@ -130,12 +130,15 @@ def create_app(
     from kitt.web.services.model_service import ModelService
     from kitt.web.services.result_service import ResultService
 
+    devon_url = os.environ.get("DEVON_URL")
+    devon_api_key = os.environ.get("DEVON_API_KEY")
+
     global _services
     _services = {
         "result_service": ResultService(store),
         "agent_manager": AgentManager(db_conn),
         "campaign_service": CampaignService(db_conn),
-        "model_service": ModelService(),
+        "model_service": ModelService(devon_url=devon_url, devon_api_key=devon_api_key),
         "db_conn": db_conn,
         "store": store,
     }
