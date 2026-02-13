@@ -13,6 +13,7 @@ End-to-end testing suite for LLM inference engines. Measures quality consistency
 - **Hardware fingerprinting** — automatic system identification for reproducible results
 - **[KARR results storage](https://kirizan.github.io/kitt/concepts/karr/)** — Kitt's AI Results Repository. SQLite (default) or PostgreSQL with queryable schema and full JSON round-tripping
 - **Docker deployment stacks** — composable `docker-compose` stacks via `kitt stack`
+- **Remote Devon integration** — manage models on a remote [Devon](https://github.com/kirizan/devon) instance via HTTP, with automatic fallback to local
 - **Web dashboard & REST API** — browse results with TLS and token auth
 - **Monitoring** — Prometheus + Grafana + InfluxDB stack generation
 - **Custom benchmarks** — define evaluations with YAML configuration files
@@ -46,7 +47,8 @@ kitt stack start --name prod
 ```bash
 poetry install          # core dependencies
 eval $(poetry env activate)
-poetry install -E all   # optional: install all extras (web, datasets, TUI)
+poetry install -E all   # optional: install all extras (web, datasets, TUI, devon)
+poetry install -E devon # optional: just remote Devon support (httpx)
 ```
 
 Requires Python 3.10+, [Poetry](https://python-poetry.org/), and [Docker](https://docs.docker.com/get-docker/).
@@ -71,6 +73,32 @@ kitt storage stats                # summary statistics
 | [Guides](https://kirizan.github.io/kitt/guides/) | Engines, benchmarks, results, campaigns, deployment, monitoring |
 | [Reference](https://kirizan.github.io/kitt/reference/) | CLI reference, config schemas, REST API, environment variables |
 | [Concepts](https://kirizan.github.io/kitt/concepts/) | Architecture, fingerprinting, results storage, engine lifecycle |
+
+## Remote Devon Integration
+
+KITT can connect to a containerized [Devon](https://github.com/kirizan/devon) instance for model management — search, download, list, and delete models on a remote server without installing Devon locally.
+
+**Resolution order:** Remote Devon (HTTP) → Local DevonBridge (Python import) → Devon CLI (subprocess)
+
+### Campaign config
+
+Add `devon_url` and `devon_api_key` to your campaign YAML:
+
+```yaml
+devon_managed: true
+devon_url: "http://192.168.1.50:8000"
+devon_api_key: "your-token"  # omit if Devon has no auth
+```
+
+### Web dashboard
+
+Set environment variables for the web UI to use remote Devon:
+
+```bash
+export DEVON_URL="http://192.168.1.50:8000"
+export DEVON_API_KEY="your-token"
+kitt web
+```
 
 ## Development
 
