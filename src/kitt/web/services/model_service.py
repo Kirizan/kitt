@@ -133,14 +133,14 @@ class ModelService:
             from kitt.campaign.devon_bridge import DevonBridge
 
             bridge = DevonBridge()
-            models = bridge.list_models()
+            repo_ids = bridge.list_models()
             return [
                 {
-                    "repo_id": m,
-                    "path": bridge.find_path(m),
-                    "size_gb": bridge.disk_usage_gb(m),
+                    "repo_id": repo_id,
+                    "path": bridge.find_path(repo_id),
+                    "size_gb": bridge.disk_usage_gb(repo_id),
                 }
-                for m in models
+                for repo_id in repo_ids
             ]
         except Exception as e:
             logger.warning(f"Devon list_local failed: {e}")
