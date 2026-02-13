@@ -82,7 +82,8 @@ class RemoteDevonClient:
         try:
             result = self.health()
             return result.get("status") == "ok"
-        except Exception:
+        except Exception as e:
+            logger.debug(f"Devon health check failed: {e}")
             return False
 
     # ------------------------------------------------------------------
@@ -246,8 +247,9 @@ class RemoteDevonClient:
                     detail = resp.json().get("detail", resp.text)
                 except Exception:
                     detail = resp.text
+                if len(detail) > 200:
+                    detail = detail[:197] + "..."
                 raise RuntimeError(f"Devon download failed for {repo_id}: {detail}")
-            resp.raise_for_status()
             data = resp.json()
             return Path(data["path"])
 
