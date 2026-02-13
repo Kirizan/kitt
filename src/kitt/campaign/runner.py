@@ -415,7 +415,9 @@ class CampaignRunner:
 
     def _download_via_cli(self, run_spec: CampaignRunSpec) -> str | None:
         """Download model using Devon CLI as fallback."""
-        args = ["devon", "download", run_spec.repo_id, "-y"]
+        if not run_spec.repo_id:
+            raise RuntimeError("Cannot download: repo_id is not set")
+        args: list[str] = ["devon", "download", run_spec.repo_id, "-y"]
         if run_spec.include_pattern:
             args.extend(["--include", run_spec.include_pattern])
 
