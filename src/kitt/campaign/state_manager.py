@@ -2,6 +2,7 @@
 
 import json
 import logging
+import os
 import tempfile
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
@@ -108,6 +109,7 @@ class CampaignStateManager:
         try:
             fd, tmp_path = tempfile.mkstemp(dir=self.campaigns_dir, suffix=".tmp")
             try:
+                os.fchmod(fd, 0o600)
                 with open(fd, "w") as f:
                     json.dump(data, f, indent=2)
                 Path(tmp_path).replace(state_file)

@@ -3,6 +3,7 @@
 import json
 import logging
 import sqlite3
+import threading
 import uuid
 from pathlib import Path
 from typing import Any
@@ -27,14 +28,20 @@ class SQLiteStore(ResultStore):
         self.db_path = db_path or DEFAULT_DB_PATH
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._conn: sqlite3.Connection | None = None
+        self._lock = threading.Lock()
         self._ensure_schema()
 
     def _get_conn(self) -> sqlite3.Connection:
         if self._conn is None:
-            self._conn = sqlite3.connect(str(self.db_path))
-            self._conn.row_factory = sqlite3.Row
-            self._conn.execute("PRAGMA journal_mode=WAL")
-            self._conn.execute("PRAGMA foreign_keys=ON")
+            with self._lock:
+                if self._conn is None:
+                    self._conn = sqlite3.connect(
+                        str(self.db_path),
+                        check_same_thread=False,
+                    )
+                    self._conn.row_factory = sqlite3.Row
+                    self._conn.execute("PRAGMA journal_mode=WAL")
+                    self._conn.execute("PRAGMA foreign_keys=ON")
         return self._conn
 
     def _ensure_schema(self) -> None:
@@ -159,6 +166,7 @@ class SQLiteStore(ResultStore):
                     clauses.append("passed = ?")
                     params.append(1 if value else 0)
                 else:
+                    # Safe: key is validated against allowed_columns whitelist above
                     clauses.append(f"{key} = ?")
                     params.append(value)
             if clauses:
@@ -175,6 +183,7 @@ class SQLiteStore(ResultStore):
                 "suite_name",
             }
             if col in allowed_order:
+                # Safe: col is validated against allowed_order whitelist above
                 sql += f" ORDER BY {col} {'DESC' if desc else 'ASC'}"
 
         if limit is not None:
@@ -221,6 +230,7 @@ class SQLiteStore(ResultStore):
         if metrics:
             # Join with benchmarks and metrics tables
             results: dict[str, dict[str, Any]] = {}
+            # Safe: group_by is validated against allowed whitelist above
             rows = conn.execute(
                 f"SELECT {group_by}, COUNT(*) as count FROM runs GROUP BY {group_by}"
             ).fetchall()
@@ -230,6 +240,7 @@ class SQLiteStore(ResultStore):
                 results[key] = {group_by: key, "count": row["count"]}
 
             for metric_name in metrics:
+                # Safe: group_by is validated against allowed whitelist above
                 metric_rows = conn.execute(
                     f"""SELECT r.{group_by} as grp, AVG(m.metric_value) as avg_val
                         FROM metrics m
@@ -246,6 +257,7 @@ class SQLiteStore(ResultStore):
 
             return list(results.values())
         else:
+            # Safe: group_by is validated against allowed whitelist above
             rows = conn.execute(
                 f"SELECT {group_by}, COUNT(*) as count FROM runs GROUP BY {group_by}"
             ).fetchall()
@@ -272,6 +284,7 @@ class SQLiteStore(ResultStore):
                     clauses.append("passed = ?")
                     params.append(1 if value else 0)
                 else:
+                    # Safe: key is validated against allowed whitelist above
                     clauses.append(f"{key} = ?")
                     params.append(value)
             if clauses:

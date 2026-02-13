@@ -5,6 +5,7 @@ sets up the database connection, and initializes services. The legacy read-only
 dashboard is preserved via create_legacy_app().
 """
 
+import atexit
 import json
 import logging
 import os
@@ -31,6 +32,27 @@ _services: dict[str, Any] = {}
 def get_services() -> dict[str, Any]:
     """Get the global service registry. Called by blueprints."""
     return _services
+
+
+# ---------------------------------------------------------------------------
+# Secret key management
+# ---------------------------------------------------------------------------
+
+
+def _get_or_create_secret_key() -> str:
+    """Load or generate a persistent Flask secret key.
+
+    Checks ~/.kitt/secret_key; if absent, generates a new key and writes it
+    with restricted permissions (0600).
+    """
+    key_file = Path.home() / ".kitt" / "secret_key"
+    if key_file.exists():
+        return key_file.read_text().strip()
+    key = secrets.token_hex(32)
+    key_file.parent.mkdir(parents=True, exist_ok=True)
+    key_file.write_text(key)
+    key_file.chmod(0o600)
+    return key
 
 
 # ---------------------------------------------------------------------------
@@ -68,7 +90,7 @@ def create_app(
         template_folder=str(Path(__file__).parent / "templates"),
         static_folder=str(Path(__file__).parent / "static"),
     )
-    app.secret_key = os.environ.get("KITT_SECRET_KEY", secrets.token_hex(32))
+    app.secret_key = os.environ.get("KITT_SECRET_KEY") or _get_or_create_secret_key()
 
     # Store config values on app
     base_dir = Path(results_dir) if results_dir else Path.cwd()
@@ -171,13 +193,15 @@ def create_app(
                 "failed": "bg-red-900/50 text-red-300",
             }.get(c["status"], "bg-gray-800 text-gray-400")
 
-            html_parts.append(f"""
+            html_parts.append(
+                f"""
             <div class="bg-kitt-bg/50 rounded-md p-3">
                 <div class="flex items-center justify-between">
                     <a href="/campaigns/{c["id"]}" class="text-sm font-medium hover:text-kitt-accent">{c["name"]}</a>
                     <span class="text-xs px-2 py-0.5 rounded {status_cls}">{c["status"]}</span>
                 </div>
-            </div>""")
+            </div>"""
+            )
         return (
             "\n".join(html_parts)
             if html_parts
@@ -189,10 +213,12 @@ def create_app(
     def legacy_health():
         return jsonify({"status": "ok", "version": "1.1.0"})
 
-    # --- Teardown ---
-    @app.teardown_appcontext
-    def close_db(exception):
-        pass  # Connection is shared; closed on shutdown
+    # --- Shutdown cleanup ---
+    def _shutdown():
+        if db_conn:
+            db_conn.close()
+
+    atexit.register(_shutdown)
 
     logger.info("KITT web app created")
     return app

@@ -2,6 +2,8 @@
 
 from flask import Blueprint, jsonify, request
 
+from kitt.web.auth import require_auth
+
 bp = Blueprint("api_results", __name__, url_prefix="/api/v1/results")
 
 
@@ -38,6 +40,7 @@ def get_result(result_id):
 
 
 @bp.route("/<result_id>", methods=["DELETE"])
+@require_auth
 def delete_result(result_id):
     """Delete a result."""
     svc = _get_result_service()
@@ -47,6 +50,7 @@ def delete_result(result_id):
 
 
 @bp.route("/aggregate", methods=["GET"])
+@require_auth
 def aggregate():
     """Aggregate results by a field."""
     group_by = request.args.get("group_by", "model")
@@ -61,6 +65,7 @@ def aggregate():
 
 
 @bp.route("/compare", methods=["POST"])
+@require_auth
 def compare():
     """Compare multiple results."""
     data = request.get_json(silent=True)

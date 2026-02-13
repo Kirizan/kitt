@@ -1,6 +1,7 @@
 """Stack configuration management."""
 
 import logging
+import secrets
 from pathlib import Path
 from typing import Any
 
@@ -33,11 +34,11 @@ class StackConfig(BaseModel):
     influxdb_port: int = 8086
 
     # Secrets
-    auth_token: str = "changeme"
+    auth_token: str = ""
     secret_key: str = ""
-    postgres_password: str = "kitt"
-    grafana_password: str = "kitt"
-    influxdb_token: str = "kitt-influx-token"
+    postgres_password: str = ""
+    grafana_password: str = ""
+    influxdb_token: str = ""
 
     # Paths
     local_dir: str = ""
@@ -45,6 +46,18 @@ class StackConfig(BaseModel):
 
     # Agent
     server_url: str = ""
+
+    def model_post_init(self, __context: Any) -> None:
+        if not self.auth_token:
+            self.auth_token = secrets.token_hex(32)
+        if not self.secret_key:
+            self.secret_key = secrets.token_hex(32)
+        if not self.postgres_password:
+            self.postgres_password = secrets.token_urlsafe(24)
+        if not self.grafana_password:
+            self.grafana_password = secrets.token_urlsafe(16)
+        if not self.influxdb_token:
+            self.influxdb_token = secrets.token_hex(32)
 
 
 class StackConfigManager:

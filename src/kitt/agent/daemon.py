@@ -71,7 +71,6 @@ def create_agent_app(
             import threading
 
             def _run():
-
                 result = executor.run_benchmark(
                     model_path=payload.get("model_path", ""),
                     engine=payload.get("engine_name", "vllm"),

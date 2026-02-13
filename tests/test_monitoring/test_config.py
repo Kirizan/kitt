@@ -15,8 +15,11 @@ class TestMonitoringStackConfig:
         assert config.grafana_port == 3000
         assert config.prometheus_port == 9090
         assert config.influxdb_port == 8086
-        assert config.grafana_password == "kitt"
-        assert config.influxdb_token == "kitt-influx-token"
+        assert (
+            isinstance(config.grafana_password, str)
+            and len(config.grafana_password) > 0
+        )
+        assert isinstance(config.influxdb_token, str) and len(config.influxdb_token) > 0
         assert config.deployed_to == ""
         assert config.remote_dir == ""
         assert config.local_dir == ""

@@ -61,6 +61,7 @@ class CheckpointManager:
         try:
             with open(self.checkpoint_file, "w") as f:
                 json.dump(checkpoint_data, f)
+            self.checkpoint_file.chmod(0o600)
         except Exception as e:
             logger.error(f"Failed to save checkpoint: {e}")
 

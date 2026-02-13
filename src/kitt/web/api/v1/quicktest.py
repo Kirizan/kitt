@@ -5,10 +5,13 @@ from datetime import datetime
 
 from flask import Blueprint, jsonify, request
 
+from kitt.web.auth import require_auth
+
 bp = Blueprint("api_quicktest", __name__, url_prefix="/api/v1/quicktest")
 
 
 @bp.route("/", methods=["POST"])
+@require_auth
 def launch():
     """Launch a quick test."""
     data = request.get_json(silent=True)

@@ -15,11 +15,13 @@ class SSHConnection:
         user: str | None = None,
         ssh_key: str | None = None,
         port: int = 22,
+        strict_host_key: bool = True,
     ) -> None:
         self.host = host
         self.user = user
         self.port = port
         self.ssh_key = ssh_key
+        self.strict_host_key = strict_host_key
 
     @property
     def target(self) -> str:
@@ -35,7 +37,9 @@ class SSHConnection:
             "-o",
             "BatchMode=yes",
             "-o",
-            "StrictHostKeyChecking=accept-new",
+            "StrictHostKeyChecking=yes"
+            if self.strict_host_key
+            else "StrictHostKeyChecking=accept-new",
             "-p",
             str(self.port),
         ]

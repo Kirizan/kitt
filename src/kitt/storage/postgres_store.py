@@ -150,6 +150,7 @@ class PostgresStore(ResultStore):
             for key, value in filters.items():
                 if key not in allowed:
                     continue
+                # Safe: key is validated against allowed whitelist above
                 clauses.append(f"{key} = %s")
                 params.append(value)
             if clauses:
@@ -166,6 +167,7 @@ class PostgresStore(ResultStore):
                 "suite_name",
             }
             if col in allowed_order:
+                # Safe: col is validated against allowed_order whitelist above
                 sql += f" ORDER BY {col} {'DESC' if desc else 'ASC'}"
 
         if limit is not None:
@@ -208,11 +210,13 @@ class PostgresStore(ResultStore):
 
         if metrics:
             results: dict[str, dict[str, Any]] = {}
+            # Safe: group_by is validated against allowed whitelist above
             cursor.execute(f"SELECT {group_by}, COUNT(*) FROM runs GROUP BY {group_by}")
             for row in cursor.fetchall():
                 results[row[0]] = {group_by: row[0], "count": row[1]}
 
             for metric_name in metrics:
+                # Safe: group_by is validated against allowed whitelist above
                 cursor.execute(
                     f"""SELECT r.{group_by}, AVG(m.metric_value)
                         FROM metrics m
@@ -228,6 +232,7 @@ class PostgresStore(ResultStore):
 
             return list(results.values())
         else:
+            # Safe: group_by is validated against allowed whitelist above
             cursor.execute(f"SELECT {group_by}, COUNT(*) FROM runs GROUP BY {group_by}")
             return [{group_by: row[0], "count": row[1]} for row in cursor.fetchall()]
 
@@ -248,6 +253,7 @@ class PostgresStore(ResultStore):
             for key, value in filters.items():
                 if key not in allowed:
                     continue
+                # Safe: key is validated against allowed whitelist above
                 clauses.append(f"{key} = %s")
                 params.append(value)
             if clauses:

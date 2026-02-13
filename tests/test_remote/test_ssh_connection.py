@@ -27,7 +27,7 @@ class TestSSHBaseArgs:
         assert args[0] == "ssh"
         assert "-o" in args
         assert "BatchMode=yes" in args
-        assert "StrictHostKeyChecking=accept-new" in args
+        assert "StrictHostKeyChecking=yes" in args
         assert "-p" in args
         port_idx = args.index("-p")
         assert args[port_idx + 1] == "22"
