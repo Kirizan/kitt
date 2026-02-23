@@ -11,10 +11,16 @@
         <a href="/models/library" class="text-sm text-kitt-accent hover:underline">Local Library</a>
     </div>
 
-    {% if not devon_available %}
-    <div class="bg-yellow-900/30 border border-yellow-700 rounded-lg p-4 text-sm text-yellow-200">
-        Devon is not installed. Model search requires Devon integration.
-        Install with: <code class="bg-kitt-bg px-1 rounded">pip install devon</code>
+    {% if not devon_configured %}
+    <div class="bg-kitt-surface border border-kitt-primary/50 rounded-lg p-4 text-sm text-kitt-dim">
+        Devon is not configured. Set the <code class="bg-kitt-bg px-1 rounded">DEVON_URL</code> environment variable
+        to connect to a remote Devon server, or install the <code class="bg-kitt-bg px-1 rounded">devon</code> package locally.
+    </div>
+    {% endif %}
+
+    {% if error %}
+    <div class="bg-red-900/30 border border-red-700 rounded-lg p-4 text-sm text-red-200">
+        Devon connection error: {{ error }}
     </div>
     {% endif %}
 
@@ -47,7 +53,7 @@
             </div>
             {% endfor %}
         </div>
-        {% elif query %}
+        {% elif query and not error %}
         <div class="bg-kitt-surface rounded-lg p-8 text-center">
             <p class="text-kitt-dim">No models found for "{{ query }}"</p>
         </div>
