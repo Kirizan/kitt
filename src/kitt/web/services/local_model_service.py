@@ -48,10 +48,15 @@ class LocalModelService:
         models: dict[Path, dict] = {}
 
         for path in self.model_dir.rglob("*"):
-            if not path.is_file():
+            if path.is_symlink() or not path.is_file():
                 continue
             fmt = _EXT_TO_FORMAT.get(path.suffix.lower())
             if fmt is None:
+                continue
+
+            try:
+                file_size = path.stat().st_size
+            except (FileNotFoundError, OSError):
                 continue
 
             # Group by immediate model directory.  If the file is directly
@@ -68,7 +73,7 @@ class LocalModelService:
                 }
             entry = models[model_root]
             entry["formats"].add(fmt)
-            entry["size_bytes"] += path.stat().st_size
+            entry["size_bytes"] += file_size
             entry["file_count"] += 1
 
         # Convert sets to sorted lists and bytes to GB.
