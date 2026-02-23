@@ -135,9 +135,7 @@ def create_app(
     devon_url = os.environ.get("DEVON_URL")
     devon_api_key = os.environ.get("DEVON_API_KEY")
     app.config["DEVON_URL"] = devon_url or ""
-    model_dir = os.environ.get(
-        "KITT_MODEL_DIR", str(Path.home() / ".kitt" / "models")
-    )
+    model_dir = os.environ.get("KITT_MODEL_DIR", str(Path.home() / ".kitt" / "models"))
 
     settings_service = SettingsService(db_conn)
 
