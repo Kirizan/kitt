@@ -127,6 +127,7 @@ def create_app(
     # --- Initialize services ---
     from kitt.web.services.agent_manager import AgentManager
     from kitt.web.services.campaign_service import CampaignService
+    from kitt.web.services.local_model_service import LocalModelService
     from kitt.web.services.model_service import ModelService
     from kitt.web.services.result_service import ResultService
     from kitt.web.services.settings_service import SettingsService
@@ -134,6 +135,9 @@ def create_app(
     devon_url = os.environ.get("DEVON_URL")
     devon_api_key = os.environ.get("DEVON_API_KEY")
     app.config["DEVON_URL"] = devon_url or ""
+    model_dir = os.environ.get(
+        "KITT_MODEL_DIR", str(Path.home() / ".kitt" / "models")
+    )
 
     settings_service = SettingsService(db_conn)
 
@@ -144,6 +148,7 @@ def create_app(
         "campaign_service": CampaignService(db_conn),
         "model_service": ModelService(devon_url=devon_url, devon_api_key=devon_api_key),
         "settings_service": settings_service,
+        "local_model_service": LocalModelService(model_dir),
         "db_conn": db_conn,
         "store": store,
     }
