@@ -91,7 +91,7 @@ src/kitt/
 ├── stack/         # Composable Docker stack config + generator
 ├── agent/         # Agent daemon, heartbeat, executor, log streamer
 ├── security/      # TLS cert generation and config
-├── web/           # Flask dashboard + REST API + blueprints
+├── web/           # Flask dashboard + REST API + blueprints + Devon iframe
 └── utils/         # Compression, validation, versioning
 ```
 
@@ -103,9 +103,21 @@ src/kitt/
 - **Logging** uses `logging.getLogger(__name__)` throughout all modules.
 - **Full type hints** are required on all public methods.
 
+## Web Dashboard
+
+The web UI is a Flask application (`web/app.py`) using TailwindCSS, HTMX, and Alpine.js. It registers page blueprints (Dashboard, Agents, Devon, Models, Campaigns, Quick Test, Results, Settings) and API v1 blueprints under `/api/v1/`.
+
+### Devon Tab
+
+When `DEVON_URL` is set, the Devon tab embeds the Devon web UI in an iframe for integrated model management. A `/api/v1/devon/status` endpoint checks connectivity. The tab's visibility is controlled via the Settings page and persisted in the `web_settings` SQLite table.
+
+### Settings Persistence
+
+UI preferences (such as Devon tab visibility) are stored in a `web_settings` key-value table managed by `SettingsService`. Settings are injected into all templates via a Flask context processor.
+
 ## Relationship to DEVON
 
-KITT tests models; DEVON manages and stores them. The two projects share the same technical stack (Poetry, Click, Rich, Python 3.10+, plugin registry pattern). DEVON can export model paths in a format KITT consumes:
+KITT tests models; DEVON manages and stores them. The two projects share the same technical stack (Poetry, Click, Rich, Python 3.10+, plugin registry pattern). The KITT web dashboard embeds Devon's UI directly when `DEVON_URL` is configured. DEVON can also export model paths in a format KITT consumes:
 
 ```bash
 devon export --format kitt -o models.txt
