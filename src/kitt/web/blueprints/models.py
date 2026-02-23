@@ -1,6 +1,10 @@
 """Models blueprint — Devon model browser pages."""
 
+import logging
+
 from flask import Blueprint, render_template, request
+
+logger = logging.getLogger(__name__)
 
 bp = Blueprint("models", __name__, url_prefix="/models")
 
@@ -13,15 +17,21 @@ def search():
     model_svc = get_services()["model_service"]
     query = request.args.get("q", "")
     results = []
+    error = None
 
     if query:
-        results = model_svc.search(query)
+        try:
+            results = model_svc.search(query)
+        except Exception:
+            logger.exception("Devon search failed")
+            error = "Could not reach Devon. Check server configuration."
 
     return render_template(
         "models/search.html",
         query=query,
         results=results,
-        devon_available=model_svc.available,
+        error=error,
+        devon_configured=model_svc.configured,
     )
 
 
@@ -31,10 +41,18 @@ def library():
     from kitt.web.app import get_services
 
     model_svc = get_services()["model_service"]
-    models = model_svc.list_local()
+    models = []
+    error = None
+
+    try:
+        models = model_svc.list_local()
+    except Exception:
+        logger.exception("Devon list_local failed")
+        error = "Could not reach Devon. Check server configuration."
 
     return render_template(
         "models/library.html",
         models=models,
-        devon_available=model_svc.available,
+        error=error,
+        devon_configured=model_svc.configured,
     )

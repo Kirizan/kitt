@@ -49,9 +49,10 @@ class SQLiteStore(ResultStore):
         current = get_current_version_sqlite(conn)
         if current == 0:
             conn.executescript(SQLITE_SCHEMA)
-            set_version_sqlite(conn, SCHEMA_VERSION)
+            set_version_sqlite(conn, 1)
             logger.info(f"Initialized SQLite database at {self.db_path}")
-        elif current < SCHEMA_VERSION:
+            current = 1
+        if current < SCHEMA_VERSION:
             run_migrations_sqlite(conn, current)
 
     def save_result(self, result_data: dict[str, Any]) -> str:

@@ -3,7 +3,7 @@
 Supports three backends in priority order:
 1. Remote Devon (HTTP) — when a Devon URL is configured
 2. Local DevonBridge — when Devon is installed as a Python package
-3. Unavailable — methods return empty results
+3. Not configured — UI shows configuration instructions
 """
 
 import logging
@@ -27,6 +27,8 @@ class ModelService:
 
     Prefers a remote Devon client when configured, falls back to the
     local DevonBridge when Devon is installed as a Python package.
+    Connection to remote Devon is lazy — established on first use,
+    not at startup.
     """
 
     def __init__(
@@ -34,45 +36,36 @@ class ModelService:
         devon_url: str | None = None,
         devon_api_key: str | None = None,
     ) -> None:
+        self._devon_url = devon_url
+        self._devon_api_key = devon_api_key
         self._devon_available = _is_devon_available()
-        self._remote_client = None
-
-        if devon_url:
-            try:
-                from kitt.devon import DevonConnectionConfig, RemoteDevonClient
-
-                config = DevonConnectionConfig(url=devon_url, api_key=devon_api_key)
-                client = RemoteDevonClient(config)
-                if client.is_healthy():
-                    self._remote_client = client
-                    logger.info(f"Connected to remote Devon at {devon_url}")
-                else:
-                    logger.warning(
-                        f"Remote Devon at {devon_url} is not healthy, falling back to local"
-                    )
-            except ImportError:
-                logger.warning("httpx not installed, cannot use remote Devon")
-            except Exception as e:
-                logger.warning(f"Failed to connect to remote Devon: {e}")
 
     @property
-    def available(self) -> bool:
-        return self._remote_client is not None or self._devon_available
+    def configured(self) -> bool:
+        """True if any Devon backend is configured (remote URL or local package)."""
+        return bool(self._devon_url) or self._devon_available
 
-    @property
-    def is_remote(self) -> bool:
-        """True if using a remote Devon instance."""
-        return self._remote_client is not None
+    def _get_remote_client(self) -> Any | None:
+        """Create a remote client on demand. Returns None if not configured or httpx missing."""
+        if not self._devon_url:
+            return None
+        try:
+            from kitt.devon import DevonConnectionConfig, RemoteDevonClient
+
+            config = DevonConnectionConfig(
+                url=self._devon_url, api_key=self._devon_api_key
+            )
+            return RemoteDevonClient(config)
+        except ImportError:
+            logger.warning("httpx not installed, cannot use remote Devon")
+            return None
 
     def search(self, query: str, limit: int = 20) -> list[dict[str, Any]]:
-        """Search for models via Devon sources.
-
-        Returns:
-            List of model info dicts.
-        """
-        if self._remote_client:
+        """Search for models via Devon sources."""
+        client = self._get_remote_client()
+        if client:
             try:
-                results = self._remote_client.search(query=query, limit=limit)
+                results = client.search(query=query, limit=limit)
                 return [
                     {
                         "repo_id": r.get("model_id", ""),
@@ -85,7 +78,7 @@ class ModelService:
                 ]
             except Exception as e:
                 logger.warning(f"Remote Devon search failed: {e}")
-                return []
+                raise
 
         if not self._devon_available:
             return []
@@ -107,13 +100,14 @@ class ModelService:
             ]
         except Exception as e:
             logger.warning(f"Devon search failed: {e}")
-            return []
+            raise
 
     def list_local(self) -> list[dict[str, Any]]:
         """List locally available models via Devon."""
-        if self._remote_client:
+        client = self._get_remote_client()
+        if client:
             try:
-                models = self._remote_client.list_models()
+                models = client.list_models()
                 return [
                     {
                         "repo_id": m.get("model_id", ""),
@@ -124,7 +118,7 @@ class ModelService:
                 ]
             except Exception as e:
                 logger.warning(f"Remote Devon list_local failed: {e}")
-                return []
+                raise
 
         if not self._devon_available:
             return []
@@ -144,20 +138,17 @@ class ModelService:
             ]
         except Exception as e:
             logger.warning(f"Devon list_local failed: {e}")
-            return []
+            raise
 
     def download(self, repo_id: str, allow_patterns: list[str] | None = None) -> str:
-        """Download a model via Devon.
-
-        Returns:
-            Local path to the downloaded model.
-        """
-        if self._remote_client:
-            path = self._remote_client.download(repo_id, allow_patterns=allow_patterns)
+        """Download a model via Devon."""
+        client = self._get_remote_client()
+        if client:
+            path = client.download(repo_id, allow_patterns=allow_patterns)
             return str(path)
 
         if not self._devon_available:
-            raise RuntimeError("Devon is not available")
+            raise RuntimeError("Devon is not configured")
 
         from kitt.campaign.devon_bridge import DevonBridge
 
@@ -167,9 +158,10 @@ class ModelService:
 
     def remove(self, repo_id: str) -> bool:
         """Remove a locally downloaded model."""
-        if self._remote_client:
+        client = self._get_remote_client()
+        if client:
             try:
-                return self._remote_client.remove(repo_id)
+                return client.remove(repo_id)
             except Exception as e:
                 logger.warning(f"Remote Devon remove failed: {e}")
                 return False
@@ -189,9 +181,10 @@ class ModelService:
 
     def status(self) -> dict[str, Any] | None:
         """Get storage status from Devon. Only available with remote client."""
-        if self._remote_client:
+        client = self._get_remote_client()
+        if client:
             try:
-                return self._remote_client.status()
+                return client.status()
             except Exception as e:
                 logger.warning(f"Remote Devon status failed: {e}")
         return None
