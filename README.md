@@ -63,7 +63,17 @@ kitt run -m /models/llama-7b -e vllm -s standard -o ./results
 kitt storage init                 # initialize results database
 kitt storage list                 # browse stored runs
 kitt storage stats                # summary statistics
+kitt web                         # launch web dashboard
 ```
+
+### Environment variables
+
+| Variable | Default | Description |
+|---|---|---|
+| `KITT_MODEL_DIR` | `~/.kitt/models` | Directory the Models tab scans for local model files |
+| `DEVON_URL` | *(none)* | Devon server URL for the Devon tab iframe |
+| `DEVON_API_KEY` | *(none)* | Bearer token for remote Devon (optional) |
+| `KITT_AUTH_TOKEN` | *(none)* | Bearer token for KITT API authentication |
 
 ## Documentation
 
