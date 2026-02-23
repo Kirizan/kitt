@@ -19,7 +19,7 @@
         <div>
             <h2 class="text-lg font-semibold mb-3">2. Initialize the agent</h2>
             <div class="bg-kitt-bg rounded-md p-4 font-mono text-sm break-all">
-                <code>kitt agent init --server {{ server_url }} --token {{ auth_token or '&lt;TOKEN&gt;' }}</code>
+                <code>kitt agent init --server {{ server_url }} --token {{ auth_token or 'YOUR_TOKEN' }}</code>
             </div>
             <p class="text-kitt-dim text-xs mt-2">This fetches the server's CA certificate and generates agent certificates.</p>
         </div>
@@ -42,7 +42,7 @@
         <h2 class="text-lg font-semibold mb-3">Alternative: Systemd service</h2>
         <p class="text-kitt-dim text-sm mb-3">For persistent agent deployment, install as a systemd service:</p>
         <div class="bg-kitt-bg rounded-md p-4 font-mono text-sm space-y-1">
-            <code>kitt agent init --server {{ server_url }} --token {{ auth_token or '&lt;TOKEN&gt;' }}</code><br>
+            <code>kitt agent init --server {{ server_url }} --token {{ auth_token or 'YOUR_TOKEN' }}</code><br>
             <code>sudo cp ~/.kitt/kitt-agent.service /etc/systemd/system/</code><br>
             <code>sudo systemctl enable --now kitt-agent</code>
         </div>
