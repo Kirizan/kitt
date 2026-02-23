@@ -5,7 +5,6 @@ Stores key-value UI settings in the web_settings SQLite table.
 
 import logging
 import sqlite3
-from typing import Any
 
 logger = logging.getLogger(__name__)
 
