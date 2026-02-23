@@ -1,6 +1,10 @@
 """Models blueprint — Devon model browser pages."""
 
+import logging
+
 from flask import Blueprint, render_template, request
+
+logger = logging.getLogger(__name__)
 
 bp = Blueprint("models", __name__, url_prefix="/models")
 
@@ -18,8 +22,9 @@ def search():
     if query:
         try:
             results = model_svc.search(query)
-        except Exception as e:
-            error = str(e)
+        except Exception:
+            logger.exception("Devon search failed")
+            error = "Could not reach Devon. Check server configuration."
 
     return render_template(
         "models/search.html",
@@ -41,8 +46,9 @@ def library():
 
     try:
         models = model_svc.list_local()
-    except Exception as e:
-        error = str(e)
+    except Exception:
+        logger.exception("Devon list_local failed")
+        error = "Could not reach Devon. Check server configuration."
 
     return render_template(
         "models/library.html",

@@ -45,11 +45,6 @@ class ModelService:
         """True if any Devon backend is configured (remote URL or local package)."""
         return bool(self._devon_url) or self._devon_available
 
-    @property
-    def remote_configured(self) -> bool:
-        """True if a remote Devon URL is set."""
-        return bool(self._devon_url)
-
     def _get_remote_client(self) -> Any | None:
         """Create a remote client on demand. Returns None if not configured or httpx missing."""
         if not self._devon_url:

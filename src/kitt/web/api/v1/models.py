@@ -23,10 +23,14 @@ def search():
         return jsonify({"error": "Query parameter 'q' is required"}), 400
 
     svc = _get_model_service()
-    if not svc.available:
-        return jsonify({"error": "Devon is not available"}), 503
+    if not svc.configured:
+        return jsonify({"error": "Devon is not configured"}), 503
 
-    results = svc.search(query, limit=limit)
+    try:
+        results = svc.search(query, limit=limit)
+    except Exception:
+        return jsonify({"error": "Devon search failed"}), 502
+
     return jsonify(results)
 
 
