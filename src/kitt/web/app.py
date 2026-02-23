@@ -129,9 +129,13 @@ def create_app(
     from kitt.web.services.campaign_service import CampaignService
     from kitt.web.services.model_service import ModelService
     from kitt.web.services.result_service import ResultService
+    from kitt.web.services.settings_service import SettingsService
 
     devon_url = os.environ.get("DEVON_URL")
     devon_api_key = os.environ.get("DEVON_API_KEY")
+    app.config["DEVON_URL"] = devon_url or ""
+
+    settings_service = SettingsService(db_conn)
 
     global _services
     _services = {
@@ -139,6 +143,7 @@ def create_app(
         "agent_manager": AgentManager(db_conn),
         "campaign_service": CampaignService(db_conn),
         "model_service": ModelService(devon_url=devon_url, devon_api_key=devon_api_key),
+        "settings_service": settings_service,
         "db_conn": db_conn,
         "store": store,
     }
@@ -147,6 +152,7 @@ def create_app(
     from kitt.web.blueprints.agents import bp as agents_bp
     from kitt.web.blueprints.campaigns import bp as campaigns_bp
     from kitt.web.blueprints.dashboard import bp as dashboard_bp
+    from kitt.web.blueprints.devon import bp as devon_bp
     from kitt.web.blueprints.models import bp as models_bp
     from kitt.web.blueprints.quicktest import bp as quicktest_bp
     from kitt.web.blueprints.results import bp as results_bp
@@ -154,6 +160,7 @@ def create_app(
 
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(agents_bp)
+    app.register_blueprint(devon_bp)
     app.register_blueprint(models_bp)
     app.register_blueprint(campaigns_bp)
     app.register_blueprint(quicktest_bp)
@@ -163,6 +170,7 @@ def create_app(
     # --- Register API blueprints ---
     from kitt.web.api.v1.agents import bp as api_agents_bp
     from kitt.web.api.v1.campaigns import bp as api_campaigns_bp
+    from kitt.web.api.v1.devon import bp as api_devon_bp
     from kitt.web.api.v1.events import bp as api_events_bp
     from kitt.web.api.v1.health import bp as health_bp
     from kitt.web.api.v1.models import bp as api_models_bp
@@ -171,11 +179,25 @@ def create_app(
 
     app.register_blueprint(health_bp)
     app.register_blueprint(api_agents_bp)
+    app.register_blueprint(api_devon_bp)
     app.register_blueprint(api_campaigns_bp)
     app.register_blueprint(api_results_bp)
     app.register_blueprint(api_models_bp)
     app.register_blueprint(api_quicktest_bp)
     app.register_blueprint(api_events_bp)
+
+    # --- Template context processor ---
+    @app.context_processor
+    def inject_nav_settings():
+        """Inject navigation visibility flags into all templates."""
+        try:
+            return {
+                "devon_tab_visible": settings_service.get_bool(
+                    "devon_tab_visible", default=True
+                ),
+            }
+        except Exception:
+            return {"devon_tab_visible": True}
 
     # --- HTMX partial routes ---
     @app.route("/partials/agent_cards")
