@@ -30,7 +30,7 @@ def cli():
 @click.option(
     "--server", required=True, help="KITT server URL (e.g., https://server:8080)"
 )
-@click.option("--token", required=True, help="Bearer token for authentication")
+@click.option("--token", default="", help="Bearer token for authentication (optional)")
 @click.option("--name", default="", help="Agent name (defaults to hostname)")
 @click.option("--port", default=8090, help="Agent listening port")
 def init(server, token, name, port):
@@ -70,7 +70,7 @@ def start(config_path, insecure):
 
     if not config_file.exists():
         click.echo(
-            "Agent not configured. Run: kitt-agent init --server <URL> --token <TOKEN>"
+            "Agent not configured. Run: kitt-agent init --server <URL>"
         )
         raise SystemExit(1)
 
@@ -82,8 +82,8 @@ def start(config_path, insecure):
     token = config.get("token", "")
     port = config.get("port", 8090)
 
-    if not server_url or not token:
-        click.echo("Invalid agent config — missing server_url or token")
+    if not server_url:
+        click.echo("Invalid agent config — missing server_url")
         raise SystemExit(1)
 
     click.echo(f"KITT Agent: {agent_name}")
