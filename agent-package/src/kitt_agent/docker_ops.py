@@ -5,11 +5,9 @@ Manages container lifecycle via the Docker CLI (no SDK dependency).
 
 import logging
 import subprocess
-import threading
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +26,15 @@ class ContainerSpec:
     command_args: list[str] = field(default_factory=list)
     name: str = ""
     health_url: str = ""
+
+
+_BLOCKED_DOCKER_FLAGS = {
+    "--privileged",
+    "--pid",
+    "--cap-add",
+    "--security-opt",
+    "--device",
+}
 
 
 class DockerOps:
@@ -90,6 +97,9 @@ class DockerOps:
         for key, val in spec.env.items():
             args.extend(["-e", f"{key}={val}"])
 
+        for arg in spec.extra_args:
+            if any(arg.startswith(flag) for flag in _BLOCKED_DOCKER_FLAGS):
+                raise ValueError(f"Blocked Docker flag: {arg}")
         args.extend(spec.extra_args)
         args.append(spec.image)
         args.extend(spec.command_args)
@@ -138,14 +148,14 @@ class DockerOps:
         proc = subprocess.Popen(
             args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
         )
-        for line in proc.stdout or []:
-            on_log(line.rstrip())
-        proc.wait()
+        try:
+            for line in proc.stdout or []:
+                on_log(line.rstrip())
+        finally:
+            proc.wait()
 
     @staticmethod
-    def wait_for_healthy(
-        url: str, timeout: float = 300, interval: float = 2.0
-    ) -> bool:
+    def wait_for_healthy(url: str, timeout: float = 300, interval: float = 2.0) -> bool:
         """Poll a URL until it responds with < 500 status."""
         import urllib.request
 

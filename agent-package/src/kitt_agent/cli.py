@@ -45,6 +45,7 @@ def init(server, token, name, port):
 
     with open(config_path, "w") as f:
         yaml.dump(config, f, default_flow_style=False)
+    config_path.chmod(0o600)
 
     click.echo(f"Agent config saved: {config_path}")
     click.echo(f"  Name: {agent_name}")
@@ -64,7 +65,9 @@ def start(config_path, insecure):
     )
 
     if not config_file.exists():
-        click.echo("Agent not configured. Run: kitt-agent init --server <URL> --token <TOKEN>")
+        click.echo(
+            "Agent not configured. Run: kitt-agent init --server <URL> --token <TOKEN>"
+        )
         raise SystemExit(1)
 
     with open(config_file) as f:
@@ -83,17 +86,18 @@ def start(config_path, insecure):
     click.echo(f"  Server: {server_url}")
     click.echo(f"  Port: {port}")
 
+    # TLS config (before try so variables are always defined)
+    tls_config = config.get("tls", {})
+    verify: str | bool = tls_config.get("ca", True)
+    client_cert = None
+    if tls_config.get("cert") and tls_config.get("key"):
+        client_cert = (tls_config["cert"], tls_config["key"])
+    if insecure:
+        verify = False
+
     # Register
     try:
         from kitt_agent.registration import register_with_server
-
-        tls_config = config.get("tls", {})
-        verify: str | bool = tls_config.get("ca", True)
-        client_cert = None
-        if tls_config.get("cert") and tls_config.get("key"):
-            client_cert = (tls_config["cert"], tls_config["key"])
-        if insecure:
-            verify = False
 
         result = register_with_server(
             server_url=server_url,
@@ -145,12 +149,15 @@ def start(config_path, insecure):
     click.echo(f"  Listening on port {port}")
     click.echo()
 
+    pid_file = Path.home() / ".kitt" / "agent.pid"
+    pid_file.write_text(str(os.getpid()))
     try:
         app.run(host="0.0.0.0", port=port, ssl_context=ssl_ctx, use_reloader=False)
     except KeyboardInterrupt:
         click.echo("\nAgent stopped")
     finally:
         hb.stop()
+        pid_file.unlink(missing_ok=True)
 
 
 @cli.command()
@@ -175,7 +182,9 @@ def status():
 
     port = config.get("port", 8090)
     try:
-        with urllib.request.urlopen(f"http://127.0.0.1:{port}/api/status", timeout=2) as resp:
+        with urllib.request.urlopen(
+            f"http://127.0.0.1:{port}/api/status", timeout=2
+        ) as resp:
             data = json.loads(resp.read())
             click.echo("  Running: yes")
             click.echo(f"  Active containers: {data.get('active_containers', 0)}")

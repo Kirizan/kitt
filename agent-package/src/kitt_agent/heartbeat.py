@@ -50,7 +50,11 @@ class HeartbeatThread(threading.Thread):
         self._current_task = task
 
     def _send_heartbeat(self) -> dict[str, Any]:
-        url = f"{self.server_url}/api/v1/agents/{self.agent_id}/heartbeat"
+        from urllib.parse import quote
+
+        url = (
+            f"{self.server_url}/api/v1/agents/{quote(self.agent_id, safe='')}/heartbeat"
+        )
 
         payload: dict[str, Any] = {
             "status": self._status,
@@ -62,12 +66,14 @@ class HeartbeatThread(threading.Thread):
             import pynvml
 
             pynvml.nvmlInit()
-            handle = pynvml.nvmlDeviceGetHandleByIndex(0)
-            util = pynvml.nvmlDeviceGetUtilizationRates(handle)
-            mem = pynvml.nvmlDeviceGetMemoryInfo(handle)
-            payload["gpu_utilization_pct"] = util.gpu
-            payload["gpu_memory_used_gb"] = round(mem.used / (1024**3), 2)
-            pynvml.nvmlShutdown()
+            try:
+                handle = pynvml.nvmlDeviceGetHandleByIndex(0)
+                util = pynvml.nvmlDeviceGetUtilizationRates(handle)
+                mem = pynvml.nvmlDeviceGetMemoryInfo(handle)
+                payload["gpu_utilization_pct"] = util.gpu
+                payload["gpu_memory_used_gb"] = round(mem.used / (1024**3), 2)
+            finally:
+                pynvml.nvmlShutdown()
         except Exception:
             pass
 

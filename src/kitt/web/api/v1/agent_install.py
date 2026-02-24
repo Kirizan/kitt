@@ -1,8 +1,10 @@
 """Agent installation API — serves the bootstrap script and agent package."""
 
 import logging
+import shlex
 import subprocess
 import tempfile
+import threading
 from pathlib import Path
 
 from flask import Blueprint, Response, current_app, jsonify, request, send_file
@@ -13,8 +15,9 @@ logger = logging.getLogger(__name__)
 
 bp = Blueprint("api_agent_install", __name__, url_prefix="/api/v1/agent")
 
-# Cache the built wheel path so we only build once per process.
-_wheel_cache: dict[str, Path | None] = {"path": None}
+# Cache the built sdist path so we only build once per process.
+_sdist_cache: dict[str, Path | None] = {"path": None}
+_build_lock = threading.Lock()
 
 AGENT_PACKAGE_DIR = Path(__file__).parent.parent.parent.parent.parent / "agent-package"
 
@@ -22,9 +25,9 @@ _INSTALL_SCRIPT = """\
 #!/usr/bin/env bash
 set -euo pipefail
 
-KITT_SERVER="{server_url}"
-KITT_TOKEN="{token}"
-AGENT_PORT="{port}"
+KITT_SERVER={server_url}
+KITT_TOKEN={token}
+AGENT_PORT={port}
 AGENT_NAME="$(hostname)"
 AGENT_DIR="$HOME/.kitt"
 VENV_DIR="$AGENT_DIR/agent-venv"
@@ -41,14 +44,15 @@ python3 -m venv "$VENV_DIR"
 
 # Download agent package
 echo "==> Downloading agent package"
+TMPFILE="$(mktemp /tmp/kitt-agent-XXXXXX.tar.gz)"
 curl -sfL "$KITT_SERVER/api/v1/agent/package" \\
     -H "Authorization: Bearer $KITT_TOKEN" \\
-    -o /tmp/kitt-agent.tar.gz
+    -o "$TMPFILE"
 
 # Install
 echo "==> Installing agent package"
-"$VENV_DIR/bin/pip" install /tmp/kitt-agent.tar.gz -q
-rm -f /tmp/kitt-agent.tar.gz
+"$VENV_DIR/bin/pip" install "$TMPFILE" -q
+rm -f "$TMPFILE"
 
 # Configure
 echo "==> Configuring agent"
@@ -91,15 +95,23 @@ def install_script():
         port: Agent listening port (default 8090).
     """
     token = current_app.config.get("AUTH_TOKEN", "")
-    port = request.args.get("port", "8090")
+    port_str = request.args.get("port", "8090")
+
+    # Validate port is numeric
+    try:
+        port_int = int(port_str)
+        if not (1 <= port_int <= 65535):
+            return Response("Invalid port number", status=400)
+    except ValueError:
+        return Response("Port must be a number", status=400)
 
     # Build the server URL from the request
     server_url = request.url_root.rstrip("/")
 
     script = _INSTALL_SCRIPT.format(
-        server_url=server_url,
-        token=token,
-        port=port,
+        server_url=shlex.quote(server_url),
+        token=shlex.quote(token),
+        port=port_int,
     )
     return Response(script, mimetype="text/x-shellscript")
 
@@ -108,57 +120,58 @@ def install_script():
 @require_auth
 def package():
     """Serve the agent package as a tarball (sdist)."""
-    wheel_path = _get_or_build_package()
-    if wheel_path is None:
+    sdist_path = _get_or_build_package()
+    if sdist_path is None:
         return jsonify({"error": "Failed to build agent package"}), 500
 
     return send_file(
-        wheel_path,
+        sdist_path,
         mimetype="application/gzip",
         as_attachment=True,
-        download_name=wheel_path.name,
+        download_name=sdist_path.name,
     )
 
 
 def _get_or_build_package() -> Path | None:
     """Build the agent sdist if not already cached."""
-    if _wheel_cache["path"] and _wheel_cache["path"].exists():
-        return _wheel_cache["path"]
+    with _build_lock:
+        if _sdist_cache["path"] and _sdist_cache["path"].exists():
+            return _sdist_cache["path"]
 
-    if not AGENT_PACKAGE_DIR.exists():
-        logger.error(f"Agent package directory not found: {AGENT_PACKAGE_DIR}")
-        return None
+        if not AGENT_PACKAGE_DIR.exists():
+            logger.error(f"Agent package directory not found: {AGENT_PACKAGE_DIR}")
+            return None
 
-    try:
-        with tempfile.TemporaryDirectory() as tmpdir:
-            result = subprocess.run(
-                ["python", "-m", "build", "--sdist", "--outdir", tmpdir],
-                cwd=str(AGENT_PACKAGE_DIR),
-                capture_output=True,
-                text=True,
-                timeout=60,
-            )
-            if result.returncode != 0:
-                logger.error(f"Agent package build failed: {result.stderr}")
-                return None
+        try:
+            with tempfile.TemporaryDirectory() as tmpdir:
+                result = subprocess.run(
+                    ["python", "-m", "build", "--sdist", "--outdir", tmpdir],
+                    cwd=str(AGENT_PACKAGE_DIR),
+                    capture_output=True,
+                    text=True,
+                    timeout=60,
+                )
+                if result.returncode != 0:
+                    logger.error(f"Agent package build failed: {result.stderr}")
+                    return None
 
-            tarballs = list(Path(tmpdir).glob("*.tar.gz"))
-            if not tarballs:
-                logger.error("No tarball produced by build")
-                return None
+                tarballs = list(Path(tmpdir).glob("*.tar.gz"))
+                if not tarballs:
+                    logger.error("No tarball produced by build")
+                    return None
 
-            # Copy to a persistent location
-            dest_dir = Path.home() / ".kitt" / "agent-dist"
-            dest_dir.mkdir(parents=True, exist_ok=True)
-            dest = dest_dir / tarballs[0].name
+                # Copy to a persistent location
+                dest_dir = Path.home() / ".kitt" / "agent-dist"
+                dest_dir.mkdir(parents=True, exist_ok=True)
+                dest = dest_dir / tarballs[0].name
 
-            import shutil
+                import shutil
 
-            shutil.copy2(tarballs[0], dest)
-            _wheel_cache["path"] = dest
-            logger.info(f"Agent package built: {dest}")
-            return dest
+                shutil.copy2(tarballs[0], dest)
+                _sdist_cache["path"] = dest
+                logger.info(f"Agent package built: {dest}")
+                return dest
 
-    except Exception as e:
-        logger.error(f"Failed to build agent package: {e}")
-        return None
+        except Exception as e:
+            logger.error(f"Failed to build agent package: {e}")
+            return None

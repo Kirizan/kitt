@@ -94,9 +94,16 @@ def create_agent_app(
                         if not healthy:
                             streamer.emit("Health check timed out")
                             _report(
-                                server_url, token, name, command_id,
-                                {"status": "failed", "error": "Health check timeout",
-                                 "container_id": container_id}, insecure,
+                                server_url,
+                                token,
+                                name,
+                                command_id,
+                                {
+                                    "status": "failed",
+                                    "error": "Health check timeout",
+                                    "container_id": container_id,
+                                },
+                                insecure,
                             )
                             return
 
@@ -107,19 +114,27 @@ def create_agent_app(
 
                     streamer.emit("--- Container exited ---")
                     _report(
-                        server_url, token, name, command_id,
+                        server_url,
+                        token,
+                        name,
+                        command_id,
                         {"status": "completed", "container_id": container_id},
                         insecure,
                     )
                 except Exception as e:
                     streamer.emit(f"Error: {e}")
                     _report(
-                        server_url, token, name, command_id,
-                        {"status": "failed", "error": str(e)}, insecure,
+                        server_url,
+                        token,
+                        name,
+                        command_id,
+                        {"status": "failed", "error": str(e)},
+                        insecure,
                     )
                 finally:
                     with _lock:
                         active_containers.pop(command_id, None)
+                        log_streamers.pop(command_id, None)
 
             threading.Thread(target=_run, daemon=True).start()
             return jsonify({"accepted": True, "command_id": command_id}), 202
@@ -138,6 +153,16 @@ def create_agent_app(
 
         # Legacy: still support run_test for backward compatibility
         elif cmd_type == "run_test":
+            _VALID_ENGINES = {"vllm", "tgi", "llama_cpp", "ollama"}
+            _VALID_SUITES = {"quick", "standard", "performance"}
+
+            engine = payload.get("engine_name", "vllm")
+            suite = payload.get("suite_name", "quick")
+            if engine not in _VALID_ENGINES:
+                return jsonify({"error": f"Invalid engine: {engine}"}), 400
+            if suite not in _VALID_SUITES:
+                return jsonify({"error": f"Invalid suite: {suite}"}), 400
+
             streamer = LogStreamer(command_id)
             log_streamers[command_id] = streamer
 
@@ -145,14 +170,22 @@ def create_agent_app(
                 import subprocess as sp
 
                 args = [
-                    "kitt", "run",
-                    "-m", payload.get("model_path", ""),
-                    "-e", payload.get("engine_name", "vllm"),
-                    "-s", payload.get("suite_name", "quick"),
+                    "kitt",
+                    "run",
+                    "-m",
+                    payload.get("model_path", ""),
+                    "-e",
+                    engine,
+                    "-s",
+                    suite,
                 ]
                 try:
                     proc = sp.Popen(
-                        args, stdout=sp.PIPE, stderr=sp.STDOUT, text=True, bufsize=1,
+                        args,
+                        stdout=sp.PIPE,
+                        stderr=sp.STDOUT,
+                        text=True,
+                        bufsize=1,
                     )
                     for line in proc.stdout or []:
                         streamer.emit(line.rstrip())
@@ -160,15 +193,27 @@ def create_agent_app(
                     status = "completed" if proc.returncode == 0 else "failed"
                     streamer.emit(f"--- Finished: {status} ---")
                     _report(
-                        server_url, token, name, command_id,
-                        {"status": status, "error": "" if status == "completed" else f"Exit {proc.returncode}"},
+                        server_url,
+                        token,
+                        name,
+                        command_id,
+                        {
+                            "status": status,
+                            "error": ""
+                            if status == "completed"
+                            else f"Exit {proc.returncode}",
+                        },
                         insecure,
                     )
                 except Exception as e:
                     streamer.emit(f"Error: {e}")
                     _report(
-                        server_url, token, name, command_id,
-                        {"status": "failed", "error": str(e)}, insecure,
+                        server_url,
+                        token,
+                        name,
+                        command_id,
+                        {"status": "failed", "error": str(e)},
+                        insecure,
                     )
 
             threading.Thread(target=_run_legacy, daemon=True).start()
@@ -179,6 +224,8 @@ def create_agent_app(
     @app.route("/api/logs/<command_id>")
     def stream_logs_endpoint(command_id):
         """Stream logs for a command as SSE."""
+        if not _check_auth():
+            return jsonify({"error": "Unauthorized"}), 401
         streamer = log_streamers.get(command_id)
         if streamer is None:
             return jsonify({"error": "No logs for this command"}), 404
@@ -198,13 +245,16 @@ def create_agent_app(
     def agent_status():
         """Agent status endpoint."""
         with _lock:
-            running = len(active_containers) > 0
-        return jsonify({
-            "name": name,
-            "running": running,
-            "active_containers": len(active_containers),
-            "active_streams": len(log_streamers),
-        })
+            container_count = len(active_containers)
+            stream_count = len(log_streamers)
+        return jsonify(
+            {
+                "name": name,
+                "running": container_count > 0,
+                "active_containers": container_count,
+                "active_streams": stream_count,
+            }
+        )
 
     return app
 
@@ -216,19 +266,24 @@ def _report(
     command_id: str,
     result: dict[str, Any],
     insecure: bool = False,
+    verify: str | bool = True,
+    client_cert: tuple[str, str] | None = None,
 ) -> None:
     """Report a result back to the server."""
     import json
     import ssl
     import urllib.request
+    from urllib.parse import quote
 
-    url = f"{server_url.rstrip('/')}/api/v1/agents/{agent_name}/results"
-    data = json.dumps({
-        "command_id": command_id,
-        "status": result.get("status", ""),
-        "container_id": result.get("container_id", ""),
-        "error": result.get("error", ""),
-    }).encode("utf-8")
+    url = f"{server_url.rstrip('/')}/api/v1/agents/{quote(agent_name, safe='')}/results"
+    data = json.dumps(
+        {
+            "command_id": command_id,
+            "status": result.get("status", ""),
+            "container_id": result.get("container_id", ""),
+            "error": result.get("error", ""),
+        }
+    ).encode("utf-8")
 
     req = urllib.request.Request(
         url,
@@ -243,9 +298,13 @@ def _report(
     ctx = None
     if server_url.startswith("https"):
         ctx = ssl.create_default_context()
-        if insecure:
+        if isinstance(verify, str):
+            ctx.load_verify_locations(verify)
+        elif not verify or insecure:
             ctx.check_hostname = False
             ctx.verify_mode = ssl.CERT_NONE
+        if client_cert:
+            ctx.load_cert_chain(client_cert[0], client_cert[1])
 
     try:
         with urllib.request.urlopen(req, context=ctx, timeout=30) as response:

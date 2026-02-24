@@ -89,5 +89,5 @@ def register_with_server(
         if client_cert:
             ctx.load_cert_chain(client_cert[0], client_cert[1])
 
-    with urllib.request.urlopen(req, context=ctx) as response:
+    with urllib.request.urlopen(req, context=ctx, timeout=30) as response:
         return json.loads(response.read().decode("utf-8"))
