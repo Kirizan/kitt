@@ -41,7 +41,7 @@
         <div class="bg-kitt-bg rounded-md p-4 font-mono text-sm space-y-1">
             <code>name: &lt;hostname&gt;</code><br>
             <code>server_url: {{ server_url }}</code><br>
-            <code>token: {{ auth_token or '(empty — server has no auth token)' }}</code><br>
+            <code>token: {% if auth_token %}(configured){% else %}(empty — server has no auth token){% endif %}</code><br>
             <code>port: 8090</code>
         </div>
         <p class="text-kitt-dim text-sm mt-3">To reconfigure an existing agent:</p>
@@ -62,7 +62,7 @@
             <code>~/.kitt/agent-venv/bin/pip install /tmp/kitt-agent.tar.gz</code><br>
             <br>
             <code># Configure the agent</code><br>
-            <code>~/.kitt/agent-venv/bin/kitt-agent init --server {{ server_url }}{% if auth_token %} --token {{ auth_token }}{% endif %}</code><br>
+            <code>~/.kitt/agent-venv/bin/kitt-agent init --server {{ server_url }}{% if auth_token %} --token &lt;TOKEN&gt;{% endif %}</code><br>
             <br>
             <code># Start the agent</code><br>
             <code>~/.kitt/agent-venv/bin/kitt-agent start</code>

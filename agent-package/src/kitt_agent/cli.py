@@ -70,7 +70,7 @@ def start(config_path, insecure):
 
     if not config_file.exists():
         click.echo(
-            "Agent not configured. Run: kitt-agent init --server <URL> --token <TOKEN>"
+            "Agent not configured. Run: kitt-agent init --server <URL>"
         )
         raise SystemExit(1)
 
