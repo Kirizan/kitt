@@ -18,6 +18,7 @@ RUN poetry config virtualenvs.create false \
 # Copy source
 COPY src/ ./src/
 COPY configs/ ./configs/
+COPY agent-package/ ./agent-package/
 COPY README.md ./
 RUN poetry install --only-root
 

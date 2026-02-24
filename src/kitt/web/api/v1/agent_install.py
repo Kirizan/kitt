@@ -43,7 +43,7 @@ python3 -m venv "$VENV_DIR"
 # Download agent package
 echo "==> Downloading agent package"
 TMPFILE="$(mktemp /tmp/kitt-agent-XXXXXX.tar.gz)"
-curl -sfL "$KITT_SERVER/api/v1/agent/package" \\
+curl -fL "$KITT_SERVER/api/v1/agent/package" \\
     -o "$TMPFILE"
 
 # Install
