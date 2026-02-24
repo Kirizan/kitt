@@ -132,7 +132,7 @@ KITT agents run on remote GPU servers and receive Docker orchestration commands 
 ### One-line install
 
 ```bash
-curl -sfL https://your-kitt-server:8080/api/v1/agent/install.sh | bash
+curl -fL https://your-kitt-server:8080/api/v1/agent/install.sh | bash
 ```
 
 This creates a virtual environment at `~/.kitt/agent-venv`, downloads the agent package from the KITT server, and configures the agent. The agent version always matches the server.

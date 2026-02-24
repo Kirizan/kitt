@@ -90,7 +90,7 @@ KITT Server                              GPU Server (Agent)
 
 ### Agent installation flow
 
-1. User runs `curl -sfL <server>/api/v1/agent/install.sh | bash`
+1. User runs `curl -fL <server>/api/v1/agent/install.sh | bash`
 2. The script creates a venv, downloads the agent sdist from `/api/v1/agent/package`, and installs it
 3. `kitt-agent init` writes `~/.kitt/agent.yaml` with server URL, token, name, and port
 4. `kitt-agent start` registers with the server, starts the heartbeat thread, and listens for commands
