@@ -84,6 +84,16 @@ MIGRATIONS: list[Migration] = [
         CREATE INDEX IF NOT EXISTS idx_events_source ON events(source_id);
         """,
     ),
+    (
+        3,
+        "Add web_settings key-value table",
+        """
+        CREATE TABLE IF NOT EXISTS web_settings (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL
+        );
+        """,
+    ),
 ]
 
 

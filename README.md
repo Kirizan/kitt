@@ -13,8 +13,8 @@ End-to-end testing suite for LLM inference engines. Measures quality consistency
 - **Hardware fingerprinting** — automatic system identification for reproducible results
 - **[KARR results storage](https://kirizan.github.io/kitt/concepts/karr/)** — Kitt's AI Results Repository. SQLite (default) or PostgreSQL with queryable schema and full JSON round-tripping
 - **Docker deployment stacks** — composable `docker-compose` stacks via `kitt stack`
-- **Remote Devon integration** — manage models on a remote [Devon](https://github.com/kirizan/devon) instance via HTTP, with automatic fallback to local
-- **Web dashboard & REST API** — browse results with TLS and token auth
+- **Devon integration** — embedded [Devon](https://github.com/kirizan/devon) web UI tab for model management, with automatic fallback to local Devon
+- **Web dashboard & REST API** — browse results, manage agents, and configure settings with TLS and token auth
 - **Monitoring** — Prometheus + Grafana + InfluxDB stack generation
 - **Custom benchmarks** — define evaluations with YAML configuration files
 
@@ -92,13 +92,15 @@ devon_api_key: "your-token"  # omit if Devon has no auth
 
 ### Web dashboard
 
-Set environment variables for the web UI to use remote Devon:
+Set environment variables to embed the Devon web UI in a dedicated "Devon" tab:
 
 ```bash
 export DEVON_URL="http://192.168.1.50:8000"
-export DEVON_API_KEY="your-token"
+export DEVON_API_KEY="your-token"  # omit if Devon has no auth
 kitt web
 ```
+
+The Devon tab displays the Devon web UI in an iframe. When `DEVON_URL` is not set, the tab shows setup instructions. You can hide the Devon tab from **Settings > Devon Integration > Show Devon Tab**.
 
 ## Development
 

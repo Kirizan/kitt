@@ -51,12 +51,49 @@
         <h2 class="text-lg font-semibold mb-4">Devon Integration</h2>
         <dl class="space-y-3 text-sm">
             <div class="flex justify-between">
-                <dt class="text-kitt-dim">Status</dt>
-                <dd id="devon-status" hx-get="/api/v1/models/local" hx-trigger="load" hx-swap="innerHTML">
-                    Checking...
+                <dt class="text-kitt-dim">Devon URL</dt>
+                <dd class="font-mono text-xs truncate max-w-sm">
+                    {% if config.devon_url %}{{ config.devon_url }}{% else %}<span class="text-kitt-dim">Not configured</span>{% endif %}
+                </dd>
+            </div>
+            <div class="flex justify-between items-center">
+                <dt class="text-kitt-dim">Connection</dt>
+                <dd id="devon-conn-status" hx-get="/api/v1/devon/status" hx-trigger="load" hx-swap="innerHTML">
+                    <span class="text-xs text-kitt-dim">Checking...</span>
+                </dd>
+            </div>
+            <div class="flex justify-between items-center">
+                <dt class="text-kitt-dim">Show Devon Tab</dt>
+                <dd class="flex items-center">
+                    {% set devon_visible = web_settings.get('devon_tab_visible', 'true') == 'true' %}
+                    <button type="button" hx-post="/settings/toggle" hx-vals='{"key": "devon_tab_visible"}' hx-swap="outerHTML"
+                            class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors {{ 'bg-kitt-accent' if devon_visible else 'bg-kitt-primary' }}"
+                            role="switch" aria-checked="{{ 'true' if devon_visible else 'false' }}">
+                        <span class="inline-block h-4 w-4 rounded-full bg-white transition-transform {{ 'translate-x-5' if devon_visible else 'translate-x-0' }}"></span>
+                    </button>
+                    <span class="text-sm ml-2 {{ 'text-green-400' if devon_visible else 'text-kitt-dim' }}">{{ 'Visible' if devon_visible else 'Hidden' }}</span>
                 </dd>
             </div>
         </dl>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.body.addEventListener('htmx:afterSwap', function(event) {
+    if (event.detail.target.id !== 'devon-conn-status') return;
+    try {
+        var data = JSON.parse(event.detail.xhr.responseText);
+        var el = document.getElementById('devon-conn-status');
+        if (data.available) {
+            el.innerHTML = '<span class="inline-flex items-center gap-1.5 text-xs"><span class="w-2 h-2 rounded-full bg-green-400"></span><span class="text-green-400">Connected</span></span>';
+        } else if (data.reason === 'not_configured') {
+            el.innerHTML = '<span class="text-xs text-kitt-dim">Not configured</span>';
+        } else {
+            el.innerHTML = '<span class="inline-flex items-center gap-1.5 text-xs"><span class="w-2 h-2 rounded-full bg-red-400"></span><span class="text-red-400">Unreachable</span></span>';
+        }
+    } catch (e) {}
+});
+</script>
 {% endblock %}
