@@ -9,7 +9,6 @@ from pathlib import Path
 
 from flask import Blueprint, Response, current_app, jsonify, request, send_file
 
-
 logger = logging.getLogger(__name__)
 
 bp = Blueprint("api_agent_install", __name__, url_prefix="/api/v1/agent")
