@@ -22,7 +22,7 @@ to the server at a configurable interval (default 30 seconds).
 Before starting the agent you must register it with a KITT server:
 
 ```bash
-kitt agent init --server https://server:8080 --token <BEARER_TOKEN>
+kitt-agent init --server https://server:8080
 ```
 
 This command:
@@ -35,6 +35,7 @@ Optional flags:
 
 | Flag | Default | Description |
 |------|---------|-------------|
+| `--token` | *(empty)* | Bearer token for server authentication |
 | `--name` | hostname | Friendly agent name |
 | `--port` | 8090 | Port the agent listens on |
 
@@ -79,31 +80,20 @@ The server validates it against the same CA.
 
 ## Systemd Service
 
-For production deployments, run the agent as a systemd service:
-
-```ini
-[Unit]
-Description=KITT Agent Daemon
-After=network-online.target docker.service
-Wants=network-online.target
-
-[Service]
-Type=simple
-ExecStart=/usr/local/bin/kitt agent start --foreground
-Restart=on-failure
-RestartSec=10
-User=kitt
-Environment=HOME=/home/kitt
-
-[Install]
-WantedBy=multi-user.target
-```
-
-Enable and start:
+For production deployments, install the agent as a systemd service:
 
 ```bash
-sudo systemctl enable kitt-agent
-sudo systemctl start kitt-agent
+~/.kitt/agent-venv/bin/kitt-agent service install
+```
+
+This generates a systemd unit file, installs it via `sudo`, and starts the
+service. The agent will survive reboots and restart automatically on failure.
+
+Manage the service:
+
+```bash
+kitt-agent service status      # check service status
+kitt-agent service uninstall   # stop, disable, and remove the service
 ```
 
 ---
