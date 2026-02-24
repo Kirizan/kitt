@@ -14,7 +14,7 @@ bp = Blueprint("settings", __name__, url_prefix="/settings")
 _ALLOWED_TOGGLE_KEYS = {"devon_tab_visible"}
 
 # Keys that can be updated via the settings UI (string values).
-_ALLOWED_SETTINGS = {"model_dir", "devon_url", "results_dir"}
+_ALLOWED_SETTINGS = {"model_dir", "devon_url", "devon_iframe_url", "results_dir"}
 
 _TOGGLE_TEMPLATE = """\
 <button type="button" hx-post="/settings/toggle" hx-vals='{"key": "{{ key }}"}' hx-swap="outerHTML"
@@ -41,11 +41,19 @@ def _get_effective_config(settings_svc) -> dict:
         "db_path": str(current_app.config.get("DB_PATH", "")),
         # Editable settings — use effective resolution
         "results_dir": settings_svc.get_effective(
-            "results_dir", "", default_results_dir
+            "results_dir", "KITT_RESULTS_DIR", default_results_dir
         ),
-        "results_dir_source": settings_svc.get_source("results_dir", ""),
+        "results_dir_source": settings_svc.get_source(
+            "results_dir", "KITT_RESULTS_DIR"
+        ),
         "devon_url": settings_svc.get_effective("devon_url", "DEVON_URL", ""),
         "devon_url_source": settings_svc.get_source("devon_url", "DEVON_URL"),
+        "devon_iframe_url": settings_svc.get_effective(
+            "devon_iframe_url", "DEVON_IFRAME_URL", ""
+        ),
+        "devon_iframe_url_source": settings_svc.get_source(
+            "devon_iframe_url", "DEVON_IFRAME_URL"
+        ),
         "model_dir": settings_svc.get_effective(
             "model_dir", "KITT_MODEL_DIR", default_model_dir
         ),
@@ -100,8 +108,8 @@ def update():
     if key not in _ALLOWED_SETTINGS:
         return '<span class="text-xs text-red-400">Invalid setting</span>', 400
 
-    # Validate devon_url scheme (allow empty to clear)
-    if key == "devon_url" and value:
+    # Validate URL schemes (allow empty to clear)
+    if key in ("devon_url", "devon_iframe_url") and value:
         parsed = urlparse(value)
         if parsed.scheme not in ("http", "https"):
             return (
@@ -134,7 +142,9 @@ def update():
 
     elif key == "results_dir":
         default_results_dir = str(Path.cwd())
-        effective = settings_svc.get_effective("results_dir", "", default_results_dir)
+        effective = settings_svc.get_effective(
+            "results_dir", "KITT_RESULTS_DIR", default_results_dir
+        )
         current_app.config["RESULTS_DIR"] = effective
         if effective and not Path(effective).is_dir():
             warning = "Directory does not exist yet"
@@ -144,7 +154,8 @@ def update():
         {
             "model_dir": "KITT_MODEL_DIR",
             "devon_url": "DEVON_URL",
-            "results_dir": "",
+            "devon_iframe_url": "DEVON_IFRAME_URL",
+            "results_dir": "KITT_RESULTS_DIR",
         }.get(key, ""),
     )
 

@@ -16,11 +16,15 @@ def index():
 
     settings_svc = get_services()["settings_service"]
     devon_url = settings_svc.get_effective("devon_url", "DEVON_URL", "")
+    devon_iframe_url = settings_svc.get_effective(
+        "devon_iframe_url", "DEVON_IFRAME_URL", devon_url
+    )
     devon_visible = settings_svc.get_bool("devon_tab_visible", default=True)
 
     return render_template(
         "devon/index.html",
         devon_url=devon_url,
+        devon_iframe_url=devon_iframe_url,
         devon_configured=bool(devon_url),
         devon_tab_visible=devon_visible,
     )

@@ -9,8 +9,6 @@ from pathlib import Path
 
 from flask import Blueprint, Response, current_app, jsonify, request, send_file
 
-from kitt.web.auth import require_auth
-
 logger = logging.getLogger(__name__)
 
 bp = Blueprint("api_agent_install", __name__, url_prefix="/api/v1/agent")
@@ -46,7 +44,6 @@ python3 -m venv "$VENV_DIR"
 echo "==> Downloading agent package"
 TMPFILE="$(mktemp /tmp/kitt-agent-XXXXXX.tar.gz)"
 curl -sfL "$KITT_SERVER/api/v1/agent/package" \\
-    -H "Authorization: Bearer $KITT_TOKEN" \\
     -o "$TMPFILE"
 
 # Install
@@ -87,7 +84,6 @@ echo "    sudo systemctl enable --now kitt-agent"
 
 
 @bp.route("/install.sh")
-@require_auth
 def install_script():
     """Serve the agent bootstrap install script.
 
@@ -117,7 +113,6 @@ def install_script():
 
 
 @bp.route("/package")
-@require_auth
 def package():
     """Serve the agent package as a tarball (sdist)."""
     sdist_path = _get_or_build_package()
