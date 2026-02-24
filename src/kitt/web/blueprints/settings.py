@@ -43,7 +43,9 @@ def _get_effective_config(settings_svc) -> dict:
         "results_dir": settings_svc.get_effective(
             "results_dir", "KITT_RESULTS_DIR", default_results_dir
         ),
-        "results_dir_source": settings_svc.get_source("results_dir", "KITT_RESULTS_DIR"),
+        "results_dir_source": settings_svc.get_source(
+            "results_dir", "KITT_RESULTS_DIR"
+        ),
         "devon_url": settings_svc.get_effective("devon_url", "DEVON_URL", ""),
         "devon_url_source": settings_svc.get_source("devon_url", "DEVON_URL"),
         "devon_iframe_url": settings_svc.get_effective(
