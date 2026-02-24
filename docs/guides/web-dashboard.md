@@ -87,6 +87,25 @@ The full dashboard registers API blueprints under `/api/v1/`:
 All mutable endpoints require a valid `Authorization` header when
 `--auth-token` is set.
 
+## Settings
+
+The **Settings** page lets you configure key paths and integrations
+directly from the web UI without restarting the server:
+
+| Setting | Environment Variable | Default |
+|---------|---------------------|---------|
+| Model Directory | `KITT_MODEL_DIR` | `~/.kitt/models` |
+| Devon URL | `DEVON_URL` | *(none)* |
+| Results Directory | `--results-dir` CLI flag | Current directory |
+
+Values saved through the UI are stored in the database and take
+priority over environment variables. Clearing a field reverts to the
+environment variable or default. Changes take effect immediately
+without a restart.
+
+The Devon URL can also be configured inline on the **Devon** page when
+it hasn't been set yet.
+
 ## Database
 
 The full dashboard uses SQLite stored at `~/.kitt/kitt.db`. Schema

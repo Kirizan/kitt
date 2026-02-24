@@ -77,6 +77,8 @@ kitt web                         # launch web dashboard
 | `DEVON_API_KEY` | *(none)* | Bearer token for remote Devon (optional) |
 | `KITT_AUTH_TOKEN` | *(none)* | Bearer token for KITT API authentication |
 
+`KITT_MODEL_DIR`, `DEVON_URL`, and `--results-dir` can also be configured from the web UI **Settings** page. UI-saved values take priority over environment variables.
+
 ## Documentation
 
 | Section | Description |
@@ -113,7 +115,7 @@ devon_api_key: "your-token"  # omit if Devon has no auth
 
 ### Web dashboard
 
-Set environment variables to embed the Devon web UI in a dedicated "Devon" tab:
+The Devon tab can be configured directly from the web UI — navigate to the **Devon** page and enter your server URL, or set it in **Settings > Devon Integration**. Alternatively, set environment variables before launching:
 
 ```bash
 export DEVON_URL="http://192.168.1.50:8000"
@@ -121,7 +123,7 @@ export DEVON_API_KEY="your-token"  # omit if Devon has no auth
 kitt web
 ```
 
-The Devon tab displays the Devon web UI in an iframe. When `DEVON_URL` is not set, the tab shows setup instructions. You can hide the Devon tab from **Settings > Devon Integration > Show Devon Tab**.
+The Devon tab displays the Devon web UI in an iframe. When not configured, the tab shows an inline setup form. UI-saved settings override environment variables. You can hide the Devon tab from **Settings > Devon Integration > Show Devon Tab**.
 
 ## Agent Installation
 

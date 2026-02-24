@@ -55,6 +55,18 @@ endpoints will reject all requests.
 |----------|-------------|---------|
 | `KITT_DB_PATH` | Path to SQLite database file | `~/.kitt/kitt.db` |
 
+## Web UI
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `KITT_MODEL_DIR` | Directory the Models tab scans for local model files | `~/.kitt/models` |
+| `DEVON_URL` | Devon server URL for the Devon tab iframe and API access | *(none)* |
+| `DEVON_API_KEY` | API key for authenticating with remote Devon | *(none)* |
+
+`KITT_MODEL_DIR`, `DEVON_URL`, and the results directory can also be
+configured from the **Settings** page in the web dashboard. UI-saved
+values take priority: **DB > environment variable > default**.
+
 ## Agent
 
 | Variable | Description | Default |
