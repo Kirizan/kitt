@@ -1,8 +1,8 @@
 """CLI for the KITT thin agent."""
 
-import getpass
 import logging
 import os
+import pwd
 import signal
 import socket
 import subprocess
@@ -225,8 +225,9 @@ Wants=network-online.target
 [Service]
 Type=simple
 User={user}
+Environment=HOME={home}
 ExecStart={venv}/bin/kitt-agent start
-Restart=always
+Restart=on-failure
 RestartSec=10
 
 [Install]
@@ -243,15 +244,23 @@ def service():
 @click.option("--no-start", is_flag=True, help="Install and enable without starting")
 def install(no_start):
     """Install the KITT agent as a systemd service."""
+    config_file = Path.home() / ".kitt" / "agent.yaml"
+    if not config_file.exists():
+        click.echo(
+            "Agent not configured. Run 'kitt-agent init' first."
+        )
+        raise SystemExit(1)
+
     if _UNIT_PATH.exists():
         click.echo(f"Service already installed at {_UNIT_PATH}")
         click.echo("Run 'kitt-agent service uninstall' first to reinstall.")
         raise SystemExit(1)
 
     venv = sys.prefix
-    user = getpass.getuser()
+    user = pwd.getpwuid(os.getuid()).pw_name
+    home = str(Path.home())
 
-    unit_content = _UNIT_TEMPLATE.format(venv=venv, user=user)
+    unit_content = _UNIT_TEMPLATE.format(venv=venv, user=user, home=home)
 
     with tempfile.NamedTemporaryFile(
         mode="w", suffix=".service", delete=False
@@ -275,10 +284,10 @@ def install(no_start):
 
         click.echo()
         if no_start:
-            click.echo(f"Service installed and enabled (not started).")
+            click.echo("Service installed and enabled (not started).")
             click.echo(f"  Start with: sudo systemctl start {_SERVICE_NAME}")
         else:
-            click.echo(f"Service installed, enabled, and started.")
+            click.echo("Service installed, enabled, and started.")
         click.echo(f"  Status: sudo systemctl status {_SERVICE_NAME}")
         click.echo(f"  Logs:   journalctl -u {_SERVICE_NAME} -f")
     except subprocess.CalledProcessError as e:
