@@ -171,6 +171,7 @@ def create_app(
     app.register_blueprint(settings_bp)
 
     # --- Register API blueprints ---
+    from kitt.web.api.v1.agent_install import bp as api_agent_install_bp
     from kitt.web.api.v1.agents import bp as api_agents_bp
     from kitt.web.api.v1.campaigns import bp as api_campaigns_bp
     from kitt.web.api.v1.devon import bp as api_devon_bp
@@ -183,6 +184,7 @@ def create_app(
     app.register_blueprint(health_bp)
     app.register_blueprint(api_agents_bp)
     app.register_blueprint(api_devon_bp)
+    app.register_blueprint(api_agent_install_bp)
     app.register_blueprint(api_campaigns_bp)
     app.register_blueprint(api_results_bp)
     app.register_blueprint(api_models_bp)
