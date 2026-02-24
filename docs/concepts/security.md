@@ -56,6 +56,8 @@ Authorization: Bearer my-secret-token
 
 Requests without a valid token receive a `401 Unauthorized` response.
 
+**Note:** The agent installation endpoints (`/api/v1/agent/install.sh` and `/api/v1/agent/package`) do not require authentication, allowing agents to be bootstrapped from within the network without a token. Authentication is enforced once the agent registers with the server.
+
 ## Development Mode
 
 For local development and testing, security can be relaxed with the `--insecure` flag:
