@@ -92,6 +92,12 @@ def create_app(
     )
     app.secret_key = os.environ.get("KITT_SECRET_KEY") or _get_or_create_secret_key()
 
+    # Trust reverse-proxy headers (X-Forwarded-Proto, X-Forwarded-Host, etc.)
+    # so request.url_root reflects the external scheme/host behind Traefik.
+    from werkzeug.middleware.proxy_fix import ProxyFix
+
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
+
     # Store config values on app
     base_dir = Path(results_dir) if results_dir else Path.cwd()
     app.config["RESULTS_DIR"] = str(base_dir)
