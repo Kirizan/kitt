@@ -12,12 +12,10 @@ bp = Blueprint("devon", __name__, url_prefix="/devon")
 @bp.route("/")
 def index():
     """Devon web UI page (iframe or configuration instructions)."""
-    from flask import current_app
-
     from kitt.web.app import get_services
 
-    devon_url = current_app.config.get("DEVON_URL", "")
     settings_svc = get_services()["settings_service"]
+    devon_url = settings_svc.get_effective("devon_url", "DEVON_URL", "")
     devon_visible = settings_svc.get_bool("devon_tab_visible", default=True)
 
     return render_template(

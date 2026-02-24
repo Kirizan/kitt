@@ -4,6 +4,7 @@ Stores key-value UI settings in the web_settings SQLite table.
 """
 
 import logging
+import os
 import sqlite3
 
 logger = logging.getLogger(__name__)
@@ -11,6 +12,9 @@ logger = logging.getLogger(__name__)
 # Defaults applied when a key has no stored value.
 _DEFAULTS: dict[str, str] = {
     "devon_tab_visible": "true",
+    "model_dir": "",
+    "devon_url": "",
+    "results_dir": "",
 }
 
 
@@ -30,6 +34,31 @@ class SettingsService:
         if default is not None:
             return default
         return _DEFAULTS.get(key, "")
+
+    def get_effective(self, key: str, env_var: str, fallback: str) -> str:
+        """Resolve a setting value: DB (non-empty) > env var > fallback.
+
+        Returns:
+            The effective value and does not store it — callers decide
+            what to do with the result.
+        """
+        db_val = self.get(key)
+        if db_val:
+            return db_val
+        env_val = os.environ.get(env_var, "")
+        if env_val:
+            return env_val
+        return fallback
+
+    def get_source(self, key: str, env_var: str) -> str:
+        """Return the source of the effective value: 'saved', 'env', or 'default'."""
+        db_val = self.get(key)
+        if db_val:
+            return "saved"
+        env_val = os.environ.get(env_var, "")
+        if env_val:
+            return "env"
+        return "default"
 
     def set(self, key: str, value: str) -> None:
         """Upsert a setting value."""
