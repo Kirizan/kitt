@@ -8,6 +8,8 @@ All notable changes to KITT are documented on this page.
 - Added web UI and distributed agent architecture
 - Added monitoring stack generation and remote deployment
 - Added documentation site with MkDocs Material
+- Added UI-configurable settings — Model Directory, Devon URL, and Results Directory can be edited from the Settings page with live updates
+- Added inline Devon URL setup form on the Devon page
 
 ## 1.0.0
 

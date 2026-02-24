@@ -15,10 +15,17 @@ _status_cache: dict = {"ts": 0.0, "result": None}
 _CACHE_TTL_S = 10
 
 
-def _get_devon_url() -> str:
-    from flask import current_app
+def clear_status_cache() -> None:
+    """Invalidate the Devon status cache (called when devon_url changes)."""
+    _status_cache["ts"] = 0.0
+    _status_cache["result"] = None
 
-    return current_app.config.get("DEVON_URL", "")
+
+def _get_devon_url() -> str:
+    from kitt.web.app import get_services
+
+    settings_svc = get_services()["settings_service"]
+    return settings_svc.get_effective("devon_url", "DEVON_URL", "")
 
 
 @bp.route("/status")

@@ -8,7 +8,7 @@
         <p class="text-kitt-dim text-sm mt-1">Server configuration</p>
     </div>
 
-    <!-- Server config -->
+    <!-- Server config (read-only) -->
     <div class="bg-kitt-surface rounded-lg p-6">
         <h2 class="text-lg font-semibold mb-4">Server</h2>
         <dl class="space-y-3 text-sm">
@@ -34,14 +34,68 @@
     <!-- Storage config -->
     <div class="bg-kitt-surface rounded-lg p-6">
         <h2 class="text-lg font-semibold mb-4">Storage</h2>
-        <dl class="space-y-3 text-sm">
+        <dl class="space-y-4 text-sm">
             <div class="flex justify-between">
                 <dt class="text-kitt-dim">Database Path</dt>
                 <dd class="font-mono text-xs truncate max-w-sm" title="{{ config.db_path }}">{{ config.db_path }}</dd>
             </div>
-            <div class="flex justify-between">
-                <dt class="text-kitt-dim">Results Directory</dt>
-                <dd class="font-mono text-xs truncate max-w-sm" title="{{ config.results_dir }}">{{ config.results_dir }}</dd>
+
+            <!-- Results Directory (editable) -->
+            <div class="space-y-2">
+                <div class="flex items-center justify-between">
+                    <dt class="text-kitt-dim">Results Directory</dt>
+                    {% set rd_source = config.results_dir_source %}
+                    <span class="text-xs px-1.5 py-0.5 rounded
+                        {% if rd_source == 'saved' %}bg-kitt-accent/20 text-kitt-accent
+                        {% elif rd_source == 'env' %}bg-blue-900/50 text-blue-300
+                        {% else %}bg-gray-800 text-gray-400{% endif %}">
+                        {% if rd_source == 'saved' %}Saved{% elif rd_source == 'env' %}From env{% else %}Default{% endif %}
+                    </span>
+                </div>
+                <div class="flex gap-2">
+                    <input type="text" id="results_dir_input" name="value" value="{{ config.results_dir }}"
+                           placeholder="/path/to/results"
+                           class="flex-1 bg-kitt-bg border border-kitt-primary/50 rounded-md px-3 py-1.5 text-xs font-mono focus:outline-none focus:border-kitt-accent">
+                    <button type="button"
+                            hx-post="/settings/update"
+                            hx-include="#results_dir_input"
+                            hx-vals='{"key": "results_dir"}'
+                            hx-target="#results_dir_feedback"
+                            hx-swap="innerHTML"
+                            class="bg-kitt-accent hover:bg-kitt-accent/80 text-white px-3 py-1.5 rounded-md text-xs font-medium transition-colors">
+                        Save
+                    </button>
+                </div>
+                <div id="results_dir_feedback"></div>
+            </div>
+
+            <!-- Model Directory (editable) -->
+            <div class="space-y-2">
+                <div class="flex items-center justify-between">
+                    <dt class="text-kitt-dim">Model Directory</dt>
+                    {% set md_source = config.model_dir_source %}
+                    <span class="text-xs px-1.5 py-0.5 rounded
+                        {% if md_source == 'saved' %}bg-kitt-accent/20 text-kitt-accent
+                        {% elif md_source == 'env' %}bg-blue-900/50 text-blue-300
+                        {% else %}bg-gray-800 text-gray-400{% endif %}">
+                        {% if md_source == 'saved' %}Saved{% elif md_source == 'env' %}From env{% else %}Default{% endif %}
+                    </span>
+                </div>
+                <div class="flex gap-2">
+                    <input type="text" id="model_dir_input" name="value" value="{{ config.model_dir }}"
+                           placeholder="~/.kitt/models"
+                           class="flex-1 bg-kitt-bg border border-kitt-primary/50 rounded-md px-3 py-1.5 text-xs font-mono focus:outline-none focus:border-kitt-accent">
+                    <button type="button"
+                            hx-post="/settings/update"
+                            hx-include="#model_dir_input"
+                            hx-vals='{"key": "model_dir"}'
+                            hx-target="#model_dir_feedback"
+                            hx-swap="innerHTML"
+                            class="bg-kitt-accent hover:bg-kitt-accent/80 text-white px-3 py-1.5 rounded-md text-xs font-medium transition-colors">
+                        Save
+                    </button>
+                </div>
+                <div id="model_dir_feedback"></div>
             </div>
         </dl>
     </div>
@@ -49,13 +103,40 @@
     <!-- Devon config -->
     <div class="bg-kitt-surface rounded-lg p-6">
         <h2 class="text-lg font-semibold mb-4">Devon Integration</h2>
-        <dl class="space-y-3 text-sm">
-            <div class="flex justify-between">
-                <dt class="text-kitt-dim">Devon URL</dt>
-                <dd class="font-mono text-xs truncate max-w-sm">
-                    {% if config.devon_url %}{{ config.devon_url }}{% else %}<span class="text-kitt-dim">Not configured</span>{% endif %}
-                </dd>
+        <dl class="space-y-4 text-sm">
+            <!-- Devon URL (editable) -->
+            <div class="space-y-2">
+                <div class="flex items-center justify-between">
+                    <dt class="text-kitt-dim">Devon URL</dt>
+                    {% set du_source = config.devon_url_source %}
+                    <span class="text-xs px-1.5 py-0.5 rounded
+                        {% if du_source == 'saved' %}bg-kitt-accent/20 text-kitt-accent
+                        {% elif du_source == 'env' %}bg-blue-900/50 text-blue-300
+                        {% else %}bg-gray-800 text-gray-400{% endif %}">
+                        {% if du_source == 'saved' %}Saved{% elif du_source == 'env' %}From env{% else %}Default{% endif %}
+                    </span>
+                </div>
+                <div class="flex gap-2">
+                    <input type="text" id="devon_url_input" name="value" value="{{ config.devon_url }}"
+                           placeholder="http://devon-host:8000"
+                           class="flex-1 bg-kitt-bg border border-kitt-primary/50 rounded-md px-3 py-1.5 text-xs font-mono focus:outline-none focus:border-kitt-accent">
+                    <button type="button"
+                            hx-post="/settings/update"
+                            hx-include="#devon_url_input"
+                            hx-vals='{"key": "devon_url"}'
+                            hx-target="#devon_url_feedback"
+                            hx-swap="innerHTML"
+                            class="bg-kitt-accent hover:bg-kitt-accent/80 text-white px-3 py-1.5 rounded-md text-xs font-medium transition-colors">
+                        Save
+                    </button>
+                    <button type="button" id="devon-test-btn" onclick="testDevonConnection()"
+                            class="border border-kitt-primary/50 hover:border-kitt-accent text-kitt-dim hover:text-white px-3 py-1.5 rounded-md text-xs font-medium transition-colors">
+                        Test
+                    </button>
+                </div>
+                <div id="devon_url_feedback"></div>
             </div>
+
             <div class="flex justify-between items-center">
                 <dt class="text-kitt-dim">Connection</dt>
                 <dd id="devon-conn-status" hx-get="/api/v1/devon/status" hx-trigger="load" hx-swap="innerHTML">
@@ -76,11 +157,16 @@
             </div>
         </dl>
     </div>
+
+    <p class="text-kitt-dim text-xs">
+        Settings saved here override environment variables. Clear a field and save to fall back to the environment variable or default value.
+    </p>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
+// Handle Devon status JSON response from HTMX
 document.body.addEventListener('htmx:afterSwap', function(event) {
     if (event.detail.target.id !== 'devon-conn-status') return;
     try {
@@ -95,5 +181,43 @@ document.body.addEventListener('htmx:afterSwap', function(event) {
         }
     } catch (e) {}
 });
+
+// Test Devon connection — saves the URL first so the status endpoint checks it
+function testDevonConnection() {
+    var btn = document.getElementById('devon-test-btn');
+    var feedback = document.getElementById('devon_url_feedback');
+    var url = document.getElementById('devon_url_input').value.trim();
+
+    if (!url) {
+        feedback.innerHTML = '<span class="text-xs text-yellow-400">Enter a URL first</span>';
+        return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Testing...';
+    feedback.innerHTML = '<span class="text-xs text-kitt-dim">Saving and testing...</span>';
+
+    var formData = new FormData();
+    formData.append('key', 'devon_url');
+    formData.append('value', url);
+
+    fetch('/settings/update', { method: 'POST', body: formData })
+        .then(function() { return fetch('/api/v1/devon/status'); })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.available) {
+                feedback.innerHTML = '<span class="inline-flex items-center gap-1.5 text-xs"><span class="w-2 h-2 rounded-full bg-green-400"></span><span class="text-green-400">Connected</span></span>';
+            } else {
+                feedback.innerHTML = '<span class="inline-flex items-center gap-1.5 text-xs"><span class="w-2 h-2 rounded-full bg-red-400"></span><span class="text-red-400">Unreachable</span></span>';
+            }
+        })
+        .catch(function() {
+            feedback.innerHTML = '<span class="text-xs text-red-400">Test failed</span>';
+        })
+        .finally(function() {
+            btn.disabled = false;
+            btn.textContent = 'Test';
+        });
+}
 </script>
 {% endblock %}

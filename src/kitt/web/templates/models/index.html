@@ -18,12 +18,10 @@
         <div class="max-w-xl mx-auto text-center space-y-4">
             <h2 class="text-lg font-semibold">Model directory not found</h2>
             <p class="text-kitt-dim text-sm">
-                The configured model directory does not exist. Set <code class="bg-kitt-primary/30 px-1.5 py-0.5 rounded text-gray-200">KITT_MODEL_DIR</code> to the directory where your models are stored:
+                The configured model directory does not exist.
+                Configure it in <a href="/settings" class="text-kitt-accent hover:underline">Settings</a>,
+                or create the directory at <code class="bg-kitt-primary/30 px-1.5 py-0.5 rounded text-gray-200">{{ model_dir }}</code>.
             </p>
-            <div class="bg-kitt-bg border border-kitt-primary/50 rounded p-3 font-mono text-xs">
-                export KITT_MODEL_DIR=/path/to/models
-            </div>
-            <p class="text-kitt-dim text-xs">Defaults to <code class="bg-kitt-primary/30 px-1 rounded">~/.kitt/models</code></p>
         </div>
     </div>
 

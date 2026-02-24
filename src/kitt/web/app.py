@@ -132,12 +132,21 @@ def create_app(
     from kitt.web.services.result_service import ResultService
     from kitt.web.services.settings_service import SettingsService
 
-    devon_url = os.environ.get("DEVON_URL")
     devon_api_key = os.environ.get("DEVON_API_KEY")
-    app.config["DEVON_URL"] = devon_url or ""
-    model_dir = os.environ.get("KITT_MODEL_DIR", str(Path.home() / ".kitt" / "models"))
+    default_model_dir = str(Path.home() / ".kitt" / "models")
 
     settings_service = SettingsService(db_conn)
+
+    # Resolve effective values: DB (non-empty) > env var > fallback
+    devon_url = settings_service.get_effective("devon_url", "DEVON_URL", "")
+    model_dir = settings_service.get_effective(
+        "model_dir", "KITT_MODEL_DIR", default_model_dir
+    )
+    effective_results_dir = settings_service.get_effective(
+        "results_dir", "", str(base_dir)
+    )
+    app.config["DEVON_URL"] = devon_url
+    app.config["RESULTS_DIR"] = effective_results_dir
 
     global _services
     _services = {
