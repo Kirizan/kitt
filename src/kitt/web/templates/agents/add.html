@@ -10,41 +10,46 @@
 
     <div class="bg-kitt-surface rounded-lg p-6 space-y-6">
         <div>
-            <h2 class="text-lg font-semibold mb-3">1. Install KITT on the GPU server</h2>
-            <div class="bg-kitt-bg rounded-md p-4 font-mono text-sm">
-                <code>pip install "kitt[web]"</code>
-            </div>
-        </div>
-
-        <div>
-            <h2 class="text-lg font-semibold mb-3">2. Initialize the agent</h2>
+            <h2 class="text-lg font-semibold mb-3">One-line install</h2>
+            <p class="text-kitt-dim text-sm mb-3">Run this on the GPU server to install and configure the agent automatically:</p>
             <div class="bg-kitt-bg rounded-md p-4 font-mono text-sm break-all">
-                <code>kitt agent init --server {{ server_url }} --token {{ auth_token or 'YOUR_TOKEN' }}</code>
+                <code>curl -sfL {{ server_url }}/api/v1/agent/install.sh -H "Authorization: Bearer {{ auth_token or 'YOUR_TOKEN' }}" | bash</code>
             </div>
-            <p class="text-kitt-dim text-xs mt-2">This fetches the server's CA certificate and generates agent certificates.</p>
+            <p class="text-kitt-dim text-xs mt-2">This creates a virtual environment, downloads the agent package from this server, and configures it. The agent version always matches the server.</p>
         </div>
 
         <div>
-            <h2 class="text-lg font-semibold mb-3">3. Start the agent</h2>
+            <h2 class="text-lg font-semibold mb-3">Then start the agent</h2>
             <div class="bg-kitt-bg rounded-md p-4 font-mono text-sm">
-                <code>kitt agent start</code>
+                <code>~/.kitt/agent-venv/bin/kitt-agent start</code>
             </div>
             <p class="text-kitt-dim text-xs mt-2">The agent will register with this server and begin sending heartbeats.</p>
         </div>
 
         <div>
-            <h2 class="text-lg font-semibold mb-3">4. Verify</h2>
+            <h2 class="text-lg font-semibold mb-3">Verify</h2>
             <p class="text-kitt-dim text-sm">Once the agent starts, it will appear on the <a href="/agents" class="text-kitt-accent hover:underline">Agents page</a> within a few seconds.</p>
         </div>
     </div>
 
     <div class="bg-kitt-surface rounded-lg p-6">
         <h2 class="text-lg font-semibold mb-3">Alternative: Systemd service</h2>
-        <p class="text-kitt-dim text-sm mb-3">For persistent agent deployment, install as a systemd service:</p>
+        <p class="text-kitt-dim text-sm mb-3">For persistent agent deployment, the install script prints systemd instructions. Or manually:</p>
         <div class="bg-kitt-bg rounded-md p-4 font-mono text-sm space-y-1">
-            <code>kitt agent init --server {{ server_url }} --token {{ auth_token or 'YOUR_TOKEN' }}</code><br>
-            <code>sudo cp ~/.kitt/kitt-agent.service /etc/systemd/system/</code><br>
-            <code>sudo systemctl enable --now kitt-agent</code>
+            <code>curl -sfL {{ server_url }}/api/v1/agent/install.sh -H "Authorization: Bearer {{ auth_token or 'YOUR_TOKEN' }}" | bash</code><br>
+            <code># Follow the systemd instructions printed at the end</code>
+        </div>
+    </div>
+
+    <div class="bg-kitt-surface rounded-lg p-6">
+        <h2 class="text-lg font-semibold mb-3">Manual install</h2>
+        <p class="text-kitt-dim text-sm mb-3">If you prefer to install manually:</p>
+        <div class="bg-kitt-bg rounded-md p-4 font-mono text-sm space-y-1">
+            <code>python3 -m venv ~/.kitt/agent-venv</code><br>
+            <code>curl -sfL {{ server_url }}/api/v1/agent/package -H "Authorization: Bearer {{ auth_token or 'YOUR_TOKEN' }}" -o /tmp/kitt-agent.tar.gz</code><br>
+            <code>~/.kitt/agent-venv/bin/pip install /tmp/kitt-agent.tar.gz</code><br>
+            <code>~/.kitt/agent-venv/bin/kitt-agent init --server {{ server_url }} --token {{ auth_token or 'YOUR_TOKEN' }}</code><br>
+            <code>~/.kitt/agent-venv/bin/kitt-agent start</code>
         </div>
     </div>
 </div>

@@ -74,6 +74,57 @@ Engine containers are started with `--gpus all` to expose all host GPUs to the i
 
 KITT can itself run inside a Docker container. In this mode, the Docker socket (`/var/run/docker.sock`) is mounted into the KITT container, allowing it to create and manage engine containers as siblings rather than nested containers. This avoids Docker-in-Docker complexity.
 
+## Remote Agent Architecture
+
+KITT supports deploying thin agents to remote GPU servers. The agent is a standalone Python package (`kitt-agent`) served directly from the KITT web server, ensuring version compatibility.
+
+```
+KITT Server                              GPU Server (Agent)
++--------------------+                  +--------------------+
+| Web UI / REST API  |  Register/HB    | kitt-agent daemon   |
+|   /api/v1/agent/*  | <=============> |   heartbeat thread  |
+|   agent_install.py |  Docker cmds    |   Docker orchestr.  |
+|   (serves tarball) | ==============> |   log streaming     |
++--------------------+                  +--------------------+
+```
+
+### Agent installation flow
+
+1. User runs `curl -sfL <server>/api/v1/agent/install.sh -H "Authorization: Bearer <token>" | bash`
+2. The script creates a venv, downloads the agent sdist from `/api/v1/agent/package`, and installs it
+3. `kitt-agent init` writes `~/.kitt/agent.yaml` with server URL, token, name, and port
+4. `kitt-agent start` registers with the server, starts the heartbeat thread, and listens for commands
+
+### Agent command protocol
+
+The server sends JSON commands to the agent's `/api/commands` endpoint:
+
+| Command | Payload | Action |
+|---------|---------|--------|
+| `run_container` | image, port, volumes, env, health_url | Pull image, start container, stream logs |
+| `stop_container` | command_id | Stop a running container |
+| `check_docker` | _(none)_ | Verify Docker is available |
+
+The agent reports results back to the server at `/api/v1/agents/{name}/results`.
+
+### Standalone agent package
+
+The agent package lives in `agent-package/` at the repository root:
+
+```
+agent-package/
+├── pyproject.toml          # Standalone package (kitt-agent)
+└── src/kitt_agent/
+    ├── cli.py              # Click CLI: init, start, status, stop
+    ├── config.py           # Pydantic config models
+    ├── daemon.py           # Flask mini-app receiving commands
+    ├── docker_ops.py       # Docker container management
+    ├── hardware.py         # Simplified hardware detection
+    ├── heartbeat.py        # Heartbeat thread
+    ├── log_streamer.py     # SSE log streaming
+    └── registration.py     # Server registration
+```
+
 ## Project Structure
 
 ```
@@ -93,6 +144,9 @@ src/kitt/
 ├── security/      # TLS cert generation and config
 ├── web/           # Flask dashboard + REST API + blueprints + Devon iframe
 └── utils/         # Compression, validation, versioning
+
+agent-package/     # Standalone thin agent (installed on GPU servers)
+└── src/kitt_agent/ # Self-contained agent daemon
 ```
 
 ### Key Design Decisions
