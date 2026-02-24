@@ -2577,7 +2577,7 @@
 </code></pre></div>
 <h3 id="agent-installation-flow">Agent installation flow<a class="headerlink" href="#agent-installation-flow" title="Permanent link">&para;</a></h3>
 <ol>
-<li>User runs <code>curl -sfL &lt;server&gt;/api/v1/agent/install.sh | bash</code></li>
+<li>User runs <code>curl -fL &lt;server&gt;/api/v1/agent/install.sh | bash</code></li>
 <li>The script creates a venv, downloads the agent sdist from <code>/api/v1/agent/package</code>, and installs it</li>
 <li><code>kitt-agent init</code> writes <code>~/.kitt/agent.yaml</code> with server URL, token, name, and port</li>
 <li><code>kitt-agent start</code> registers with the server, starts the heartbeat thread, and listens for commands</li>
