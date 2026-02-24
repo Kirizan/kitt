@@ -2200,6 +2200,7 @@
 <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>Authorization: Bearer my-secret-token
 </code></pre></div>
 <p>Requests without a valid token receive a <code>401 Unauthorized</code> response.</p>
+<p><strong>Note:</strong> The agent installation endpoints (<code>/api/v1/agent/install.sh</code> and <code>/api/v1/agent/package</code>) do not require authentication, allowing agents to be bootstrapped from within the network without a token. Authentication is enforced once the agent registers with the server.</p>
 <h2 id="development-mode">Development Mode<a class="headerlink" href="#development-mode" title="Permanent link">&para;</a></h2>
 <p>For local development and testing, security can be relaxed with the <code>--insecure</code> flag:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>kitt<span class="w"> </span>web<span class="w"> </span>--insecure
