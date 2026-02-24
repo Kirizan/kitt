@@ -947,6 +947,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Settings
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#database" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2023,6 +2034,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Settings
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#database" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2197,6 +2219,41 @@ campaigns, or the REST API beyond basic result listing.</p>
 </table>
 <p>All mutable endpoints require a valid <code>Authorization</code> header when
 <code>--auth-token</code> is set.</p>
+<h2 id="settings">Settings<a class="headerlink" href="#settings" title="Permanent link">&para;</a></h2>
+<p>The <strong>Settings</strong> page lets you configure key paths and integrations
+directly from the web UI without restarting the server:</p>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>Environment Variable</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Model Directory</td>
+<td><code>KITT_MODEL_DIR</code></td>
+<td><code>~/.kitt/models</code></td>
+</tr>
+<tr>
+<td>Devon URL</td>
+<td><code>DEVON_URL</code></td>
+<td><em>(none)</em></td>
+</tr>
+<tr>
+<td>Results Directory</td>
+<td><code>--results-dir</code> CLI flag</td>
+<td>Current directory</td>
+</tr>
+</tbody>
+</table>
+<p>Values saved through the UI are stored in the database and take
+priority over environment variables. Clearing a field reverts to the
+environment variable or default. Changes take effect immediately
+without a restart.</p>
+<p>The Devon URL can also be configured inline on the <strong>Devon</strong> page when
+it hasn't been set yet.</p>
 <h2 id="database">Database<a class="headerlink" href="#database" title="Permanent link">&para;</a></h2>
 <p>The full dashboard uses SQLite stored at <code>~/.kitt/kitt.db</code>. Schema
 migrations run automatically on startup. The database tracks agents,

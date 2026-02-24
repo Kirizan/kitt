@@ -1651,6 +1651,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#web-ui" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Web UI
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#agent" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2051,6 +2062,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#web-ui" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Web UI
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#agent" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2236,6 +2258,36 @@ endpoints will reject all requests.</p>
 </tr>
 </tbody>
 </table>
+<h2 id="web-ui">Web UI<a class="headerlink" href="#web-ui" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>KITT_MODEL_DIR</code></td>
+<td>Directory the Models tab scans for local model files</td>
+<td><code>~/.kitt/models</code></td>
+</tr>
+<tr>
+<td><code>DEVON_URL</code></td>
+<td>Devon server URL for the Devon tab iframe and API access</td>
+<td><em>(none)</em></td>
+</tr>
+<tr>
+<td><code>DEVON_API_KEY</code></td>
+<td>API key for authenticating with remote Devon</td>
+<td><em>(none)</em></td>
+</tr>
+</tbody>
+</table>
+<p><code>KITT_MODEL_DIR</code>, <code>DEVON_URL</code>, and the results directory can also be
+configured from the <strong>Settings</strong> page in the web dashboard. UI-saved
+values take priority: <strong>DB &gt; environment variable &gt; default</strong>.</p>
 <h2 id="agent">Agent<a class="headerlink" href="#agent" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
