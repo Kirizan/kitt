@@ -55,11 +55,11 @@ rm -f "$TMPFILE"
 
 # Configure
 echo "==> Configuring agent"
-"$VENV_DIR/bin/kitt-agent" init \\
-    --server "$KITT_SERVER" \\
-    --token "$KITT_TOKEN" \\
-    --name "$AGENT_NAME" \\
-    --port "$AGENT_PORT"
+INIT_CMD=("$VENV_DIR/bin/kitt-agent" init --server "$KITT_SERVER" --name "$AGENT_NAME" --port "$AGENT_PORT")
+if [ -n "$KITT_TOKEN" ]; then
+    INIT_CMD+=(--token "$KITT_TOKEN")
+fi
+"${{INIT_CMD[@]}}"
 
 echo ""
 echo "==> Agent installed successfully!"
