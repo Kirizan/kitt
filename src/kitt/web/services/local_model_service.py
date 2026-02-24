@@ -1,0 +1,104 @@
+"""Local model directory scanner for the web UI.
+
+Scans a configured directory for downloaded model files and returns
+structured metadata (name, format, size, path).
+"""
+
+import logging
+from pathlib import Path
+
+logger = logging.getLogger(__name__)
+
+# Known model file extensions grouped by format.
+_FORMAT_EXTENSIONS: dict[str, list[str]] = {
+    "gguf": [".gguf"],
+    "safetensors": [".safetensors"],
+    "pytorch": [".bin", ".pt", ".pth"],
+}
+
+# Flattened lookup: extension -> format name.
+_EXT_TO_FORMAT: dict[str, str] = {}
+for fmt, exts in _FORMAT_EXTENSIONS.items():
+    for ext in exts:
+        _EXT_TO_FORMAT[ext] = fmt
+
+
+class LocalModelService:
+    """Scans a local directory for model files."""
+
+    def __init__(self, model_dir: str | Path) -> None:
+        self.model_dir = Path(model_dir)
+
+    @property
+    def configured(self) -> bool:
+        return self.model_dir.is_dir()
+
+    def list_models(self) -> list[dict]:
+        """Scan model_dir and return a list of discovered models.
+
+        Each model is a directory (or standalone file) containing at least
+        one recognised model file.  Results are grouped by parent directory.
+
+        Returns:
+            List of dicts with keys: name, path, formats, size_gb, file_count.
+        """
+        if not self.configured:
+            return []
+
+        models: dict[Path, dict] = {}
+
+        for path in self.model_dir.rglob("*"):
+            if path.is_symlink() or not path.is_file():
+                continue
+            fmt = _EXT_TO_FORMAT.get(path.suffix.lower())
+            if fmt is None:
+                continue
+
+            try:
+                file_size = path.stat().st_size
+            except (FileNotFoundError, OSError):
+                continue
+
+            # Group by immediate model directory.  If the file is directly
+            # in model_dir, use the file itself as the key.
+            model_root = path.parent if path.parent != self.model_dir else path
+
+            if model_root not in models:
+                models[model_root] = {
+                    "name": _model_name(model_root, self.model_dir),
+                    "path": str(model_root),
+                    "formats": set(),
+                    "size_bytes": 0,
+                    "file_count": 0,
+                }
+            entry = models[model_root]
+            entry["formats"].add(fmt)
+            entry["size_bytes"] += file_size
+            entry["file_count"] += 1
+
+        # Convert sets to sorted lists and bytes to GB.
+        result = []
+        for entry in sorted(models.values(), key=lambda e: e["name"].lower()):
+            result.append(
+                {
+                    "name": entry["name"],
+                    "path": entry["path"],
+                    "formats": sorted(entry["formats"]),
+                    "size_gb": round(entry["size_bytes"] / (1024**3), 2),
+                    "file_count": entry["file_count"],
+                }
+            )
+        return result
+
+
+def _model_name(model_root: Path, base_dir: Path) -> str:
+    """Derive a human-readable model name from the path.
+
+    Uses the relative path from base_dir, replacing path separators with
+    slashes to mimic repo-style names (e.g. "meta-llama/Llama-3.1-8B").
+    """
+    try:
+        rel = model_root.relative_to(base_dir)
+        return str(rel)
+    except ValueError:
+        return model_root.name

@@ -40,8 +40,10 @@ class TestGPUMemoryTracker:
     def test_tracker_no_gpu(self):
         """Tracker works without GPU (returns zeros)."""
         tracker = GPUMemoryTracker(gpu_index=0)
+        # Force the monitor to appear unavailable so we test the no-GPU path
+        tracker.monitor._initialized = False
         with tracker:
-            pass  # No-op on machine without GPU
+            pass
 
         assert tracker.get_peak_memory_mb() == 0.0
         assert tracker.get_average_memory_mb() == 0.0
