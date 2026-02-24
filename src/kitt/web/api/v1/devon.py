@@ -40,7 +40,7 @@ def status():
         result = {"available": False, "url": "", "reason": "not_configured"}
     else:
         try:
-            req = urllib.request.Request(devon_url, method="HEAD")
+            req = urllib.request.Request(devon_url, method="GET")
             with urllib.request.urlopen(req, timeout=3):
                 pass
             result = {"available": True, "url": devon_url}

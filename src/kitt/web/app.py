@@ -143,7 +143,7 @@ def create_app(
         "model_dir", "KITT_MODEL_DIR", default_model_dir
     )
     effective_results_dir = settings_service.get_effective(
-        "results_dir", "", str(base_dir)
+        "results_dir", "KITT_RESULTS_DIR", str(base_dir)
     )
     app.config["DEVON_URL"] = devon_url
     app.config["RESULTS_DIR"] = effective_results_dir
