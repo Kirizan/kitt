@@ -1837,6 +1837,56 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#remote-agent-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Remote Agent Architecture
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Remote Agent Architecture">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#agent-installation-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Agent installation flow
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#agent-command-protocol" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Agent command protocol
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#standalone-agent-package" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Standalone agent package
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#project-structure" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2279,6 +2329,56 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#remote-agent-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Remote Agent Architecture
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Remote Agent Architecture">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#agent-installation-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Agent installation flow
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#agent-command-protocol" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Agent command protocol
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#standalone-agent-package" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Standalone agent package
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#project-structure" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2465,23 +2565,86 @@
 <p>Engine containers are started with <code>--gpus all</code> to expose all host GPUs to the inference server.</p>
 <h3 id="sibling-container-pattern">Sibling Container Pattern<a class="headerlink" href="#sibling-container-pattern" title="Permanent link">&para;</a></h3>
 <p>KITT can itself run inside a Docker container. In this mode, the Docker socket (<code>/var/run/docker.sock</code>) is mounted into the KITT container, allowing it to create and manage engine containers as siblings rather than nested containers. This avoids Docker-in-Docker complexity.</p>
+<h2 id="remote-agent-architecture">Remote Agent Architecture<a class="headerlink" href="#remote-agent-architecture" title="Permanent link">&para;</a></h2>
+<p>KITT supports deploying thin agents to remote GPU servers. The agent is a standalone Python package (<code>kitt-agent</code>) served directly from the KITT web server, ensuring version compatibility.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>KITT Server                              GPU Server (Agent)
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>+--------------------+                  +--------------------+
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>| Web UI / REST API  |  Register/HB    | kitt-agent daemon   |
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>|   /api/v1/agent/*  | &lt;=============&gt; |   heartbeat thread  |
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>|   agent_install.py |  Docker cmds    |   Docker orchestr.  |
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>|   (serves tarball) | ==============&gt; |   log streaming     |
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>+--------------------+                  +--------------------+
+</code></pre></div>
+<h3 id="agent-installation-flow">Agent installation flow<a class="headerlink" href="#agent-installation-flow" title="Permanent link">&para;</a></h3>
+<ol>
+<li>User runs <code>curl -sfL &lt;server&gt;/api/v1/agent/install.sh -H "Authorization: Bearer &lt;token&gt;" | bash</code></li>
+<li>The script creates a venv, downloads the agent sdist from <code>/api/v1/agent/package</code>, and installs it</li>
+<li><code>kitt-agent init</code> writes <code>~/.kitt/agent.yaml</code> with server URL, token, name, and port</li>
+<li><code>kitt-agent start</code> registers with the server, starts the heartbeat thread, and listens for commands</li>
+</ol>
+<h3 id="agent-command-protocol">Agent command protocol<a class="headerlink" href="#agent-command-protocol" title="Permanent link">&para;</a></h3>
+<p>The server sends JSON commands to the agent's <code>/api/commands</code> endpoint:</p>
+<table>
+<thead>
+<tr>
+<th>Command</th>
+<th>Payload</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>run_container</code></td>
+<td>image, port, volumes, env, health_url</td>
+<td>Pull image, start container, stream logs</td>
+</tr>
+<tr>
+<td><code>stop_container</code></td>
+<td>command_id</td>
+<td>Stop a running container</td>
+</tr>
+<tr>
+<td><code>check_docker</code></td>
+<td><em>(none)</em></td>
+<td>Verify Docker is available</td>
+</tr>
+</tbody>
+</table>
+<p>The agent reports results back to the server at <code>/api/v1/agents/{name}/results</code>.</p>
+<h3 id="standalone-agent-package">Standalone agent package<a class="headerlink" href="#standalone-agent-package" title="Permanent link">&para;</a></h3>
+<p>The agent package lives in <code>agent-package/</code> at the repository root:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>agent-package/
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>├── pyproject.toml          # Standalone package (kitt-agent)
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>└── src/kitt_agent/
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>    ├── cli.py              # Click CLI: init, start, status, stop
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>    ├── config.py           # Pydantic config models
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>    ├── daemon.py           # Flask mini-app receiving commands
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>    ├── docker_ops.py       # Docker container management
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>    ├── hardware.py         # Simplified hardware detection
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>    ├── heartbeat.py        # Heartbeat thread
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>    ├── log_streamer.py     # SSE log streaming
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>    └── registration.py     # Server registration
+</code></pre></div>
 <h2 id="project-structure">Project Structure<a class="headerlink" href="#project-structure" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>src/kitt/
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>├── cli/           # Click commands (run, engines, test, results, compare, web, fingerprint, stack, agent, monitoring)
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>├── engines/       # Inference engine plugins (base ABC, registry, vllm, tgi, llama_cpp, ollama)
-<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>├── benchmarks/    # Benchmark plugins (base ABC, registry, performance/*, quality/*)
-<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>├── config/        # Pydantic models + YAML loader
-<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>├── hardware/      # System fingerprinting (GPU, CPU, RAM, storage, CUDA)
-<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>├── runners/       # Suite/single test runners + checkpoint recovery
-<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>├── collectors/    # GPU memory tracking, system metrics
-<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>├── reporters/     # JSON, Markdown, comparison output
-<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>├── git_ops/       # KARR legacy Git-backed storage
-<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>├── monitoring/    # Monitoring stack config, generator, deployer
-<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>├── stack/         # Composable Docker stack config + generator
-<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>├── agent/         # Agent daemon, heartbeat, executor, log streamer
-<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>├── security/      # TLS cert generation and config
-<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>├── web/           # Flask dashboard + REST API + blueprints + Devon iframe
-<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>└── utils/         # Compression, validation, versioning
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>src/kitt/
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>├── cli/           # Click commands (run, engines, test, results, compare, web, fingerprint, stack, agent, monitoring)
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>├── engines/       # Inference engine plugins (base ABC, registry, vllm, tgi, llama_cpp, ollama)
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>├── benchmarks/    # Benchmark plugins (base ABC, registry, performance/*, quality/*)
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>├── config/        # Pydantic models + YAML loader
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>├── hardware/      # System fingerprinting (GPU, CPU, RAM, storage, CUDA)
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>├── runners/       # Suite/single test runners + checkpoint recovery
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>├── collectors/    # GPU memory tracking, system metrics
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>├── reporters/     # JSON, Markdown, comparison output
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>├── git_ops/       # KARR legacy Git-backed storage
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>├── monitoring/    # Monitoring stack config, generator, deployer
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>├── stack/         # Composable Docker stack config + generator
+<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>├── agent/         # Agent daemon, heartbeat, executor, log streamer
+<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>├── security/      # TLS cert generation and config
+<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a>├── web/           # Flask dashboard + REST API + blueprints + Devon iframe
+<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a>└── utils/         # Compression, validation, versioning
+<a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a>
+<a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a>agent-package/     # Standalone thin agent (installed on GPU servers)
+<a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a>└── src/kitt_agent/ # Self-contained agent daemon
 </code></pre></div>
 <h3 id="key-design-decisions">Key Design Decisions<a class="headerlink" href="#key-design-decisions" title="Permanent link">&para;</a></h3>
 <ul>
@@ -2499,7 +2662,7 @@
 <p>UI preferences (such as Devon tab visibility) are stored in a <code>web_settings</code> key-value table managed by <code>SettingsService</code>. Settings are injected into all templates via a Flask context processor.</p>
 <h2 id="relationship-to-devon">Relationship to DEVON<a class="headerlink" href="#relationship-to-devon" title="Permanent link">&para;</a></h2>
 <p>KITT tests models; DEVON manages and stores them. The two projects share the same technical stack (Poetry, Click, Rich, Python 3.10+, plugin registry pattern). The KITT web dashboard embeds Devon's UI directly when <code>DEVON_URL</code> is configured. DEVON can also export model paths in a format KITT consumes:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>devon<span class="w"> </span><span class="nb">export</span><span class="w"> </span>--format<span class="w"> </span>kitt<span class="w"> </span>-o<span class="w"> </span>models.txt
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>devon<span class="w"> </span><span class="nb">export</span><span class="w"> </span>--format<span class="w"> </span>kitt<span class="w"> </span>-o<span class="w"> </span>models.txt
 </code></pre></div>
 <h2 id="next-steps">Next Steps<a class="headerlink" href="#next-steps" title="Permanent link">&para;</a></h2>
 <ul>
