@@ -24,20 +24,15 @@
                 <code>~/.kitt/agent-venv/bin/kitt-agent start</code>
             </div>
             <p class="text-kitt-dim text-xs mt-2">The agent will register with this server and begin sending heartbeats.</p>
+            <p class="text-kitt-dim text-xs mt-1">For persistent deployment, install as a systemd service instead:</p>
+            <div class="bg-kitt-bg rounded-md p-4 font-mono text-sm mt-2">
+                <code>~/.kitt/agent-venv/bin/kitt-agent service install</code>
+            </div>
         </div>
 
         <div>
             <h2 class="text-lg font-semibold mb-3">Verify</h2>
             <p class="text-kitt-dim text-sm">Once the agent starts, it will appear on the <a href="/agents" class="text-kitt-accent hover:underline">Agents page</a> within a few seconds.</p>
-        </div>
-    </div>
-
-    <div class="bg-kitt-surface rounded-lg p-6">
-        <h2 class="text-lg font-semibold mb-3">Alternative: Systemd service</h2>
-        <p class="text-kitt-dim text-sm mb-3">For persistent agent deployment, the install script prints systemd instructions. Or manually:</p>
-        <div class="bg-kitt-bg rounded-md p-4 font-mono text-sm space-y-1">
-            <code>curl -fL {{ server_url }}/api/v1/agent/install.sh | bash</code><br>
-            <code># Follow the systemd instructions printed at the end</code>
         </div>
     </div>
 
