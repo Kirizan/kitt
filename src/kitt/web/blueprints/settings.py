@@ -2,6 +2,7 @@
 
 import logging
 from pathlib import Path
+from urllib.parse import urlparse
 
 from flask import Blueprint, render_template, render_template_string, request
 
@@ -99,6 +100,15 @@ def update():
     if key not in _ALLOWED_SETTINGS:
         return '<span class="text-xs text-red-400">Invalid setting</span>', 400
 
+    # Validate devon_url scheme (allow empty to clear)
+    if key == "devon_url" and value:
+        parsed = urlparse(value)
+        if parsed.scheme not in ("http", "https"):
+            return (
+                '<span class="text-xs text-red-400">URL must use http:// or https://</span>',
+                400,
+            )
+
     # Save to DB
     settings_svc.set(key, value)
 
@@ -129,11 +139,14 @@ def update():
         if effective and not Path(effective).is_dir():
             warning = "Directory does not exist yet"
 
-    source = settings_svc.get_source(key, {
-        "model_dir": "KITT_MODEL_DIR",
-        "devon_url": "DEVON_URL",
-        "results_dir": "",
-    }.get(key, ""))
+    source = settings_svc.get_source(
+        key,
+        {
+            "model_dir": "KITT_MODEL_DIR",
+            "devon_url": "DEVON_URL",
+            "results_dir": "",
+        }.get(key, ""),
+    )
 
     source_label = {"saved": "Saved", "env": "From env", "default": "Default"}.get(
         source, source
@@ -146,9 +159,7 @@ def update():
 
     warning_html = ""
     if warning:
-        warning_html = (
-            f'<span class="text-xs text-yellow-400 ml-2">{warning}</span>'
-        )
+        warning_html = f'<span class="text-xs text-yellow-400 ml-2">{warning}</span>'
 
     return f"""<span class="inline-flex items-center gap-2">
     <span class="text-xs text-green-400">Saved</span>

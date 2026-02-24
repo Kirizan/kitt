@@ -53,7 +53,7 @@
                     </span>
                 </div>
                 <div class="flex gap-2">
-                    <input type="text" id="results_dir_input" value="{{ config.results_dir }}"
+                    <input type="text" id="results_dir_input" name="value" value="{{ config.results_dir }}"
                            placeholder="/path/to/results"
                            class="flex-1 bg-kitt-bg border border-kitt-primary/50 rounded-md px-3 py-1.5 text-xs font-mono focus:outline-none focus:border-kitt-accent">
                     <button type="button"
@@ -82,7 +82,7 @@
                     </span>
                 </div>
                 <div class="flex gap-2">
-                    <input type="text" id="model_dir_input" value="{{ config.model_dir }}"
+                    <input type="text" id="model_dir_input" name="value" value="{{ config.model_dir }}"
                            placeholder="~/.kitt/models"
                            class="flex-1 bg-kitt-bg border border-kitt-primary/50 rounded-md px-3 py-1.5 text-xs font-mono focus:outline-none focus:border-kitt-accent">
                     <button type="button"
@@ -117,7 +117,7 @@
                     </span>
                 </div>
                 <div class="flex gap-2">
-                    <input type="text" id="devon_url_input" value="{{ config.devon_url }}"
+                    <input type="text" id="devon_url_input" name="value" value="{{ config.devon_url }}"
                            placeholder="http://devon-host:8000"
                            class="flex-1 bg-kitt-bg border border-kitt-primary/50 rounded-md px-3 py-1.5 text-xs font-mono focus:outline-none focus:border-kitt-accent">
                     <button type="button"
@@ -182,12 +182,7 @@ document.body.addEventListener('htmx:afterSwap', function(event) {
     } catch (e) {}
 });
 
-// HTMX sends input values as the input's name attribute. Add name attrs dynamically.
-document.getElementById('results_dir_input').name = 'value';
-document.getElementById('model_dir_input').name = 'value';
-document.getElementById('devon_url_input').name = 'value';
-
-// Test Devon connection using the current input value
+// Test Devon connection — saves the URL first so the status endpoint checks it
 function testDevonConnection() {
     var btn = document.getElementById('devon-test-btn');
     var feedback = document.getElementById('devon_url_feedback');
@@ -200,15 +195,18 @@ function testDevonConnection() {
 
     btn.disabled = true;
     btn.textContent = 'Testing...';
-    feedback.innerHTML = '<span class="text-xs text-kitt-dim">Checking connection...</span>';
+    feedback.innerHTML = '<span class="text-xs text-kitt-dim">Saving and testing...</span>';
 
-    fetch('/api/v1/devon/status')
+    var formData = new FormData();
+    formData.append('key', 'devon_url');
+    formData.append('value', url);
+
+    fetch('/settings/update', { method: 'POST', body: formData })
+        .then(function() { return fetch('/api/v1/devon/status'); })
         .then(function(r) { return r.json(); })
         .then(function(data) {
             if (data.available) {
                 feedback.innerHTML = '<span class="inline-flex items-center gap-1.5 text-xs"><span class="w-2 h-2 rounded-full bg-green-400"></span><span class="text-green-400">Connected</span></span>';
-            } else if (data.reason === 'not_configured') {
-                feedback.innerHTML = '<span class="text-xs text-yellow-400">Save the URL first, then test</span>';
             } else {
                 feedback.innerHTML = '<span class="inline-flex items-center gap-1.5 text-xs"><span class="w-2 h-2 rounded-full bg-red-400"></span><span class="text-red-400">Unreachable</span></span>';
             }
