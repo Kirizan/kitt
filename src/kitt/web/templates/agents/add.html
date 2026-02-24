@@ -13,7 +13,7 @@
             <h2 class="text-lg font-semibold mb-3">One-line install</h2>
             <p class="text-kitt-dim text-sm mb-3">Run this on the GPU server to install and configure the agent automatically:</p>
             <div class="bg-kitt-bg rounded-md p-4 font-mono text-sm break-all">
-                <code>curl -sfL {{ server_url }}/api/v1/agent/install.sh | bash</code>
+                <code>curl -fL {{ server_url }}/api/v1/agent/install.sh | bash</code>
             </div>
             <p class="text-kitt-dim text-xs mt-2">This creates a virtual environment, downloads the agent package from this server, and configures it. The agent version always matches the server.</p>
         </div>
@@ -36,7 +36,7 @@
         <h2 class="text-lg font-semibold mb-3">Alternative: Systemd service</h2>
         <p class="text-kitt-dim text-sm mb-3">For persistent agent deployment, the install script prints systemd instructions. Or manually:</p>
         <div class="bg-kitt-bg rounded-md p-4 font-mono text-sm space-y-1">
-            <code>curl -sfL {{ server_url }}/api/v1/agent/install.sh | bash</code><br>
+            <code>curl -fL {{ server_url }}/api/v1/agent/install.sh | bash</code><br>
             <code># Follow the systemd instructions printed at the end</code>
         </div>
     </div>
@@ -46,7 +46,7 @@
         <p class="text-kitt-dim text-sm mb-3">If you prefer to install manually:</p>
         <div class="bg-kitt-bg rounded-md p-4 font-mono text-sm space-y-1">
             <code>python3 -m venv ~/.kitt/agent-venv</code><br>
-            <code>curl -sfL {{ server_url }}/api/v1/agent/package -o /tmp/kitt-agent.tar.gz</code><br>
+            <code>curl -fL {{ server_url }}/api/v1/agent/package -o /tmp/kitt-agent.tar.gz</code><br>
             <code>~/.kitt/agent-venv/bin/pip install /tmp/kitt-agent.tar.gz</code><br>
             <code>~/.kitt/agent-venv/bin/kitt-agent init --server {{ server_url }} --token {{ auth_token or 'YOUR_TOKEN' }}</code><br>
             <code>~/.kitt/agent-venv/bin/kitt-agent start</code>
