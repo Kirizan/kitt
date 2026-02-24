@@ -2,8 +2,12 @@
 
 import logging
 import os
+import pwd
 import signal
 import socket
+import subprocess
+import sys
+import tempfile
 from pathlib import Path
 
 import click
@@ -207,3 +211,124 @@ def stop():
             pid_file.unlink()
     else:
         click.echo("No PID file found — agent may not be running")
+
+
+_SERVICE_NAME = "kitt-agent"
+_UNIT_PATH = Path(f"/etc/systemd/system/{_SERVICE_NAME}.service")
+
+_UNIT_TEMPLATE = """\
+[Unit]
+Description=KITT Agent
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User={user}
+Environment=HOME={home}
+ExecStart={venv}/bin/kitt-agent start
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+"""
+
+
+@cli.group()
+def service():
+    """Manage the KITT agent systemd service."""
+
+
+@service.command()
+@click.option("--no-start", is_flag=True, help="Install and enable without starting")
+def install(no_start):
+    """Install the KITT agent as a systemd service."""
+    config_file = Path.home() / ".kitt" / "agent.yaml"
+    if not config_file.exists():
+        click.echo(
+            "Agent not configured. Run 'kitt-agent init' first."
+        )
+        raise SystemExit(1)
+
+    if _UNIT_PATH.exists():
+        click.echo(f"Service already installed at {_UNIT_PATH}")
+        click.echo("Run 'kitt-agent service uninstall' first to reinstall.")
+        raise SystemExit(1)
+
+    venv = sys.prefix
+    user = pwd.getpwuid(os.getuid()).pw_name
+    home = str(Path.home())
+
+    unit_content = _UNIT_TEMPLATE.format(venv=venv, user=user, home=home)
+
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".service", delete=False
+    ) as tmp:
+        tmp.write(unit_content)
+        tmp_path = tmp.name
+
+    try:
+        click.echo(f"Installing systemd service as user '{user}'")
+        click.echo(f"  ExecStart: {venv}/bin/kitt-agent start")
+
+        subprocess.run(
+            ["sudo", "cp", tmp_path, str(_UNIT_PATH)], check=True
+        )
+        subprocess.run(["sudo", "systemctl", "daemon-reload"], check=True)
+
+        enable_cmd = ["sudo", "systemctl", "enable", _SERVICE_NAME]
+        if not no_start:
+            enable_cmd.append("--now")
+        subprocess.run(enable_cmd, check=True)
+
+        click.echo()
+        if no_start:
+            click.echo("Service installed and enabled (not started).")
+            click.echo(f"  Start with: sudo systemctl start {_SERVICE_NAME}")
+        else:
+            click.echo("Service installed, enabled, and started.")
+        click.echo(f"  Status: sudo systemctl status {_SERVICE_NAME}")
+        click.echo(f"  Logs:   journalctl -u {_SERVICE_NAME} -f")
+    except subprocess.CalledProcessError as e:
+        click.echo(f"Failed to install service: {e}")
+        raise SystemExit(1)
+    finally:
+        Path(tmp_path).unlink(missing_ok=True)
+
+
+@service.command()
+def uninstall():
+    """Uninstall the KITT agent systemd service."""
+    if not _UNIT_PATH.exists():
+        click.echo("Service is not installed.")
+        return
+
+    try:
+        subprocess.run(
+            ["sudo", "systemctl", "stop", _SERVICE_NAME],
+            check=False,
+        )
+        subprocess.run(
+            ["sudo", "systemctl", "disable", _SERVICE_NAME],
+            check=False,
+        )
+        subprocess.run(["sudo", "rm", str(_UNIT_PATH)], check=True)
+        subprocess.run(["sudo", "systemctl", "daemon-reload"], check=True)
+        click.echo("Service stopped, disabled, and removed.")
+    except subprocess.CalledProcessError as e:
+        click.echo(f"Failed to uninstall service: {e}")
+        raise SystemExit(1)
+
+
+@service.command("status")
+def service_status():
+    """Show the KITT agent systemd service status."""
+    result = subprocess.run(
+        ["systemctl", "status", _SERVICE_NAME],
+        capture_output=True,
+        text=True,
+    )
+    click.echo(result.stdout)
+    if result.stderr:
+        click.echo(result.stderr)

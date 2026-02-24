@@ -145,7 +145,11 @@ This creates a virtual environment at `~/.kitt/agent-venv`, downloads the agent 
 
 ### Systemd service (persistent)
 
-The install script prints systemd instructions at the end. Follow them to run the agent as a system service that survives reboots.
+```bash
+~/.kitt/agent-venv/bin/kitt-agent service install
+```
+
+This generates a systemd unit file, installs it, and starts the service. The agent will survive reboots and restart automatically on failure. Use `kitt-agent service uninstall` to remove it.
 
 ### Thin agent architecture
 
