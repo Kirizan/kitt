@@ -17,7 +17,9 @@ bp = Blueprint("api_agent_install", __name__, url_prefix="/api/v1/agent")
 _sdist_cache: dict[str, Path | None] = {"path": None}
 _build_lock = threading.Lock()
 
-AGENT_PACKAGE_DIR = Path(__file__).parent.parent.parent.parent.parent.parent / "agent-package"
+AGENT_PACKAGE_DIR = (
+    Path(__file__).parent.parent.parent.parent.parent.parent / "agent-package"
+)
 
 _INSTALL_SCRIPT = """\
 #!/usr/bin/env bash
