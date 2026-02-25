@@ -947,6 +947,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#quick-test" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quick Test
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#settings" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2034,6 +2045,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#quick-test" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quick Test
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#settings" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2219,6 +2241,25 @@ campaigns, or the REST API beyond basic result listing.</p>
 </table>
 <p>All mutable endpoints require a valid <code>Authorization</code> header when
 <code>--auth-token</code> is set.</p>
+<h2 id="quick-test">Quick Test<a class="headerlink" href="#quick-test" title="Permanent link">&para;</a></h2>
+<p>Quick Test lets you run a single benchmark on a remote agent directly
+from the browser. The feature has three pages:</p>
+<p><strong>History</strong> (<code>/quicktest</code>): Lists all past and in-progress tests with
+status filter chips (queued, dispatched, running, completed, failed).
+Shows model, engine, agent, status badge, and creation time. Click any
+row to open the detail page.</p>
+<p><strong>New Test</strong> (<code>/quicktest/new</code>): A searchable model dropdown loads
+models from Devon's <code>manifest.json</code> in the configured model directory.
+Type to filter by model name with fuzzy substring matching, or enter a
+custom path manually. Select an agent, engine, and benchmark, then
+launch. The page redirects to the detail view automatically.</p>
+<p><strong>Detail</strong> (<code>/quicktest/&lt;id&gt;</code>): Displays test metadata (agent, engine,
+benchmark, suite, timestamps) and log output. For active tests (queued,
+dispatched, running), the page subscribes to
+<code>/api/v1/events/stream/&lt;test_id&gt;</code> via SSE and streams log lines in
+real time. For completed or failed tests, stored log lines are loaded
+from the database. This lets you navigate away and return to view full
+logs later.</p>
 <h2 id="settings">Settings<a class="headerlink" href="#settings" title="Permanent link">&para;</a></h2>
 <p>The <strong>Settings</strong> page lets you configure key paths and integrations
 directly from the web UI without restarting the server:</p>

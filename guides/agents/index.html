@@ -1014,10 +1014,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#heartbeat-and-health-monitoring" class="md-nav__link">
+  <a href="#heartbeat-and-command-dispatch" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Heartbeat and Health Monitoring
+        Heartbeat and Command Dispatch
       
     </span>
   </a>
@@ -1040,6 +1040,17 @@
     <span class="md-ellipsis">
       
         Checking Status
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#managing-tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Managing Tests
       
     </span>
   </a>
@@ -2078,10 +2089,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#heartbeat-and-health-monitoring" class="md-nav__link">
+  <a href="#heartbeat-and-command-dispatch" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Heartbeat and Health Monitoring
+        Heartbeat and Command Dispatch
       
     </span>
   </a>
@@ -2104,6 +2115,17 @@
     <span class="md-ellipsis">
       
         Checking Status
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#managing-tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Managing Tests
       
     </span>
   </a>
@@ -2245,7 +2267,7 @@ Use <code>--restart</code> to automatically stop the running agent and start the
 <a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>sudo<span class="w"> </span>systemctl<span class="w"> </span>restart<span class="w"> </span>kitt-agent
 </code></pre></div>
 <hr />
-<h2 id="heartbeat-and-health-monitoring">Heartbeat and Health Monitoring<a class="headerlink" href="#heartbeat-and-health-monitoring" title="Permanent link">&para;</a></h2>
+<h2 id="heartbeat-and-command-dispatch">Heartbeat and Command Dispatch<a class="headerlink" href="#heartbeat-and-command-dispatch" title="Permanent link">&para;</a></h2>
 <p>The <code>HeartbeatThread</code> sends a JSON payload to
 <code>/api/v1/agents/&lt;agent_id&gt;/heartbeat</code> every 30 seconds (configurable by the
 server response at registration). The payload includes:</p>
@@ -2256,6 +2278,13 @@ server response at registration). The payload includes:</p>
 <li>GPU memory used in GB</li>
 <li>Agent uptime</li>
 </ul>
+<p>The heartbeat response may include a <code>commands</code> list containing pending
+jobs (e.g. quick tests queued from the web UI). The agent processes each
+command automatically — for <code>run_test</code> commands it starts the benchmark
+executor and streams log lines back to the server via
+<code>POST /api/v1/quicktest/&lt;test_id&gt;/logs</code>. Status transitions are reported
+via <code>POST /api/v1/quicktest/&lt;test_id&gt;/status</code> so the web UI can display
+real-time progress through SSE.</p>
 <hr />
 <h2 id="log-streaming">Log Streaming<a class="headerlink" href="#log-streaming" title="Permanent link">&para;</a></h2>
 <p>When a benchmark runs, the agent captures output through a <code>LogStreamer</code> and
@@ -2269,8 +2298,22 @@ authorized client can subscribe to this stream for real-time log output.</p>
 <code>http://127.0.0.1:&lt;port&gt;/api/status</code> to report whether the daemon is running
 and whether a benchmark is currently active.</p>
 <hr />
+<h2 id="managing-tests">Managing Tests<a class="headerlink" href="#managing-tests" title="Permanent link">&para;</a></h2>
+<p>List tests dispatched to this agent:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>kitt-agent<span class="w"> </span><span class="nb">test</span><span class="w"> </span>list<span class="w">                    </span><span class="c1"># show all tests for this agent</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>kitt-agent<span class="w"> </span><span class="nb">test</span><span class="w"> </span>list<span class="w"> </span>--status<span class="w"> </span>running<span class="w">   </span><span class="c1"># filter by status</span>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>kitt-agent<span class="w"> </span><span class="nb">test</span><span class="w"> </span>list<span class="w"> </span>--limit<span class="w"> </span><span class="m">5</span><span class="w">          </span><span class="c1"># limit results</span>
+</code></pre></div>
+<p>Stop a running or queued test:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>kitt-agent<span class="w"> </span><span class="nb">test</span><span class="w"> </span>stop<span class="w"> </span>&lt;test_id&gt;
+</code></pre></div>
+<p>The <code>stop</code> command marks the test as failed on the server with an
+"Cancelled by user" error and sends a cancel signal to the local daemon
+to kill the running process. If the test is already completed or failed,
+the command prints a message and exits without changes.</p>
+<hr />
 <h2 id="stopping-the-agent">Stopping the Agent<a class="headerlink" href="#stopping-the-agent" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>kitt<span class="w"> </span>agent<span class="w"> </span>stop
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>kitt<span class="w"> </span>agent<span class="w"> </span>stop
 </code></pre></div>
 <p>Sends <code>SIGTERM</code> to the agent process using the PID stored in
 <code>~/.kitt/agent.pid</code>.</p>

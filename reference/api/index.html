@@ -2433,9 +2433,21 @@ endpoints all require authentication.</p>
 </thead>
 <tbody>
 <tr>
-<td>POST</td>
+<td>GET</td>
+<td><code>/api/v1/quicktest/models</code></td>
+<td>No</td>
+<td>List available models from Devon manifest</td>
+</tr>
+<tr>
+<td>GET</td>
 <td><code>/api/v1/quicktest/</code></td>
 <td>No</td>
+<td>List quick tests (query: <code>status</code>, <code>agent_name</code>, <code>page</code>, <code>per_page</code>)</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/api/v1/quicktest/</code></td>
+<td>Yes</td>
 <td>Launch a quick test (body: <code>agent_id</code>, <code>model_path</code>, <code>engine_name</code>)</td>
 </tr>
 <tr>
@@ -2443,6 +2455,24 @@ endpoints all require authentication.</p>
 <td><code>/api/v1/quicktest/&lt;id&gt;</code></td>
 <td>No</td>
 <td>Get quick test status</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/quicktest/&lt;id&gt;/logs</code></td>
+<td>No</td>
+<td>Get stored log lines for a test</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/api/v1/quicktest/&lt;id&gt;/logs</code></td>
+<td>Yes</td>
+<td>Post a log line from the agent (body: <code>line</code>)</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/api/v1/quicktest/&lt;id&gt;/status</code></td>
+<td>Yes</td>
+<td>Update test status (body: <code>status</code>: <code>running</code>/<code>completed</code>/<code>failed</code>)</td>
 </tr>
 </tbody>
 </table>

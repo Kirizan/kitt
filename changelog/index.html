@@ -1968,6 +1968,16 @@
 <li>Added documentation site with MkDocs Material</li>
 <li>Added UI-configurable settings — Model Directory, Devon URL, and Results Directory can be edited from the Settings page with live updates</li>
 <li>Added inline Devon URL setup form on the Devon page</li>
+<li>Added searchable model dropdown to Quick Test — loads from Devon's <code>manifest.json</code> with fuzzy search</li>
+<li>Added heartbeat-based command dispatch — agents pull queued quick tests via heartbeat response</li>
+<li>Added live SSE log streaming to Quick Test — real-time output with status progression</li>
+<li>Added Quick Test API endpoints for log forwarding and status updates</li>
+<li>Added Quick Test history page with status filtering and pagination</li>
+<li>Added Quick Test detail page with SSE live logs and stored log retrieval</li>
+<li>Added persistent log storage — log lines are saved to the database for post-run viewing</li>
+<li>Added <code>kitt-agent test list</code> and <code>kitt-agent test stop</code> CLI commands for managing tests from the agent host</li>
+<li>Fixed thin agent (<code>kitt-agent</code>) log forwarding and command dispatch — heartbeat now processes queued commands, <code>run_test</code>/<code>run_container</code> extract <code>test_id</code> and forward logs and status updates to the server</li>
+<li>Added <code>agent_name</code> query parameter to the quick test list API endpoint</li>
 </ul>
 <h2 id="100">1.0.0<a class="headerlink" href="#100" title="Permanent link">&para;</a></h2>
 <ul>
