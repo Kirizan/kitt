@@ -1,5 +1,6 @@
 """KITT Agent daemon — Flask mini-app that receives commands from the server."""
 
+import hmac
 import json
 import logging
 import ssl
@@ -159,7 +160,7 @@ def create_agent_app(
 
     def _check_auth():
         auth = request.headers.get("Authorization", "")
-        return auth == f"Bearer {token}"
+        return hmac.compare_digest(auth, f"Bearer {token}")
 
     # Expose handle_command for the heartbeat thread
     def handle_command(command: dict[str, Any]) -> None:
