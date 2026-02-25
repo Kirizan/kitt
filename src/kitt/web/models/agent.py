@@ -38,6 +38,21 @@ class AgentCommand(BaseModel):
     payload: dict = Field(default_factory=dict)
 
 
+class AgentProvisionRequest(BaseModel):
+    """Payload for provisioning a new agent with a unique token."""
+
+    name: str = ""
+    port: int = 8090
+
+
+class AgentProvisionResponse(BaseModel):
+    """Returned once after provisioning — contains the raw token."""
+
+    agent_id: str
+    token: str
+    token_prefix: str
+
+
 class AgentSummary(BaseModel):
     """Summary view of an agent for listings."""
 

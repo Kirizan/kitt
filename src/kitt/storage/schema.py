@@ -1,7 +1,7 @@
 """Shared database schema definitions for KITT storage backends."""
 
 # SQLite schema — version-tracked for migrations.
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 
 SQLITE_SCHEMA = """
 CREATE TABLE IF NOT EXISTS schema_version (

@@ -94,7 +94,34 @@ MIGRATIONS: list[Migration] = [
         );
         """,
     ),
+    (
+        4,
+        "Add per-agent token hashing columns",
+        """
+        ALTER TABLE agents ADD COLUMN token_hash TEXT DEFAULT '';
+        ALTER TABLE agents ADD COLUMN token_prefix TEXT DEFAULT '';
+        """,
+    ),
 ]
+
+
+def _migrate_token_hashes(conn: Any) -> None:
+    """One-time migration: hash existing raw tokens in the agents table."""
+    import hashlib
+
+    rows = conn.execute(
+        "SELECT id, token FROM agents WHERE token != '' AND token_hash = ''"
+    ).fetchall()
+    for row in rows:
+        token_hash = hashlib.sha256(row["token"].encode()).hexdigest()
+        token_prefix = row["token"][:8]
+        conn.execute(
+            "UPDATE agents SET token_hash = ?, token_prefix = ? WHERE id = ?",
+            (token_hash, token_prefix, row["id"]),
+        )
+    if rows:
+        conn.commit()
+        logger.info(f"Migrated {len(rows)} agent token(s) to hashed storage")
 
 
 def get_current_version_sqlite(conn: Any) -> int:
@@ -133,6 +160,9 @@ def run_migrations_sqlite(conn: Any, current_version: int) -> int:
             conn.executescript(sql)
             set_version_sqlite(conn, version)
             applied += 1
+            # Hash existing raw tokens after v4 schema change
+            if version == 4:
+                _migrate_token_hashes(conn)
 
     if applied:
         logger.info(f"Applied {applied} migration(s)")
