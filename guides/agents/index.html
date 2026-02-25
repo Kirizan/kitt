@@ -1003,6 +1003,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#updating-the-agent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Updating the Agent
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#heartbeat-and-health-monitoring" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2056,6 +2067,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#updating-the-agent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Updating the Agent
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#heartbeat-and-health-monitoring" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2176,7 +2198,11 @@ to the server at a configurable interval (default 30 seconds).</p>
 <p>On startup the agent:</p>
 <ol>
 <li>Loads <code>~/.kitt/agent.yaml</code> (override with <code>--config</code>).</li>
-<li>Registers with the server via <code>POST /api/v1/agents/register</code>.</li>
+<li>Detects hardware — GPU (with unified memory fallback for architectures like
+   DGX Spark GB10), CPU, RAM, storage, CUDA version, driver version, environment
+   type, and compute capability.</li>
+<li>Registers with the server via <code>POST /api/v1/agents/register</code>, sending a full
+   hardware fingerprint and detailed hardware info.</li>
 <li>Starts a <code>HeartbeatThread</code> that sends periodic status, GPU utilization, and
    memory usage to the server.</li>
 <li>Launches the Flask app on the configured port with optional TLS.</li>
@@ -2207,6 +2233,18 @@ service. The agent will survive reboots and restart automatically on failure.</p
 <a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>kitt-agent<span class="w"> </span>service<span class="w"> </span>uninstall<span class="w">   </span><span class="c1"># stop, disable, and remove the service</span>
 </code></pre></div>
 <hr />
+<h2 id="updating-the-agent">Updating the Agent<a class="headerlink" href="#updating-the-agent" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>kitt-agent<span class="w"> </span>update<span class="w">              </span><span class="c1"># download and install latest from server</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>kitt-agent<span class="w"> </span>update<span class="w"> </span>--restart<span class="w">    </span><span class="c1"># update and restart in one step</span>
+</code></pre></div>
+<p>The <code>update</code> command downloads the latest agent package from the KITT server
+(<code>/api/v1/agent/package</code>) and reinstalls it into the agent's virtual environment.
+Use <code>--restart</code> to automatically stop the running agent and start the new version.</p>
+<p>If the agent is managed by systemd, restart the service after updating:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>kitt-agent<span class="w"> </span>update
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>sudo<span class="w"> </span>systemctl<span class="w"> </span>restart<span class="w"> </span>kitt-agent
+</code></pre></div>
+<hr />
 <h2 id="heartbeat-and-health-monitoring">Heartbeat and Health Monitoring<a class="headerlink" href="#heartbeat-and-health-monitoring" title="Permanent link">&para;</a></h2>
 <p>The <code>HeartbeatThread</code> sends a JSON payload to
 <code>/api/v1/agents/&lt;agent_id&gt;/heartbeat</code> every 30 seconds (configurable by the
@@ -2225,14 +2263,14 @@ exposes it as an SSE endpoint at <code>/api/logs/&lt;command_id&gt;</code>. The 
 authorized client can subscribe to this stream for real-time log output.</p>
 <hr />
 <h2 id="checking-status">Checking Status<a class="headerlink" href="#checking-status" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>kitt<span class="w"> </span>agent<span class="w"> </span>status
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>kitt<span class="w"> </span>agent<span class="w"> </span>status
 </code></pre></div>
 <p>This reads <code>~/.kitt/agent.yaml</code> and probes the local agent at
 <code>http://127.0.0.1:&lt;port&gt;/api/status</code> to report whether the daemon is running
 and whether a benchmark is currently active.</p>
 <hr />
 <h2 id="stopping-the-agent">Stopping the Agent<a class="headerlink" href="#stopping-the-agent" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>kitt<span class="w"> </span>agent<span class="w"> </span>stop
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>kitt<span class="w"> </span>agent<span class="w"> </span>stop
 </code></pre></div>
 <p>Sends <code>SIGTERM</code> to the agent process using the PID stored in
 <code>~/.kitt/agent.pid</code>.</p>
