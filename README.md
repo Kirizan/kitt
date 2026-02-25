@@ -147,6 +147,15 @@ This creates a virtual environment at `~/.kitt/agent-venv`, downloads the agent 
 ~/.kitt/agent-venv/bin/kitt-agent start
 ```
 
+### Update the agent
+
+```bash
+~/.kitt/agent-venv/bin/kitt-agent update            # download & install latest from server
+~/.kitt/agent-venv/bin/kitt-agent update --restart   # update and restart in one step
+```
+
+The update command downloads the latest agent package from the KITT server and reinstalls it into the agent's virtual environment. Use `--restart` to automatically stop the running agent and start the new version.
+
 ### Systemd service (persistent)
 
 ```bash
@@ -174,7 +183,9 @@ The agent is a lightweight daemon (`kitt-agent`) that:
 - Authenticates with its unique per-agent token
 - Receives Docker commands (pull image, run container, stop container) from the server
 - Streams container logs back via SSE
-- Reports hardware capabilities (GPU, CPU, RAM) during registration
+- Reports full hardware fingerprint during registration (GPU, CPU, RAM, storage, CUDA, driver, environment type, compute capability)
+- Handles unified memory architectures (e.g. DGX Spark GB10) where dedicated VRAM is shared with system RAM
+- Self-updates from the server via `kitt-agent update`
 - Does **not** include the full KITT benchmarking suite — all orchestration happens server-side
 
 ## Development

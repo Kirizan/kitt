@@ -50,10 +50,14 @@ kitt agent start
 On startup the agent:
 
 1. Loads `~/.kitt/agent.yaml` (override with `--config`).
-2. Registers with the server via `POST /api/v1/agents/register`.
-3. Starts a `HeartbeatThread` that sends periodic status, GPU utilization, and
+2. Detects hardware — GPU (with unified memory fallback for architectures like
+   DGX Spark GB10), CPU, RAM, storage, CUDA version, driver version, environment
+   type, and compute capability.
+3. Registers with the server via `POST /api/v1/agents/register`, sending a full
+   hardware fingerprint and detailed hardware info.
+4. Starts a `HeartbeatThread` that sends periodic status, GPU utilization, and
    memory usage to the server.
-4. Launches the Flask app on the configured port with optional TLS.
+5. Launches the Flask app on the configured port with optional TLS.
 
 Use `--foreground` to keep the process in the foreground (useful for debugging).
 Use `--insecure` to skip TLS verification during development.
@@ -94,6 +98,26 @@ Manage the service:
 ```bash
 kitt-agent service status      # check service status
 kitt-agent service uninstall   # stop, disable, and remove the service
+```
+
+---
+
+## Updating the Agent
+
+```bash
+kitt-agent update              # download and install latest from server
+kitt-agent update --restart    # update and restart in one step
+```
+
+The `update` command downloads the latest agent package from the KITT server
+(`/api/v1/agent/package`) and reinstalls it into the agent's virtual environment.
+Use `--restart` to automatically stop the running agent and start the new version.
+
+If the agent is managed by systemd, restart the service after updating:
+
+```bash
+kitt-agent update
+sudo systemctl restart kitt-agent
 ```
 
 ---
