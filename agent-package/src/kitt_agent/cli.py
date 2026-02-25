@@ -76,9 +76,34 @@ def init(server, token, name, port, model_dir, share_source, share_mount):
 
 
 @cli.command()
+@click.option("--server", default="", help="KITT server URL to check connectivity")
+@click.option("--port", default=8090, help="Agent port to check availability")
+@click.option("--model-dir", default="", help="Model storage directory to check disk space")
+def preflight(server, port, model_dir):
+    """Run prerequisite checks for KITT agent.
+
+    Verifies Docker, GPU drivers, NFS utilities, disk space,
+    server connectivity, and port availability.
+
+    Exit code 1 if any required check fails.
+    """
+    from kitt_agent.preflight import print_results, run_all_checks
+
+    results = run_all_checks(
+        server_url=server,
+        port=port,
+        model_storage_dir=model_dir,
+    )
+    all_ok = print_results(results)
+    if not all_ok:
+        raise SystemExit(1)
+
+
+@cli.command()
 @click.option("--config", "config_path", type=click.Path(), help="Path to agent.yaml")
 @click.option("--insecure", is_flag=True, help="Disable TLS verification")
-def start(config_path, insecure):
+@click.option("--preflight/--no-preflight", "run_preflight", default=False, help="Run preflight checks before starting")
+def start(config_path, insecure, run_preflight):
     """Start the KITT agent daemon."""
     config_file = (
         Path(config_path) if config_path else Path.home() / ".kitt" / "agent.yaml"
@@ -101,6 +126,22 @@ def start(config_path, insecure):
     if not server_url:
         click.echo("Invalid agent config — missing server_url")
         raise SystemExit(1)
+
+    # Run preflight checks if requested
+    if run_preflight:
+        from kitt_agent.preflight import print_results, run_all_checks
+
+        click.echo("Running preflight checks...")
+        results = run_all_checks(
+            server_url=server_url,
+            port=port,
+            model_storage_dir=config.get("model_storage_dir", ""),
+        )
+        all_ok = print_results(results)
+        if not all_ok:
+            click.echo("Preflight checks failed. Fix the issues above and retry.")
+            raise SystemExit(1)
+        click.echo()
 
     click.echo(f"KITT Agent: {agent_name}")
     click.echo(f"  Server: {server_url}")

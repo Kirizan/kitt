@@ -53,6 +53,14 @@ echo "==> Installing agent package"
 "$VENV_DIR/bin/pip" install "$TMPFILE" -q
 rm -f "$TMPFILE"
 
+# Run prerequisite checks
+echo "==> Running prerequisite checks"
+"$VENV_DIR/bin/kitt-agent" preflight --server "$KITT_SERVER" --port "$AGENT_PORT"
+if [ $? -ne 0 ]; then
+    echo "ERROR: Prerequisite checks failed. Fix the issues above and re-run."
+    exit 1
+fi
+
 # Configure with provisioned token
 echo "==> Configuring agent"
 "$VENV_DIR/bin/kitt-agent" init --server "$KITT_SERVER" --name "$AGENT_NAME" \\
