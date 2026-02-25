@@ -33,7 +33,10 @@ def cli():
 @click.option("--token", default="", help="Bearer token for authentication (optional)")
 @click.option("--name", default="", help="Agent name (defaults to hostname)")
 @click.option("--port", default=8090, help="Agent listening port")
-def init(server, token, name, port):
+@click.option("--model-dir", default="", help="Local model storage directory (default: ~/.kitt/models)")
+@click.option("--share-source", default="", help="NFS share source (e.g., nas:/volume1/models)")
+@click.option("--share-mount", default="", help="Local mount point for NFS share (e.g., /mnt/models)")
+def init(server, token, name, port, model_dir, share_source, share_mount):
     """Initialize agent configuration."""
     agent_name = name or socket.gethostname()
     config_dir = Path.home() / ".kitt"
@@ -47,6 +50,13 @@ def init(server, token, name, port):
         "port": port,
     }
 
+    if model_dir:
+        config["model_storage_dir"] = model_dir
+    if share_source:
+        config["model_share_source"] = share_source
+    if share_mount:
+        config["model_share_mount"] = share_mount
+
     with open(config_path, "w") as f:
         yaml.dump(config, f, default_flow_style=False)
     config_path.chmod(0o600)
@@ -55,6 +65,12 @@ def init(server, token, name, port):
     click.echo(f"  Name: {agent_name}")
     click.echo(f"  Server: {server}")
     click.echo(f"  Port: {port}")
+    if model_dir:
+        click.echo(f"  Model dir: {model_dir}")
+    if share_source:
+        click.echo(f"  Share source: {share_source}")
+    if share_mount:
+        click.echo(f"  Share mount: {share_mount}")
     click.echo()
     click.echo("Start the agent with: kitt-agent start")
 
@@ -120,6 +136,17 @@ def start(config_path, insecure):
         agent_id = agent_name
         heartbeat_interval = 30
 
+    # Model storage manager
+    from kitt_agent.model_storage import ModelStorageManager
+
+    default_model_dir = str(Path.home() / ".kitt" / "models")
+    model_storage = ModelStorageManager(
+        storage_dir=config.get("model_storage_dir", default_model_dir),
+        share_source=config.get("model_share_source", ""),
+        share_mount=config.get("model_share_mount", ""),
+        auto_cleanup=config.get("auto_cleanup", True),
+    )
+
     # Flask app (created first so heartbeat can dispatch commands to it)
     from kitt_agent.daemon import create_agent_app
 
@@ -129,7 +156,19 @@ def start(config_path, insecure):
         token=token,
         port=port,
         insecure=insecure,
+        model_storage=model_storage,
     )
+
+    # Callback for syncing settings from heartbeat response
+    def _on_settings(settings: dict) -> None:
+        model_storage.update_settings(
+            storage_dir=settings.get("model_storage_dir", ""),
+            share_source=settings.get("model_share_source", ""),
+            share_mount=settings.get("model_share_mount", ""),
+            auto_cleanup=settings.get("auto_cleanup", "true") == "true"
+            if "auto_cleanup" in settings
+            else None,
+        )
 
     # Heartbeat
     from kitt_agent.heartbeat import HeartbeatThread
@@ -142,6 +181,8 @@ def start(config_path, insecure):
         verify=verify if not insecure else False,
         client_cert=client_cert if not insecure else None,
         on_command=app.handle_command,
+        on_settings=_on_settings,
+        storage_dir=config.get("model_storage_dir", default_model_dir),
     )
     hb.start()
 

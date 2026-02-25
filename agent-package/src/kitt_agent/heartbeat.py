@@ -2,11 +2,13 @@
 
 import json
 import logging
+import shutil
 import ssl
 import threading
 import time
 import urllib.request
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -24,15 +26,20 @@ class HeartbeatThread(threading.Thread):
         verify: str | bool = True,
         client_cert: tuple[str, str] | None = None,
         on_command: Callable[[dict[str, Any]], None] | None = None,
+        on_settings: Callable[[dict[str, str]], None] | None = None,
+        storage_dir: str = "",
     ) -> None:
         super().__init__(daemon=True, name="kitt-heartbeat")
         self.server_url = server_url.rstrip("/")
         self.agent_id = agent_id
         self.token = token
-        self.interval_s = interval_s
+        self._base_interval_s = interval_s
+        self._active_interval_s = interval_s
         self.verify = verify
         self.client_cert = client_cert
         self.on_command = on_command
+        self.on_settings = on_settings
+        self._storage_dir = storage_dir
         self._stop_event = threading.Event()
         self._status = "idle"
         self._current_task = ""
@@ -48,16 +55,45 @@ class HeartbeatThread(threading.Thread):
                             self.on_command(cmd)
                         except Exception as e:
                             logger.error(f"Command handler failed: {e}")
+                # Sync settings from server
+                if self.on_settings and resp and "settings" in resp:
+                    try:
+                        settings = resp["settings"]
+                        self.on_settings(settings)
+                        # Update heartbeat interval from settings
+                        if "heartbeat_interval_s" in settings:
+                            new_interval = int(settings["heartbeat_interval_s"])
+                            if 10 <= new_interval <= 300:
+                                self._base_interval_s = new_interval
+                                # Recompute active interval
+                                if self._status == "running":
+                                    self._active_interval_s = max(new_interval, 60)
+                                else:
+                                    self._active_interval_s = new_interval
+                    except Exception as e:
+                        logger.warning(f"Settings sync failed: {e}")
             except Exception as e:
                 logger.warning(f"Heartbeat failed: {e}")
-            self._stop_event.wait(self.interval_s)
+            self._stop_event.wait(self._active_interval_s)
 
     def stop(self) -> None:
         self._stop_event.set()
 
     def set_status(self, status: str, task: str = "") -> None:
+        """Update agent status. Auto-throttles heartbeat during benchmarks."""
         self._status = status
         self._current_task = task
+        if status == "running":
+            self._active_interval_s = max(self._base_interval_s, 60)
+        else:
+            self._active_interval_s = self._base_interval_s
+
+    def set_interval(self, seconds: int) -> None:
+        """Directly set the heartbeat interval."""
+        if 10 <= seconds <= 300:
+            self._base_interval_s = seconds
+            if self._status != "running":
+                self._active_interval_s = seconds
 
     def _send_heartbeat(self) -> dict[str, Any]:
         from urllib.parse import quote
@@ -85,6 +121,14 @@ class HeartbeatThread(threading.Thread):
             finally:
                 pynvml.nvmlShutdown()
         except Exception:
+            pass
+
+        # Add storage usage
+        storage_path = self._storage_dir or str(Path.home() / ".kitt" / "models")
+        try:
+            usage = shutil.disk_usage(storage_path)
+            payload["storage_gb_free"] = round(usage.free / (1024**3), 2)
+        except OSError:
             pass
 
         payload["uptime_s"] = time.monotonic()

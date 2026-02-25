@@ -21,6 +21,10 @@ class AgentDaemonConfig(BaseModel):
     token: str = ""
     port: int = 8090
     heartbeat_interval_s: int = 30
+    model_storage_dir: str = ""
+    model_share_source: str = ""
+    model_share_mount: str = ""
+    auto_cleanup: bool = True
     tls: AgentTLSConfig = Field(default_factory=AgentTLSConfig)
     config_path: Path = Field(
         default_factory=lambda: Path.home() / ".kitt" / "agent.yaml"

@@ -56,6 +56,7 @@ def create_agent_app(
     token: str,
     port: int = 8090,
     insecure: bool = False,
+    model_storage: "ModelStorageManager | None" = None,
 ) -> "Flask":
     """Create the thin agent Flask app.
 
@@ -258,11 +259,18 @@ def create_agent_app(
                 _on_log_test(f"Engine: {engine}")
                 _on_log_test(f"Model: {model_path}")
 
+                # Resolve model to local storage
+                local_model_path = model_path
+                if model_storage:
+                    local_model_path = model_storage.resolve_model(
+                        model_path, on_log=_on_log_test
+                    )
+
                 args = [
                     "kitt",
                     "run",
                     "-m",
-                    model_path,
+                    local_model_path,
                     "-e",
                     engine,
                     "-s",
@@ -302,6 +310,9 @@ def create_agent_app(
                         {"status": "failed", "error": str(e)},
                         insecure,
                     )
+                finally:
+                    if model_storage and model_storage.auto_cleanup and local_model_path != model_path:
+                        model_storage.cleanup_model(local_model_path)
 
             threading.Thread(target=_run_legacy, daemon=True).start()
             return jsonify({"accepted": True, "command_id": command_id}), 202
@@ -457,7 +468,14 @@ def create_agent_app(
                 _on_log_hb_test(f"Engine: {engine}")
                 _on_log_hb_test(f"Model: {model_path}")
 
-                args = ["kitt", "run", "-m", model_path, "-e", engine, "-s", suite]
+                # Resolve model to local storage
+                local_model_path = model_path
+                if model_storage:
+                    local_model_path = model_storage.resolve_model(
+                        model_path, on_log=_on_log_hb_test
+                    )
+
+                args = ["kitt", "run", "-m", local_model_path, "-e", engine, "-s", suite]
                 try:
                     proc = sp.Popen(
                         args,
@@ -476,6 +494,9 @@ def create_agent_app(
                 except Exception as e:
                     _on_log_hb_test(f"Error: {e}")
                     _update_status_hb_test("failed", error=str(e))
+                finally:
+                    if model_storage and model_storage.auto_cleanup and local_model_path != model_path:
+                        model_storage.cleanup_model(local_model_path)
 
             threading.Thread(target=_run_hb_test, daemon=True).start()
 
