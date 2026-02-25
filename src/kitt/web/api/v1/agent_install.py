@@ -28,7 +28,7 @@ set -euo pipefail
 KITT_SERVER={server_url}
 KITT_TOKEN={token}
 AGENT_PORT={port}
-AGENT_NAME="$(hostname)"
+AGENT_NAME={agent_name}
 AGENT_DIR="$HOME/.kitt"
 VENV_DIR="$AGENT_DIR/agent-venv"
 
@@ -53,13 +53,10 @@ echo "==> Installing agent package"
 "$VENV_DIR/bin/pip" install "$TMPFILE" -q
 rm -f "$TMPFILE"
 
-# Configure
+# Configure with provisioned token
 echo "==> Configuring agent"
-INIT_CMD=("$VENV_DIR/bin/kitt-agent" init --server "$KITT_SERVER" --name "$AGENT_NAME" --port "$AGENT_PORT")
-if [ -n "$KITT_TOKEN" ]; then
-    INIT_CMD+=(--token "$KITT_TOKEN")
-fi
-"${{INIT_CMD[@]}}"
+"$VENV_DIR/bin/kitt-agent" init --server "$KITT_SERVER" --name "$AGENT_NAME" \\
+    --port "$AGENT_PORT" --token "$KITT_TOKEN"
 
 echo ""
 echo "==> Agent installed successfully!"
@@ -74,11 +71,16 @@ echo "    $VENV_DIR/bin/kitt-agent service install"
 def install_script():
     """Serve the agent bootstrap install script.
 
+    Provisions a unique per-agent token at serve time. Each request
+    generates a new token — the raw token is embedded in the script
+    and the server stores only its SHA-256 hash.
+
     Query params:
         port: Agent listening port (default 8090).
+        name: Agent name (default: uses $(hostname) at install time).
     """
-    token = current_app.config.get("AUTH_TOKEN", "")
     port_str = request.args.get("port", "8090")
+    name_param = request.args.get("name", "")
 
     # Validate port is numeric
     try:
@@ -91,10 +93,35 @@ def install_script():
     # Build the server URL from the request
     server_url = request.url_root.rstrip("/")
 
+    # Provision the agent — generates a unique token, stores hash in DB.
+    # If name is provided, provision now. Otherwise the script uses
+    # $(hostname) — we provision with a placeholder and the agent
+    # re-provisions on registration.
+    from kitt.web.app import get_services
+
+    mgr = get_services()["agent_manager"]
+
+    if name_param:
+        result = mgr.provision(name_param, port_int)
+        raw_token = result["token"]
+        agent_name = shlex.quote(name_param)
+    else:
+        # Use $(hostname) — provision with hostname at install time
+        # The script will embed $(hostname) as the name
+        agent_name = '"$(hostname)"'
+        # Generate a token for a placeholder name; the agent will
+        # re-register with its real hostname and this token
+        import socket
+
+        placeholder_name = f"pending-{socket.getfqdn()}-{port_int}"
+        result = mgr.provision(placeholder_name, port_int)
+        raw_token = result["token"]
+
     script = _INSTALL_SCRIPT.format(
         server_url=shlex.quote(server_url),
-        token=shlex.quote(token),
+        token=shlex.quote(raw_token),
         port=port_int,
+        agent_name=agent_name,
     )
     return Response(script, mimetype="text/x-shellscript")
 
