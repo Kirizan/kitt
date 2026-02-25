@@ -15,6 +15,8 @@ import threading
 from pathlib import Path
 from typing import Any
 
+import kitt
+
 logger = logging.getLogger(__name__)
 
 try:
@@ -220,9 +222,10 @@ def create_app(
                 "devon_tab_visible": settings_service.get_bool(
                     "devon_tab_visible", default=True
                 ),
+                "kitt_version": kitt.__version__,
             }
         except Exception:
-            return {"devon_tab_visible": True}
+            return {"devon_tab_visible": True, "kitt_version": kitt.__version__}
 
     # --- HTMX partial routes ---
     @app.route("/partials/agent_cards")

@@ -2,6 +2,8 @@
 
 from flask import Blueprint, jsonify
 
+import kitt
+
 bp = Blueprint("api_health", __name__)
 
 
@@ -16,7 +18,7 @@ def version():
     """Version info endpoint."""
     return jsonify(
         {
-            "version": "1.1.0",
+            "version": kitt.__version__,
             "api_version": "v1",
             "name": "KITT",
         }
