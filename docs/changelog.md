@@ -20,6 +20,11 @@ All notable changes to KITT are documented on this page.
 - DB migration v8: `agent_settings` key-value table per agent
 - Daemon refactored — consolidated duplicated run methods into shared helpers
 - Version policy: every PR must increment version going forward
+- `kitt-agent build` command for native-arch Docker image building
+- Docker container is the preferred benchmark execution method (local CLI is fallback)
+- Build context API endpoint (`/api/v1/agent/build-context`)
+- Install script auto-builds Docker image during agent installation
+- Preflight check for KITT Docker image availability
 
 ## 1.1.0
 

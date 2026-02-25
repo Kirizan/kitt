@@ -62,6 +62,11 @@ endpoints all require authentication.
 | GET | `/api/v1/agents/<id>/settings` | No | Get agent settings |
 | PUT | `/api/v1/agents/<id>/settings` | Yes | Update agent settings (body: `{"key": "value", ...}`) |
 | POST | `/api/v1/agents/<id>/cleanup` | Yes | Queue storage cleanup command |
+| GET | `/api/v1/agent/install.sh` | No | Agent bootstrap install script |
+| GET | `/api/v1/agent/package` | No | Agent package tarball |
+| GET | `/api/v1/agent/package/sha256` | No | SHA-256 of agent package |
+| GET | `/api/v1/agent/build-context` | No | Docker build context tarball |
+| GET | `/api/v1/agent/build-context/sha256` | No | SHA-256 of build context |
 
 ### Campaigns
 

@@ -43,12 +43,20 @@ Key points:
 - The entry point runs `poetry run kitt`, so any CLI command can be passed
   as arguments (e.g. `docker run kitt run -m /model -e vllm`).
 
+### Multi-architecture support
+
+The base image `python:3.12-slim` supports both amd64 and arm64, so the
+Dockerfile is architecture-agnostic. Agents build the image locally via
+`kitt-agent build`, producing a native image for the host architecture.
+This avoids cross-architecture issues when the server (amd64) and agents
+(e.g. ARM64 NVIDIA Grace Blackwell) differ.
+
 ### Additional Dockerfiles
 
 | File | Purpose |
 |------|---------|
 | `docker/agent/Dockerfile` | Standalone agent daemon image |
-| `docker/web/Dockerfile` | Web dashboard image |
+| `docker/web/Dockerfile` | Web dashboard image (also used by `kitt-agent build`) |
 | `docker/llama_cpp/Dockerfile.spark` | llama.cpp build for DGX Spark |
 | `docker/tgi/Dockerfile.spark` | TGI build for DGX Spark |
 

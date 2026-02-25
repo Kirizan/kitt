@@ -30,7 +30,8 @@ When a benchmark is dispatched, the agent resolves the model path through the
    mounted (via fstab or explicit `sudo mount -t nfs`).
 3. **Copy from share** — copy the model from the share to local storage using
    `shutil.copytree`.
-4. **Run benchmark** — execute `kitt run` with the local model path.
+4. **Run benchmark** — execute the benchmark in a Docker container (falls back
+   to local `kitt run` if the image is not available).
 5. **Cleanup** — if `auto_cleanup` is enabled, delete the local copy after the
    benchmark completes.
 
@@ -94,6 +95,7 @@ Checks performed:
 | Python >= 3.10 | Yes | `sys.version_info` |
 | Docker available | Yes | `docker info` subprocess |
 | Docker GPU access | Yes | `docker run --gpus all nvidia/cuda:...` |
+| KITT Docker image | No | `docker image inspect kitt:latest` |
 | NVIDIA drivers | Yes | `nvidia-smi` subprocess |
 | NFS utilities | No | Check for `mount.nfs` in PATH |
 | Disk space (>= 50GB) | No | `shutil.disk_usage` on model dir |
@@ -107,6 +109,37 @@ The install script runs preflight automatically. You can also use the
 
 ```bash
 kitt-agent start --preflight
+```
+
+---
+
+## Building the Docker Image
+
+The agent runs benchmarks inside a Docker container built from the KITT
+source. Each agent builds the image locally so it is native to the host
+architecture (amd64 or arm64). The install script does this automatically,
+but you can also build or rebuild manually:
+
+```bash
+kitt-agent build
+```
+
+The command downloads the build context tarball from the server, verifies
+its SHA-256 digest, and runs `docker build` locally. The resulting image is
+tagged as `kitt:latest` (and with any custom tag from `kitt_image` in agent
+settings).
+
+| Flag | Description |
+|------|-------------|
+| `--server` | KITT server URL (reads from `agent.yaml` if not set) |
+| `--tag` | Override the image tag |
+| `--no-cache` | Build without Docker cache |
+
+Rebuild the image after updating the agent to pick up new KITT changes:
+
+```bash
+kitt-agent update
+kitt-agent build
 ```
 
 ---
@@ -147,6 +180,7 @@ detail page or via the REST API.
 | `model_share_mount` | *(empty)* | Local mount point for NFS share |
 | `auto_cleanup` | `true` | Delete local model copies after benchmarks |
 | `heartbeat_interval_s` | `30` | Seconds between heartbeats (10-300) |
+| `kitt_image` | *(empty)* | Docker image tag for benchmark containers |
 
 ---
 
@@ -199,10 +233,17 @@ The `update` command downloads the latest agent package from the KITT server
 (`/api/v1/agent/package`) and reinstalls it into the agent's virtual environment.
 Use `--restart` to automatically stop the running agent and start the new version.
 
+After updating, rebuild the Docker image to pick up new KITT changes:
+
+```bash
+kitt-agent build
+```
+
 If the agent is managed by systemd, restart the service after updating:
 
 ```bash
 kitt-agent update
+kitt-agent build
 sudo systemctl restart kitt-agent
 ```
 
