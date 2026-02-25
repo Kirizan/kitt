@@ -211,26 +211,36 @@ def create_agent_app(
         if model_storage:
             local_model_path = model_storage.resolve_model(model_path, on_log=on_log)
 
-        # Determine the KITT Docker image to use for running benchmarks.
-        # Prefer the server-synced setting, fall back to a sensible default.
+        # Decide execution method: local kitt CLI or Docker container.
+        # Local is preferred (faster, works on all architectures).
+        # Docker is the fallback for hosts without kitt installed.
+        import shutil
+
+        kitt_bin = shutil.which("kitt")
         kitt_image = _kitt_image_ref[0]
-        container_name = f"kitt-run-{command_id[:8]}"
+        use_local = kitt_bin is not None
 
-        # Build docker run command.
-        # Mount: model at same host path (so engine sibling containers see it),
-        # Docker socket (so KITT can launch engine containers), and /tmp for output.
-        args = [
-            "docker", "run", "--rm",
-            "--name", container_name,
-            "--gpus", "all",
-            "--network", "host",
-            "-v", "/var/run/docker.sock:/var/run/docker.sock",
-            "-v", f"{local_model_path}:{local_model_path}:ro",
-            kitt_image,
-            "run", "-m", local_model_path, "-e", engine, "-s", suite,
-        ]
+        if use_local:
+            args = [
+                kitt_bin, "run",
+                "-m", local_model_path, "-e", engine, "-s", suite,
+            ]
+            on_log(f"Running KITT benchmark locally ({kitt_bin})")
+        else:
+            # Mount: model at same host path (so engine sibling containers see it),
+            # Docker socket (so KITT can launch engine containers).
+            args = [
+                "docker", "run", "--rm",
+                "--name", f"kitt-run-{command_id[:8]}",
+                "--gpus", "all",
+                "--network", "host",
+                "-v", "/var/run/docker.sock:/var/run/docker.sock",
+                "-v", f"{local_model_path}:{local_model_path}:ro",
+                kitt_image,
+                "run", "-m", local_model_path, "-e", engine, "-s", suite,
+            ]
+            on_log(f"Running KITT benchmark in container ({kitt_image})")
 
-        on_log(f"Running KITT benchmark in container ({kitt_image})")
         try:
             proc = sp.Popen(
                 args,
@@ -239,8 +249,9 @@ def create_agent_app(
                 text=True,
                 bufsize=1,
             )
+            tracking_id = str(proc.pid) if use_local else f"kitt-run-{command_id[:8]}"
             with _lock:
-                active_containers[command_id] = container_name
+                active_containers[command_id] = tracking_id
             for line in proc.stdout or []:
                 on_log(line.rstrip())
             proc.wait()
