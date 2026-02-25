@@ -14,7 +14,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from kitt.web.models.agent import AgentHeartbeat, AgentRegistration
+from kitt.web.models.agent import AgentHeartbeat, AgentRegistration, AgentSettings
 from kitt.web.services.event_bus import event_bus
 
 logger = logging.getLogger(__name__)
@@ -70,6 +70,7 @@ class AgentManager:
             logger.info(f"Provisioned new agent: {name} ({agent_id})")
 
         self._conn.commit()
+        self._ensure_default_settings(agent_id)
         return {
             "agent_id": agent_id,
             "token": raw_token,
@@ -146,6 +147,7 @@ class AgentManager:
             )
 
         self._conn.commit()
+        self._ensure_default_settings(agent_id)
         event_bus.publish(
             "agent_status",
             agent_id,
@@ -221,7 +223,8 @@ class AgentManager:
                 agent_id,
             )
 
-        return {"ack": True, "commands": commands}
+        settings = self.get_agent_settings(agent_id)
+        return {"ack": True, "commands": commands, "settings": settings}
 
     # Fields that must never appear in API responses.
     _SENSITIVE_FIELDS = {"token", "token_hash"}
@@ -316,6 +319,51 @@ class AgentManager:
         logger.info(f"Rotated token for agent {agent_id}")
 
         return {"token": raw_token, "token_prefix": token_prefix}
+
+    # --- Agent settings ---
+
+    _DEFAULT_SETTINGS = {
+        "model_storage_dir": "~/.kitt/models",
+        "model_share_source": "",
+        "model_share_mount": "",
+        "auto_cleanup": "true",
+        "heartbeat_interval_s": "30",
+    }
+
+    def _ensure_default_settings(self, agent_id: str) -> None:
+        """Insert default settings for an agent if they don't exist."""
+        for key, value in self._DEFAULT_SETTINGS.items():
+            self._conn.execute(
+                "INSERT OR IGNORE INTO agent_settings (agent_id, key, value) VALUES (?, ?, ?)",
+                (agent_id, key, value),
+            )
+        self._conn.commit()
+
+    def get_agent_settings(self, agent_id: str) -> dict[str, str]:
+        """Get all settings for an agent as a flat dict."""
+        rows = self._conn.execute(
+            "SELECT key, value FROM agent_settings WHERE agent_id = ?",
+            (agent_id,),
+        ).fetchall()
+        return {row["key"]: row["value"] for row in rows}
+
+    def update_agent_settings(self, agent_id: str, updates: dict[str, str]) -> bool:
+        """Upsert agent settings. Returns True if any rows were affected."""
+        # Validate keys against known settings
+        valid_keys = set(self._DEFAULT_SETTINGS.keys())
+        filtered = {k: str(v) for k, v in updates.items() if k in valid_keys}
+        if not filtered:
+            return False
+
+        for key, value in filtered.items():
+            self._conn.execute(
+                """INSERT INTO agent_settings (agent_id, key, value)
+                   VALUES (?, ?, ?)
+                   ON CONFLICT(agent_id, key) DO UPDATE SET value = excluded.value""",
+                (agent_id, key, value),
+            )
+        self._conn.commit()
+        return True
 
     def _check_stale_agents(self) -> None:
         """Mark agents as offline if heartbeat is stale."""

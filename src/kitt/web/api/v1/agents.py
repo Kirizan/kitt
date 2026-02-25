@@ -185,6 +185,44 @@ def report_result(agent_id):
     return jsonify({"accepted": True}), 202
 
 
+@bp.route("/<agent_id>/settings", methods=["GET"])
+def get_agent_settings(agent_id):
+    """Get all settings for an agent."""
+    mgr = _get_agent_manager()
+    agent = mgr.get_agent(agent_id)
+    if agent is None:
+        return jsonify({"error": "Agent not found"}), 404
+    settings = mgr.get_agent_settings(agent_id)
+    return jsonify(settings)
+
+
+@bp.route("/<agent_id>/settings", methods=["PUT"])
+@require_auth
+def update_agent_settings(agent_id):
+    """Update agent settings."""
+    mgr = _get_agent_manager()
+    agent = mgr.get_agent(agent_id)
+    if agent is None:
+        return jsonify({"error": "Agent not found"}), 404
+
+    data = request.get_json(silent=True)
+    if not data or not isinstance(data, dict):
+        return jsonify({"error": "Invalid JSON body — expected {key: value}"}), 400
+
+    # Validate heartbeat_interval_s range
+    if "heartbeat_interval_s" in data:
+        try:
+            val = int(data["heartbeat_interval_s"])
+            if not (10 <= val <= 300):
+                return jsonify({"error": "heartbeat_interval_s must be 10-300"}), 400
+        except (ValueError, TypeError):
+            return jsonify({"error": "heartbeat_interval_s must be an integer"}), 400
+
+    if mgr.update_agent_settings(agent_id, data):
+        return jsonify({"updated": True})
+    return jsonify({"error": "No valid settings to update"}), 400
+
+
 @bp.route("/<agent_id>/rotate-token", methods=["POST"])
 @require_auth
 def rotate_token(agent_id):
