@@ -277,6 +277,8 @@ def create_agent_app(
                 "all",
                 "--network",
                 "host",
+                "--entrypoint",
+                "kitt",
                 "-v",
                 "/var/run/docker.sock:/var/run/docker.sock",
                 "-v",
