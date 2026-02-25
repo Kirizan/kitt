@@ -134,6 +134,35 @@
         </div>
     </div>
 
+    <!-- Storage Info -->
+    <div class="bg-kitt-surface rounded-lg p-5">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-lg font-semibold">Storage</h2>
+            <button type="button"
+                    hx-post="/api/v1/agents/{{ agent.id }}/cleanup"
+                    hx-confirm="Clean all cached models from this agent's local storage?"
+                    hx-target="#cleanup_feedback"
+                    hx-swap="innerHTML"
+                    class="text-xs bg-red-900/50 hover:bg-red-900/70 text-red-300 px-3 py-1.5 rounded-md transition-colors">
+                Clean Storage
+            </button>
+        </div>
+        <dl class="space-y-3 text-sm"
+            hx-get="/api/v1/agents/{{ agent.id }}"
+            hx-trigger="every 30s"
+            hx-select="#storage-data"
+            hx-target="#storage-data"
+            hx-swap="outerHTML">
+            <div id="storage-data">
+                <div class="flex justify-between">
+                    <dt class="text-kitt-dim">Status</dt>
+                    <dd class="text-xs">Data updates with each heartbeat</dd>
+                </div>
+            </div>
+        </dl>
+        <div id="cleanup_feedback" class="mt-2"></div>
+    </div>
+
     <!-- Agent Settings -->
     <div class="bg-kitt-surface rounded-lg p-6">
         <h2 class="text-lg font-semibold mb-4">Settings</h2>

@@ -185,6 +185,43 @@ def report_result(agent_id):
     return jsonify({"accepted": True}), 202
 
 
+@bp.route("/<agent_id>/cleanup", methods=["POST"])
+@require_auth
+def trigger_cleanup(agent_id):
+    """Queue a cleanup_storage command for the agent."""
+    mgr = _get_agent_manager()
+    agent = mgr.get_agent(agent_id)
+    if agent is None:
+        return jsonify({"error": "Agent not found"}), 404
+
+    data = request.get_json(silent=True) or {}
+    model_path = data.get("model_path", "")
+
+    # Queue the cleanup command via quick_tests mechanism
+    # The heartbeat will deliver it as a command
+    import uuid
+
+    command_id = uuid.uuid4().hex[:16]
+    command = {
+        "command_id": command_id,
+        "type": "cleanup_storage",
+        "payload": {"model_path": model_path},
+    }
+
+    # Store as a pending command — we piggyback on the heartbeat dispatch
+    # by inserting a special quick_test entry
+    mgr._conn.execute(
+        """INSERT INTO quick_tests
+           (id, agent_id, model_path, engine_name, benchmark_name,
+            suite_name, status, command_id)
+           VALUES (?, ?, ?, 'cleanup', 'cleanup_storage', 'quick', 'queued', ?)""",
+        (command_id, agent_id, model_path or "__cleanup__", command_id),
+    )
+    mgr._conn.commit()
+
+    return jsonify({"queued": True, "command_id": command_id}), 202
+
+
 @bp.route("/<agent_id>/settings", methods=["GET"])
 def get_agent_settings(agent_id):
     """Get all settings for an agent."""
