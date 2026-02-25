@@ -70,8 +70,13 @@ def check_docker_gpu() -> CheckResult:
     try:
         result = subprocess.run(
             [
-                "docker", "run", "--rm", "--gpus", "all",
-                "nvidia/cuda:12.0.0-base-ubuntu22.04", "nvidia-smi",
+                "docker",
+                "run",
+                "--rm",
+                "--gpus",
+                "all",
+                "nvidia/cuda:12.0.0-base-ubuntu22.04",
+                "nvidia-smi",
             ],
             capture_output=True,
             text=True,
@@ -155,7 +160,9 @@ def check_nfs_utilities() -> CheckResult:
         name="NFS utilities",
         passed=has_nfs,
         required=False,
-        message="mount.nfs available" if has_nfs else "mount.nfs not found — install nfs-common",
+        message="mount.nfs available"
+        if has_nfs
+        else "mount.nfs not found — install nfs-common",
     )
 
 

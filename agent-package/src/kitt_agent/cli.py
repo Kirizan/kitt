@@ -54,7 +54,9 @@ def cli():
 
 
 @cli.command()
-@click.option("--server", default="", help="KITT server URL (reads from agent.yaml if not set)")
+@click.option(
+    "--server", default="", help="KITT server URL (reads from agent.yaml if not set)"
+)
 @click.option("--tag", default="", help="Image tag override")
 @click.option("--no-cache", "no_cache", is_flag=True, help="Build without Docker cache")
 def build(server, tag, no_cache):
@@ -142,9 +144,12 @@ def build(server, tag, no_cache):
     # Run docker build
     click.echo(f"Building Docker image: {image_tag}")
     build_args = [
-        "docker", "build",
-        "-f", str(dockerfile),
-        "-t", image_tag,
+        "docker",
+        "build",
+        "-f",
+        str(dockerfile),
+        "-t",
+        image_tag,
     ]
     if no_cache:
         build_args.append("--no-cache")
@@ -157,12 +162,13 @@ def build(server, tag, no_cache):
             raise SystemExit(1)
     except subprocess.TimeoutExpired:
         click.echo("Docker build timed out.")
-        raise SystemExit(1)
+        raise SystemExit(1) from None
     except FileNotFoundError:
         click.echo("Docker not found. Install Docker to build images.")
-        raise SystemExit(1)
+        raise SystemExit(1) from None
     finally:
         import shutil as _shutil
+
         _shutil.rmtree(str(extract_dir), ignore_errors=True)
 
     # Also tag as kitt:latest if the primary tag differs
@@ -185,11 +191,11 @@ def build(server, tag, no_cache):
     except Exception:
         arch = "unknown"
 
-    click.echo(f"KITT Docker image built successfully.")
+    click.echo("KITT Docker image built successfully.")
     click.echo(f"  Tag: {image_tag}")
     click.echo(f"  Architecture: {arch}")
     if image_tag != "kitt:latest":
-        click.echo(f"  Also tagged: kitt:latest")
+        click.echo("  Also tagged: kitt:latest")
 
 
 @cli.command()
@@ -199,9 +205,19 @@ def build(server, tag, no_cache):
 @click.option("--token", default="", help="Bearer token for authentication (optional)")
 @click.option("--name", default="", help="Agent name (defaults to hostname)")
 @click.option("--port", default=8090, help="Agent listening port")
-@click.option("--model-dir", default="", help="Local model storage directory (default: ~/.kitt/models)")
-@click.option("--share-source", default="", help="NFS share source (e.g., nas:/volume1/models)")
-@click.option("--share-mount", default="", help="Local mount point for NFS share (e.g., /mnt/models)")
+@click.option(
+    "--model-dir",
+    default="",
+    help="Local model storage directory (default: ~/.kitt/models)",
+)
+@click.option(
+    "--share-source", default="", help="NFS share source (e.g., nas:/volume1/models)"
+)
+@click.option(
+    "--share-mount",
+    default="",
+    help="Local mount point for NFS share (e.g., /mnt/models)",
+)
 def init(server, token, name, port, model_dir, share_source, share_mount):
     """Initialize agent configuration."""
     agent_name = name or socket.gethostname()
@@ -244,7 +260,9 @@ def init(server, token, name, port, model_dir, share_source, share_mount):
 @cli.command()
 @click.option("--server", default="", help="KITT server URL to check connectivity")
 @click.option("--port", default=8090, help="Agent port to check availability")
-@click.option("--model-dir", default="", help="Model storage directory to check disk space")
+@click.option(
+    "--model-dir", default="", help="Model storage directory to check disk space"
+)
 def preflight(server, port, model_dir):
     """Run prerequisite checks for KITT agent.
 
@@ -268,7 +286,12 @@ def preflight(server, port, model_dir):
 @cli.command()
 @click.option("--config", "config_path", type=click.Path(), help="Path to agent.yaml")
 @click.option("--insecure", is_flag=True, help="Disable TLS verification")
-@click.option("--preflight/--no-preflight", "run_preflight", default=False, help="Run preflight checks before starting")
+@click.option(
+    "--preflight/--no-preflight",
+    "run_preflight",
+    default=False,
+    help="Run preflight checks before starting",
+)
 def start(config_path, insecure, run_preflight):
     """Start the KITT agent daemon."""
     config_file = (
@@ -276,9 +299,7 @@ def start(config_path, insecure, run_preflight):
     )
 
     if not config_file.exists():
-        click.echo(
-            "Agent not configured. Run: kitt-agent init --server <URL>"
-        )
+        click.echo("Agent not configured. Run: kitt-agent init --server <URL>")
         raise SystemExit(1)
 
     with open(config_file) as f:
@@ -457,9 +478,7 @@ def update(config_path, restart):
     )
 
     if not config_file.exists():
-        click.echo(
-            "Agent not configured. Run: kitt-agent init --server <URL>"
-        )
+        click.echo("Agent not configured. Run: kitt-agent init --server <URL>")
         raise SystemExit(1)
 
     with open(config_file) as f:
@@ -635,7 +654,12 @@ def test():
 
 
 @test.command("list")
-@click.option("--status", "status_filter", default="", help="Filter by status (e.g., running, completed, failed)")
+@click.option(
+    "--status",
+    "status_filter",
+    default="",
+    help="Filter by status (e.g., running, completed, failed)",
+)
 @click.option("--limit", default=20, type=int, help="Max results to return")
 def test_list(status_filter, limit):
     """List tests for this agent."""
@@ -776,9 +800,7 @@ def install(no_start):
     """Install the KITT agent as a systemd service."""
     config_file = Path.home() / ".kitt" / "agent.yaml"
     if not config_file.exists():
-        click.echo(
-            "Agent not configured. Run 'kitt-agent init' first."
-        )
+        click.echo("Agent not configured. Run 'kitt-agent init' first.")
         raise SystemExit(1)
 
     if _UNIT_PATH.exists():
@@ -792,9 +814,7 @@ def install(no_start):
 
     unit_content = _UNIT_TEMPLATE.format(venv=venv, user=user, home=home)
 
-    with tempfile.NamedTemporaryFile(
-        mode="w", suffix=".service", delete=False
-    ) as tmp:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".service", delete=False) as tmp:
         tmp.write(unit_content)
         tmp_path = tmp.name
 
@@ -802,9 +822,7 @@ def install(no_start):
         click.echo(f"Installing systemd service as user '{user}'")
         click.echo(f"  ExecStart: {venv}/bin/kitt-agent start")
 
-        subprocess.run(
-            ["sudo", "cp", tmp_path, str(_UNIT_PATH)], check=True
-        )
+        subprocess.run(["sudo", "cp", tmp_path, str(_UNIT_PATH)], check=True)
         subprocess.run(["sudo", "systemctl", "daemon-reload"], check=True)
 
         enable_cmd = ["sudo", "systemctl", "enable", _SERVICE_NAME]
@@ -822,7 +840,7 @@ def install(no_start):
         click.echo(f"  Logs:   journalctl -u {_SERVICE_NAME} -f")
     except subprocess.CalledProcessError as e:
         click.echo(f"Failed to install service: {e}")
-        raise SystemExit(1)
+        raise SystemExit(1) from e
     finally:
         Path(tmp_path).unlink(missing_ok=True)
 
@@ -848,7 +866,7 @@ def uninstall():
         click.echo("Service stopped, disabled, and removed.")
     except subprocess.CalledProcessError as e:
         click.echo(f"Failed to uninstall service: {e}")
-        raise SystemExit(1)
+        raise SystemExit(1) from e
 
 
 @service.command("status")

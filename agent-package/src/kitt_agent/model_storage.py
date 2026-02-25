@@ -96,7 +96,11 @@ class ModelStorageManager:
             if result.returncode == 0:
                 logger.info("Mounted share at %s via fstab", self.share_mount)
                 return True
-            logger.debug("fstab mount failed (rc=%d): %s", result.returncode, result.stderr.strip())
+            logger.debug(
+                "fstab mount failed (rc=%d): %s",
+                result.returncode,
+                result.stderr.strip(),
+            )
         except Exception as e:
             logger.debug("fstab mount failed: %s", e)
 
@@ -105,8 +109,12 @@ class ModelStorageManager:
             try:
                 result = subprocess.run(
                     [
-                        "sudo", "mount", "-t", "nfs",
-                        self.share_source, str(self.share_mount),
+                        "sudo",
+                        "mount",
+                        "-t",
+                        "nfs",
+                        self.share_source,
+                        str(self.share_mount),
                     ],
                     capture_output=True,
                     text=True,
@@ -115,12 +123,14 @@ class ModelStorageManager:
                 if result.returncode == 0:
                     logger.info(
                         "Mounted NFS share %s at %s",
-                        self.share_source, self.share_mount,
+                        self.share_source,
+                        self.share_mount,
                     )
                     return True
                 logger.error(
                     "NFS mount failed (rc=%d): %s",
-                    result.returncode, result.stderr.strip(),
+                    result.returncode,
+                    result.stderr.strip(),
                 )
             except Exception as e:
                 logger.error("NFS mount failed: %s", e)
@@ -181,6 +191,7 @@ class ModelStorageManager:
         Returns:
             Local path to the model.
         """
+
         def _log(msg: str) -> None:
             if on_log:
                 on_log(msg)
@@ -195,7 +206,10 @@ class ModelStorageManager:
             return str(local_path)
 
         # model_path is under storage_dir (absolute match)
-        if Path(model_path).is_relative_to(self.storage_dir) and Path(model_path).exists():
+        if (
+            Path(model_path).is_relative_to(self.storage_dir)
+            and Path(model_path).exists()
+        ):
             _log(f"Model at local path: {model_path}")
             return model_path
 
@@ -249,7 +263,8 @@ class ModelStorageManager:
         except ValueError:
             logger.warning(
                 "Refusing to delete %s — not under storage_dir %s",
-                local_path, self.storage_dir,
+                local_path,
+                self.storage_dir,
             )
             return
 
@@ -277,8 +292,7 @@ class ModelStorageManager:
         model_count = 0
         if self.storage_dir.exists():
             model_count = sum(
-                1 for p in self.storage_dir.iterdir()
-                if not p.name.startswith(".")
+                1 for p in self.storage_dir.iterdir() if not p.name.startswith(".")
             )
 
         return {

@@ -62,7 +62,7 @@ def create_agent_app(
     port: int = 8090,
     insecure: bool = False,
     model_storage: Any = None,
-) -> "Flask":
+) -> Flask:
     """Create the thin agent Flask app.
 
     The thin agent receives Docker orchestration commands from the
@@ -81,7 +81,9 @@ def create_agent_app(
     _lock = threading.Lock()
 
     # KITT Docker image used for running benchmarks (mutable so settings can update it).
-    _DEFAULT_KITT_IMAGE = "registry.internal.kirby.network/kirizan/infrastructure/kitt:latest"
+    _DEFAULT_KITT_IMAGE = (
+        "registry.internal.kirby.network/kirizan/infrastructure/kitt:latest"
+    )
     _kitt_image_ref: list[str] = [_DEFAULT_KITT_IMAGE]
 
     # ---------------------------------------------------------------
@@ -154,9 +156,15 @@ def create_agent_app(
                     on_log("Health check timed out")
                     update_status("failed", error="Health check timeout")
                     _report(
-                        server_url, token, name, command_id,
-                        {"status": "failed", "error": "Health check timeout",
-                         "container_id": container_id},
+                        server_url,
+                        token,
+                        name,
+                        command_id,
+                        {
+                            "status": "failed",
+                            "error": "Health check timeout",
+                            "container_id": container_id,
+                        },
                         insecure,
                     )
                     return
@@ -166,7 +174,10 @@ def create_agent_app(
             on_log("--- Container exited ---")
             update_status("completed")
             _report(
-                server_url, token, name, command_id,
+                server_url,
+                token,
+                name,
+                command_id,
                 {"status": "completed", "container_id": container_id},
                 insecure,
             )
@@ -174,7 +185,10 @@ def create_agent_app(
             on_log(f"Error: {e}")
             update_status("failed", error=str(e))
             _report(
-                server_url, token, name, command_id,
+                server_url,
+                token,
+                name,
+                command_id,
                 {"status": "failed", "error": str(e)},
                 insecure,
             )
@@ -218,38 +232,57 @@ def create_agent_app(
 
         kitt_image = _kitt_image_ref[0]
         use_docker = DockerOps.image_exists(kitt_image)
-        if not use_docker and kitt_image != "kitt:latest":
+        if (
+            not use_docker
+            and kitt_image != "kitt:latest"
+            and DockerOps.image_exists("kitt:latest")
+        ):
             # Try the local fallback tag
-            if DockerOps.image_exists("kitt:latest"):
-                kitt_image = "kitt:latest"
-                use_docker = True
+            kitt_image = "kitt:latest"
+            use_docker = True
 
         if use_docker:
             # Docker container is the preferred execution method.
             # Mount: model at same host path (so engine sibling containers see it),
             # Docker socket (so KITT can launch engine containers).
             args = [
-                "docker", "run", "--rm",
-                "--name", f"kitt-run-{command_id[:8]}",
-                "--gpus", "all",
-                "--network", "host",
-                "-v", "/var/run/docker.sock:/var/run/docker.sock",
-                "-v", f"{local_model_path}:{local_model_path}:ro",
+                "docker",
+                "run",
+                "--rm",
+                "--name",
+                f"kitt-run-{command_id[:8]}",
+                "--gpus",
+                "all",
+                "--network",
+                "host",
+                "-v",
+                "/var/run/docker.sock:/var/run/docker.sock",
+                "-v",
+                f"{local_model_path}:{local_model_path}:ro",
                 kitt_image,
-                "run", "-m", local_model_path, "-e", engine, "-s", suite,
+                "run",
+                "-m",
+                local_model_path,
+                "-e",
+                engine,
+                "-s",
+                suite,
             ]
             on_log(f"Running KITT benchmark in container ({kitt_image})")
         else:
             # Fallback: local kitt CLI
             venv_kitt = Path(sys.prefix) / "bin" / "kitt"
-            kitt_bin = (
-                str(venv_kitt) if venv_kitt.exists()
-                else shutil.which("kitt")
-            )
+            kitt_bin = str(venv_kitt) if venv_kitt.exists() else shutil.which("kitt")
             if kitt_bin:
                 args = [
-                    kitt_bin, "run",
-                    "-m", local_model_path, "-e", engine, "-s", suite,
+                    kitt_bin,
+                    "run",
+                    "-m",
+                    local_model_path,
+                    "-e",
+                    engine,
+                    "-s",
+                    suite,
                 ]
                 on_log(f"Running KITT benchmark locally ({kitt_bin})")
             else:
@@ -260,7 +293,10 @@ def create_agent_app(
                 on_log(f"Error: {msg}")
                 update_status("failed", error=msg)
                 _report(
-                    server_url, token, name, command_id,
+                    server_url,
+                    token,
+                    name,
+                    command_id,
                     {"status": "failed", "error": msg},
                     insecure,
                 )
@@ -285,7 +321,10 @@ def create_agent_app(
             on_log(f"--- Finished: {final_status} ---")
             update_status(final_status, error=error_msg)
             _report(
-                server_url, token, name, command_id,
+                server_url,
+                token,
+                name,
+                command_id,
                 {"status": final_status, "error": error_msg},
                 insecure,
             )
@@ -293,14 +332,21 @@ def create_agent_app(
             on_log(f"Error: {e}")
             update_status("failed", error=str(e))
             _report(
-                server_url, token, name, command_id,
+                server_url,
+                token,
+                name,
+                command_id,
                 {"status": "failed", "error": str(e)},
                 insecure,
             )
         finally:
             with _lock:
                 active_containers.pop(command_id, None)
-            if model_storage and model_storage.auto_cleanup and local_model_path != model_path:
+            if (
+                model_storage
+                and model_storage.auto_cleanup
+                and local_model_path != model_path
+            ):
                 model_storage.cleanup_model(local_model_path)
 
     def _execute_cleanup(payload: dict[str, Any]) -> None:
