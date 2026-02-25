@@ -6,6 +6,7 @@ import ssl
 import threading
 import time
 import urllib.request
+from collections.abc import Callable
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -22,6 +23,7 @@ class HeartbeatThread(threading.Thread):
         interval_s: int = 30,
         verify: str | bool = True,
         client_cert: tuple[str, str] | None = None,
+        on_command: Callable[[dict[str, Any]], None] | None = None,
     ) -> None:
         super().__init__(daemon=True, name="kitt-heartbeat")
         self.server_url = server_url.rstrip("/")
@@ -30,6 +32,7 @@ class HeartbeatThread(threading.Thread):
         self.interval_s = interval_s
         self.verify = verify
         self.client_cert = client_cert
+        self.on_command = on_command
         self._stop_event = threading.Event()
         self._status = "idle"
         self._current_task = ""
@@ -37,7 +40,14 @@ class HeartbeatThread(threading.Thread):
     def run(self) -> None:
         while not self._stop_event.is_set():
             try:
-                self._send_heartbeat()
+                resp = self._send_heartbeat()
+                # Process any commands returned from the server
+                if self.on_command and resp:
+                    for cmd in resp.get("commands", []):
+                        try:
+                            self.on_command(cmd)
+                        except Exception as e:
+                            logger.error(f"Command handler failed: {e}")
             except Exception as e:
                 logger.warning(f"Heartbeat failed: {e}")
             self._stop_event.wait(self.interval_s)

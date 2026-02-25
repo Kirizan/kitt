@@ -1,13 +1,85 @@
 """Quick test REST API endpoints."""
 
+import math
 import uuid
 from datetime import datetime
 
 from flask import Blueprint, jsonify, request
 
 from kitt.web.auth import require_auth
+from kitt.web.services.event_bus import event_bus
 
 bp = Blueprint("api_quicktest", __name__, url_prefix="/api/v1/quicktest")
+
+
+@bp.route("/models", methods=["GET"])
+def models():
+    """List available models from Devon manifest."""
+    from kitt.web.app import get_services
+
+    local_model_service = get_services()["local_model_service"]
+    return jsonify(local_model_service.read_manifest())
+
+
+@bp.route("/", methods=["GET"])
+def list_tests():
+    """List quick tests with pagination and optional status filter."""
+    from kitt.web.app import get_services
+
+    conn = get_services()["db_conn"]
+
+    status_filter = request.args.get("status", "")
+    agent_name_filter = request.args.get("agent_name", "")
+    page = request.args.get("page", 1, type=int)
+    per_page = request.args.get("per_page", 20, type=int)
+    per_page = min(per_page, 100)
+    page = max(page, 1)
+
+    conditions: list[str] = []
+    params: list = []
+    if status_filter:
+        conditions.append("qt.status = ?")
+        params.append(status_filter)
+    if agent_name_filter:
+        conditions.append("a.name = ?")
+        params.append(agent_name_filter)
+
+    where = ""
+    if conditions:
+        where = "WHERE " + " AND ".join(conditions)
+
+    # Count total (join needed for agent_name filter)
+    count_row = conn.execute(
+        f"""SELECT COUNT(*) FROM quick_tests qt
+            LEFT JOIN agents a ON qt.agent_id = a.id
+            {where}""",
+        params,
+    ).fetchone()
+    total = count_row[0] if count_row else 0
+    pages = math.ceil(total / per_page) if total > 0 else 1
+
+    # Fetch page with agent name join
+    offset = (page - 1) * per_page
+    rows = conn.execute(
+        f"""SELECT qt.*, a.name AS agent_name
+            FROM quick_tests qt
+            LEFT JOIN agents a ON qt.agent_id = a.id
+            {where}
+            ORDER BY qt.created_at DESC
+            LIMIT ? OFFSET ?""",
+        params + [per_page, offset],
+    ).fetchall()
+
+    items = [dict(r) for r in rows]
+
+    return jsonify(
+        {
+            "items": items,
+            "total": total,
+            "page": page,
+            "pages": pages,
+        }
+    )
 
 
 @bp.route("/", methods=["POST"])
@@ -32,16 +104,17 @@ def launch():
     if agent is None:
         return jsonify({"error": "Agent not found"}), 404
 
-    # Create quick test record
+    # Create quick test record with command_id for heartbeat dispatch
     test_id = uuid.uuid4().hex[:16]
+    command_id = uuid.uuid4().hex[:16]
     now = datetime.now().isoformat()
 
     conn = services["db_conn"]
     conn.execute(
         """INSERT INTO quick_tests
            (id, agent_id, model_path, engine_name, benchmark_name, suite_name,
-            status, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, 'queued', ?)""",
+            status, command_id, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, 'queued', ?, ?)""",
         (
             test_id,
             data["agent_id"],
@@ -49,12 +122,20 @@ def launch():
             data["engine_name"],
             data.get("benchmark_name", "throughput"),
             data.get("suite_name", "quick"),
+            command_id,
             now,
         ),
     )
     conn.commit()
 
-    return jsonify({"id": test_id, "status": "queued"}), 202
+    # Publish queued event for SSE subscribers
+    event_bus.publish(
+        "status",
+        test_id,
+        {"status": "queued", "test_id": test_id, "command_id": command_id},
+    )
+
+    return jsonify({"id": test_id, "status": "queued", "command_id": command_id}), 202
 
 
 @bp.route("/<test_id>", methods=["GET"])
@@ -69,3 +150,98 @@ def status(test_id):
         return jsonify({"error": "Quick test not found"}), 404
 
     return jsonify(dict(row))
+
+
+@bp.route("/<test_id>/logs", methods=["GET"])
+def get_logs(test_id):
+    """Return stored log lines for a test."""
+    from kitt.web.app import get_services
+
+    conn = get_services()["db_conn"]
+    row = conn.execute("SELECT id FROM quick_tests WHERE id = ?", (test_id,)).fetchone()
+    if row is None:
+        return jsonify({"error": "Quick test not found"}), 404
+
+    rows = conn.execute(
+        "SELECT line, created_at FROM quick_test_logs WHERE test_id = ? ORDER BY id",
+        (test_id,),
+    ).fetchall()
+
+    return jsonify({"lines": [dict(r) for r in rows]})
+
+
+@bp.route("/<test_id>/logs", methods=["POST"])
+@require_auth
+def post_log(test_id):
+    """Agent POSTs log lines here during test execution."""
+    from kitt.web.app import get_services
+
+    conn = get_services()["db_conn"]
+    row = conn.execute("SELECT id FROM quick_tests WHERE id = ?", (test_id,)).fetchone()
+    if row is None:
+        return jsonify({"error": "Quick test not found"}), 404
+
+    data = request.get_json(silent=True)
+    if not data or "line" not in data:
+        return jsonify({"error": "'line' is required"}), 400
+
+    # Persist log line to database
+    conn.execute(
+        "INSERT INTO quick_test_logs (test_id, line) VALUES (?, ?)",
+        (test_id, data["line"]),
+    )
+    conn.commit()
+
+    # Publish log line to SSE subscribers
+    event_bus.publish(
+        "log",
+        test_id,
+        {"line": data["line"], "test_id": test_id},
+    )
+
+    return jsonify({"ok": True})
+
+
+@bp.route("/<test_id>/status", methods=["POST"])
+@require_auth
+def update_status(test_id):
+    """Agent updates test status (running, completed, failed)."""
+    from kitt.web.app import get_services
+
+    conn = get_services()["db_conn"]
+    row = conn.execute("SELECT id FROM quick_tests WHERE id = ?", (test_id,)).fetchone()
+    if row is None:
+        return jsonify({"error": "Quick test not found"}), 404
+
+    data = request.get_json(silent=True)
+    if not data or "status" not in data:
+        return jsonify({"error": "'status' is required"}), 400
+
+    new_status = data["status"]
+    allowed = {"running", "completed", "failed"}
+    if new_status not in allowed:
+        return jsonify({"error": f"Status must be one of: {allowed}"}), 400
+
+    now = datetime.now().isoformat()
+
+    if new_status == "running":
+        conn.execute(
+            "UPDATE quick_tests SET status = ?, started_at = ? WHERE id = ?",
+            (new_status, now, test_id),
+        )
+    elif new_status in ("completed", "failed"):
+        error = data.get("error", "")
+        conn.execute(
+            "UPDATE quick_tests SET status = ?, completed_at = ?, error = ? WHERE id = ?",
+            (new_status, now, error, test_id),
+        )
+    conn.commit()
+
+    # Publish status event for SSE subscribers
+    event_bus.publish(
+        "status",
+        test_id,
+        {"status": new_status, "test_id": test_id},
+    )
+
+    return jsonify({"ok": True, "status": new_status})

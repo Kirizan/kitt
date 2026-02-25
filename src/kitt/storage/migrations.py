@@ -109,6 +109,26 @@ MIGRATIONS: list[Migration] = [
         ALTER TABLE agents ADD COLUMN hardware_details TEXT DEFAULT '';
         """,
     ),
+    (
+        6,
+        "Add command_id column to quick_tests for heartbeat dispatch",
+        """
+        ALTER TABLE quick_tests ADD COLUMN command_id TEXT DEFAULT '';
+        """,
+    ),
+    (
+        7,
+        "Add quick_test_logs table for persistent log storage",
+        """
+        CREATE TABLE IF NOT EXISTS quick_test_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            test_id TEXT NOT NULL REFERENCES quick_tests(id),
+            line TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+        CREATE INDEX idx_quick_test_logs_test ON quick_test_logs(test_id);
+        """,
+    ),
 ]
 
 

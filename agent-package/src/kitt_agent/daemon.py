@@ -1,11 +1,46 @@
 """KITT thin agent daemon — Flask mini-app that receives Docker commands."""
 
+import json
 import logging
+import ssl
 import threading
+import urllib.request
 import uuid
 from typing import Any
 
 logger = logging.getLogger(__name__)
+
+
+def _post_json(
+    url: str,
+    data: dict[str, Any],
+    token: str,
+    insecure: bool = False,
+) -> None:
+    """POST JSON to a URL with bearer auth. Errors are logged, not raised."""
+    body = json.dumps(data).encode("utf-8")
+    req = urllib.request.Request(
+        url,
+        data=body,
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {token}",
+        },
+        method="POST",
+    )
+
+    ctx = None
+    if url.startswith("https"):
+        ctx = ssl.create_default_context()
+        if insecure:
+            ctx.check_hostname = False
+            ctx.verify_mode = ssl.CERT_NONE
+
+    try:
+        with urllib.request.urlopen(req, context=ctx, timeout=10) as response:
+            response.read()
+    except Exception as e:
+        logger.warning("POST %s failed: %s", url, e)
 
 try:
     from flask import Flask, Response, jsonify, request
@@ -58,8 +93,29 @@ def create_agent_app(
         payload = data.get("payload", {})
 
         if cmd_type == "run_container":
+            test_id = data.get("test_id", "")
             streamer = LogStreamer(command_id)
             log_streamers[command_id] = streamer
+            base_url = server_url.rstrip("/")
+
+            def _on_log(line: str) -> None:
+                streamer.emit(line)
+                if test_id:
+                    _post_json(
+                        f"{base_url}/api/v1/quicktest/{test_id}/logs",
+                        {"line": line},
+                        token,
+                        insecure,
+                    )
+
+            def _update_status(status: str, error: str = "") -> None:
+                if test_id:
+                    _post_json(
+                        f"{base_url}/api/v1/quicktest/{test_id}/status",
+                        {"status": status, "error": error},
+                        token,
+                        insecure,
+                    )
 
             def _run():
                 try:
@@ -76,23 +132,26 @@ def create_agent_app(
                         health_url=payload.get("health_url", ""),
                     )
 
+                    _update_status("running")
+
                     # Pull image if needed
-                    streamer.emit(f"Pulling image: {spec.image}")
+                    _on_log(f"Pulling image: {spec.image}")
                     DockerOps.pull_image(spec.image)
 
                     # Start container
-                    streamer.emit("Starting container...")
-                    container_id = DockerOps.run_container(spec, on_log=streamer.emit)
+                    _on_log("Starting container...")
+                    container_id = DockerOps.run_container(spec, on_log=_on_log)
 
                     with _lock:
                         active_containers[command_id] = container_id
 
                     # Wait for health if URL provided
                     if spec.health_url:
-                        streamer.emit(f"Waiting for health: {spec.health_url}")
+                        _on_log(f"Waiting for health: {spec.health_url}")
                         healthy = DockerOps.wait_for_healthy(spec.health_url)
                         if not healthy:
-                            streamer.emit("Health check timed out")
+                            _on_log("Health check timed out")
+                            _update_status("failed", error="Health check timeout")
                             _report(
                                 server_url,
                                 token,
@@ -107,12 +166,13 @@ def create_agent_app(
                             )
                             return
 
-                    streamer.emit(f"Container healthy: {container_id}")
+                    _on_log(f"Container healthy: {container_id}")
 
                     # Stream logs
-                    DockerOps.stream_logs(container_id, on_log=streamer.emit)
+                    DockerOps.stream_logs(container_id, on_log=_on_log)
 
-                    streamer.emit("--- Container exited ---")
+                    _on_log("--- Container exited ---")
+                    _update_status("completed")
                     _report(
                         server_url,
                         token,
@@ -122,7 +182,8 @@ def create_agent_app(
                         insecure,
                     )
                 except Exception as e:
-                    streamer.emit(f"Error: {e}")
+                    _on_log(f"Error: {e}")
+                    _update_status("failed", error=str(e))
                     _report(
                         server_url,
                         token,
@@ -158,22 +219,50 @@ def create_agent_app(
 
             engine = payload.get("engine_name", "vllm")
             suite = payload.get("suite_name", "quick")
+            model_path = payload.get("model_path", "")
+            benchmark = payload.get("benchmark_name", "throughput")
             if engine not in _VALID_ENGINES:
                 return jsonify({"error": f"Invalid engine: {engine}"}), 400
             if suite not in _VALID_SUITES:
                 return jsonify({"error": f"Invalid suite: {suite}"}), 400
 
+            test_id = data.get("test_id", "")
             streamer = LogStreamer(command_id)
             log_streamers[command_id] = streamer
+            base_url = server_url.rstrip("/")
+
+            def _on_log_test(line: str) -> None:
+                streamer.emit(line)
+                if test_id:
+                    _post_json(
+                        f"{base_url}/api/v1/quicktest/{test_id}/logs",
+                        {"line": line},
+                        token,
+                        insecure,
+                    )
+
+            def _update_status_test(status: str, error: str = "") -> None:
+                if test_id:
+                    _post_json(
+                        f"{base_url}/api/v1/quicktest/{test_id}/status",
+                        {"status": status, "error": error},
+                        token,
+                        insecure,
+                    )
 
             def _run_legacy():
                 import subprocess as sp
+
+                _update_status_test("running")
+                _on_log_test(f"Agent starting benchmark: {benchmark}")
+                _on_log_test(f"Engine: {engine}")
+                _on_log_test(f"Model: {model_path}")
 
                 args = [
                     "kitt",
                     "run",
                     "-m",
-                    payload.get("model_path", ""),
+                    model_path,
                     "-e",
                     engine,
                     "-s",
@@ -188,25 +277,23 @@ def create_agent_app(
                         bufsize=1,
                     )
                     for line in proc.stdout or []:
-                        streamer.emit(line.rstrip())
+                        _on_log_test(line.rstrip())
                     proc.wait()
-                    status = "completed" if proc.returncode == 0 else "failed"
-                    streamer.emit(f"--- Finished: {status} ---")
+                    final_status = "completed" if proc.returncode == 0 else "failed"
+                    error_msg = "" if final_status == "completed" else f"Exit {proc.returncode}"
+                    _on_log_test(f"--- Finished: {final_status} ---")
+                    _update_status_test(final_status, error=error_msg)
                     _report(
                         server_url,
                         token,
                         name,
                         command_id,
-                        {
-                            "status": status,
-                            "error": ""
-                            if status == "completed"
-                            else f"Exit {proc.returncode}",
-                        },
+                        {"status": final_status, "error": error_msg},
                         insecure,
                     )
                 except Exception as e:
-                    streamer.emit(f"Error: {e}")
+                    _on_log_test(f"Error: {e}")
+                    _update_status_test("failed", error=str(e))
                     _report(
                         server_url,
                         token,
@@ -255,6 +342,147 @@ def create_agent_app(
                 "active_streams": stream_count,
             }
         )
+
+    # Expose handle_command for the heartbeat thread
+    def handle_command(command: dict[str, Any]) -> None:
+        """Handle a command received via heartbeat.
+
+        Reuses the same logic as receive_command() but from a dict
+        instead of Flask request JSON.
+        """
+        cmd_type = command.get("type", "")
+        cmd_payload = command.get("payload", {})
+        command_id = command.get("command_id", uuid.uuid4().hex[:16])
+        test_id = command.get("test_id", "")
+        base_url = server_url.rstrip("/")
+
+        if cmd_type == "run_container":
+            streamer = LogStreamer(command_id)
+            log_streamers[command_id] = streamer
+
+            def _on_log_hb(line: str) -> None:
+                streamer.emit(line)
+                if test_id:
+                    _post_json(
+                        f"{base_url}/api/v1/quicktest/{test_id}/logs",
+                        {"line": line},
+                        token,
+                        insecure,
+                    )
+
+            def _update_status_hb(status: str, error: str = "") -> None:
+                if test_id:
+                    _post_json(
+                        f"{base_url}/api/v1/quicktest/{test_id}/status",
+                        {"status": status, "error": error},
+                        token,
+                        insecure,
+                    )
+
+            def _run_hb():
+                try:
+                    spec = ContainerSpec(
+                        image=cmd_payload.get("image", ""),
+                        port=cmd_payload.get("port", 0),
+                        container_port=cmd_payload.get("container_port", 0),
+                        gpu=cmd_payload.get("gpu", True),
+                        volumes=cmd_payload.get("volumes", {}),
+                        env=cmd_payload.get("env", {}),
+                        extra_args=cmd_payload.get("extra_args", []),
+                        command_args=cmd_payload.get("command_args", []),
+                        name=cmd_payload.get("name", ""),
+                        health_url=cmd_payload.get("health_url", ""),
+                    )
+                    _update_status_hb("running")
+                    _on_log_hb(f"Pulling image: {spec.image}")
+                    DockerOps.pull_image(spec.image)
+                    _on_log_hb("Starting container...")
+                    container_id = DockerOps.run_container(spec, on_log=_on_log_hb)
+                    with _lock:
+                        active_containers[command_id] = container_id
+                    if spec.health_url:
+                        _on_log_hb(f"Waiting for health: {spec.health_url}")
+                        healthy = DockerOps.wait_for_healthy(spec.health_url)
+                        if not healthy:
+                            _on_log_hb("Health check timed out")
+                            _update_status_hb("failed", error="Health check timeout")
+                            return
+                    _on_log_hb(f"Container healthy: {container_id}")
+                    DockerOps.stream_logs(container_id, on_log=_on_log_hb)
+                    _on_log_hb("--- Container exited ---")
+                    _update_status_hb("completed")
+                except Exception as e:
+                    _on_log_hb(f"Error: {e}")
+                    _update_status_hb("failed", error=str(e))
+                finally:
+                    with _lock:
+                        active_containers.pop(command_id, None)
+                        log_streamers.pop(command_id, None)
+
+            threading.Thread(target=_run_hb, daemon=True).start()
+
+        elif cmd_type == "run_test":
+            engine = cmd_payload.get("engine_name", "vllm")
+            suite = cmd_payload.get("suite_name", "quick")
+            model_path = cmd_payload.get("model_path", "")
+            benchmark = cmd_payload.get("benchmark_name", "throughput")
+
+            streamer = LogStreamer(command_id)
+            log_streamers[command_id] = streamer
+
+            def _on_log_hb_test(line: str) -> None:
+                streamer.emit(line)
+                if test_id:
+                    _post_json(
+                        f"{base_url}/api/v1/quicktest/{test_id}/logs",
+                        {"line": line},
+                        token,
+                        insecure,
+                    )
+
+            def _update_status_hb_test(status: str, error: str = "") -> None:
+                if test_id:
+                    _post_json(
+                        f"{base_url}/api/v1/quicktest/{test_id}/status",
+                        {"status": status, "error": error},
+                        token,
+                        insecure,
+                    )
+
+            def _run_hb_test():
+                import subprocess as sp
+
+                _update_status_hb_test("running")
+                _on_log_hb_test(f"Agent starting benchmark: {benchmark}")
+                _on_log_hb_test(f"Engine: {engine}")
+                _on_log_hb_test(f"Model: {model_path}")
+
+                args = ["kitt", "run", "-m", model_path, "-e", engine, "-s", suite]
+                try:
+                    proc = sp.Popen(
+                        args,
+                        stdout=sp.PIPE,
+                        stderr=sp.STDOUT,
+                        text=True,
+                        bufsize=1,
+                    )
+                    for line in proc.stdout or []:
+                        _on_log_hb_test(line.rstrip())
+                    proc.wait()
+                    final_status = "completed" if proc.returncode == 0 else "failed"
+                    error_msg = "" if final_status == "completed" else f"Exit {proc.returncode}"
+                    _on_log_hb_test(f"--- Finished: {final_status} ---")
+                    _update_status_hb_test(final_status, error=error_msg)
+                except Exception as e:
+                    _on_log_hb_test(f"Error: {e}")
+                    _update_status_hb_test("failed", error=str(e))
+
+            threading.Thread(target=_run_hb_test, daemon=True).start()
+
+        else:
+            logger.warning("Unknown heartbeat command type: %s", cmd_type)
+
+    app.handle_command = handle_command  # type: ignore[attr-defined]
 
     return app
 

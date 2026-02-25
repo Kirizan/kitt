@@ -122,7 +122,7 @@ sudo systemctl restart kitt-agent
 
 ---
 
-## Heartbeat and Health Monitoring
+## Heartbeat and Command Dispatch
 
 The `HeartbeatThread` sends a JSON payload to
 `/api/v1/agents/<agent_id>/heartbeat` every 30 seconds (configurable by the
@@ -133,6 +133,14 @@ server response at registration). The payload includes:
 - GPU utilization percentage (via pynvml)
 - GPU memory used in GB
 - Agent uptime
+
+The heartbeat response may include a `commands` list containing pending
+jobs (e.g. quick tests queued from the web UI). The agent processes each
+command automatically — for `run_test` commands it starts the benchmark
+executor and streams log lines back to the server via
+`POST /api/v1/quicktest/<test_id>/logs`. Status transitions are reported
+via `POST /api/v1/quicktest/<test_id>/status` so the web UI can display
+real-time progress through SSE.
 
 ---
 
@@ -153,6 +161,29 @@ kitt agent status
 This reads `~/.kitt/agent.yaml` and probes the local agent at
 `http://127.0.0.1:<port>/api/status` to report whether the daemon is running
 and whether a benchmark is currently active.
+
+---
+
+## Managing Tests
+
+List tests dispatched to this agent:
+
+```bash
+kitt-agent test list                    # show all tests for this agent
+kitt-agent test list --status running   # filter by status
+kitt-agent test list --limit 5          # limit results
+```
+
+Stop a running or queued test:
+
+```bash
+kitt-agent test stop <test_id>
+```
+
+The `stop` command marks the test as failed on the server with an
+"Cancelled by user" error and sends a cancel signal to the local daemon
+to kill the running process. If the test is already completed or failed,
+the command prints a message and exits without changes.
 
 ---
 
