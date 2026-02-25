@@ -175,6 +175,14 @@ Each agent receives a unique 256-bit random token during installation:
 
 Agent configuration is stored at `~/.kitt/agent.yaml` and includes the server URL, agent name, port, and token.
 
+### Managing tests from the agent
+
+```bash
+kitt-agent test list                    # list tests for this agent
+kitt-agent test list --status running   # filter by status
+kitt-agent test stop <test_id>          # cancel a running test
+```
+
 ### Thin agent architecture
 
 The agent is a lightweight daemon (`kitt-agent`) that:

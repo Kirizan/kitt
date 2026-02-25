@@ -164,6 +164,29 @@ and whether a benchmark is currently active.
 
 ---
 
+## Managing Tests
+
+List tests dispatched to this agent:
+
+```bash
+kitt-agent test list                    # show all tests for this agent
+kitt-agent test list --status running   # filter by status
+kitt-agent test list --limit 5          # limit results
+```
+
+Stop a running or queued test:
+
+```bash
+kitt-agent test stop <test_id>
+```
+
+The `stop` command marks the test as failed on the server with an
+"Cancelled by user" error and sends a cancel signal to the local daemon
+to kill the running process. If the test is already completed or failed,
+the command prints a message and exits without changes.
+
+---
+
 ## Stopping the Agent
 
 ```bash
