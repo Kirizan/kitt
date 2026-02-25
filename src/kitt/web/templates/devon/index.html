@@ -14,10 +14,10 @@
     </div>
 
     {% if devon_configured %}
-    <!-- Devon iframe — full height -->
+    <!-- Devon iframe — served through KITT's reverse proxy (same-origin) -->
     <div id="devon-frame-wrapper" class="bg-kitt-surface rounded-lg overflow-hidden border border-kitt-primary/50">
         <iframe id="devon-frame"
-                src="{{ devon_iframe_url }}"
+                src="/devon-app/"
                 class="w-full border-0 rounded-lg"
                 style="height: calc(100vh - 12rem);"
                 loading="lazy"
