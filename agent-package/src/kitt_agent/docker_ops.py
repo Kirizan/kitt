@@ -67,6 +67,34 @@ class DockerOps:
             return False
 
     @staticmethod
+    def image_arch(image: str) -> str:
+        """Return the architecture of a local Docker image (e.g. 'amd64', 'arm64')."""
+        try:
+            result = subprocess.run(
+                ["docker", "image", "inspect", "--format", "{{.Architecture}}", image],
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+            return result.stdout.strip() if result.returncode == 0 else ""
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            return ""
+
+    @staticmethod
+    def host_arch() -> str:
+        """Return the host architecture as Docker reports it."""
+        try:
+            result = subprocess.run(
+                ["docker", "info", "--format", "{{.Architecture}}"],
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+            return result.stdout.strip() if result.returncode == 0 else ""
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            return ""
+
+    @staticmethod
     def pull_image(image: str) -> bool:
         """Pull a Docker image."""
         logger.info(f"Pulling image: {image}")

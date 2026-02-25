@@ -8,6 +8,7 @@ All notable changes to KITT are documented on this page.
 - Fixed `PermissionError` when `kitt run` defaults to relative `kitt-results/` inside a Docker container — agent now passes `-o` with a writable temp directory to `kitt run`
 - Changed default output directory for `kitt run` from relative `kitt-results/` to `~/.kitt/results/` for robustness across environments
 - Temp output directories (`/tmp/kitt-results-*`) are cleaned up after agent benchmarks complete
+- Fixed architecture mismatch in agent Docker image selection — now checks image arch against host arch before use, falling back to locally-built `kitt:latest` when the registry image is the wrong platform
 - Updated hardcoded `kitt_version` references from `1.1.0` to `1.2.1`
 
 ## 1.2.0

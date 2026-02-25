@@ -238,6 +238,18 @@ def create_agent_app(
 
         kitt_image = _kitt_image_ref[0]
         use_docker = DockerOps.image_exists(kitt_image)
+
+        # Verify architecture matches the host (avoid exec format errors)
+        if use_docker:
+            host_arch = DockerOps.host_arch()
+            img_arch = DockerOps.image_arch(kitt_image)
+            if host_arch and img_arch and host_arch != img_arch:
+                on_log(
+                    f"Image {kitt_image} is {img_arch}, "
+                    f"host is {host_arch} — skipping"
+                )
+                use_docker = False
+
         if (
             not use_docker
             and kitt_image != "kitt:latest"
