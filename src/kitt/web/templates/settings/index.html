@@ -137,36 +137,6 @@
                 <div id="devon_url_feedback"></div>
             </div>
 
-            <!-- Devon Iframe URL (editable) -->
-            <div class="space-y-2">
-                <div class="flex items-center justify-between">
-                    <dt class="text-kitt-dim">Devon Iframe URL</dt>
-                    {% set diu_source = config.devon_iframe_url_source %}
-                    <span class="text-xs px-1.5 py-0.5 rounded
-                        {% if diu_source == 'saved' %}bg-kitt-accent/20 text-kitt-accent
-                        {% elif diu_source == 'env' %}bg-blue-900/50 text-blue-300
-                        {% else %}bg-gray-800 text-gray-400{% endif %}">
-                        {% if diu_source == 'saved' %}Saved{% elif diu_source == 'env' %}From env{% else %}Default{% endif %}
-                    </span>
-                </div>
-                <div class="flex gap-2">
-                    <input type="text" id="devon_iframe_url_input" name="value" value="{{ config.devon_iframe_url }}"
-                           placeholder="https://devon.example.com"
-                           class="flex-1 bg-kitt-bg border border-kitt-primary/50 rounded-md px-3 py-1.5 text-xs font-mono focus:outline-none focus:border-kitt-accent">
-                    <button type="button"
-                            hx-post="/settings/update"
-                            hx-include="#devon_iframe_url_input"
-                            hx-vals='{"key": "devon_iframe_url"}'
-                            hx-target="#devon_iframe_url_feedback"
-                            hx-swap="innerHTML"
-                            class="bg-kitt-accent hover:bg-kitt-accent/80 text-white px-3 py-1.5 rounded-md text-xs font-medium transition-colors">
-                        Save
-                    </button>
-                </div>
-                <p class="text-kitt-dim text-xs">Browser-accessible URL for the Devon tab iframe. Falls back to Devon URL if empty.</p>
-                <div id="devon_iframe_url_feedback"></div>
-            </div>
-
             <div class="flex justify-between items-center">
                 <dt class="text-kitt-dim">Connection</dt>
                 <dd id="devon-conn-status" hx-get="/api/v1/devon/status" hx-trigger="load" hx-swap="innerHTML">
