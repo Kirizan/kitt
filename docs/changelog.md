@@ -18,6 +18,7 @@ All notable changes to KITT are documented on this page.
 - Added Quick Test detail page with SSE live logs and stored log retrieval
 - Added persistent log storage — log lines are saved to the database for post-run viewing
 - Added `kitt-agent test list` and `kitt-agent test stop` CLI commands for managing tests from the agent host
+- Fixed thin agent (`kitt-agent`) log forwarding and command dispatch — heartbeat now processes queued commands, `run_test`/`run_container` extract `test_id` and forward logs and status updates to the server
 - Added `agent_name` query parameter to the quick test list API endpoint
 
 ## 1.0.0
