@@ -115,11 +115,11 @@ The agent package lives in `agent-package/` at the repository root:
 agent-package/
 ├── pyproject.toml          # Standalone package (kitt-agent)
 └── src/kitt_agent/
-    ├── cli.py              # Click CLI: init, start, status, stop
+    ├── cli.py              # Click CLI: init, start, status, update, stop, service
     ├── config.py           # Pydantic config models
     ├── daemon.py           # Flask mini-app receiving commands
     ├── docker_ops.py       # Docker container management
-    ├── hardware.py         # Simplified hardware detection
+    ├── hardware.py         # Hardware detection with unified memory support
     ├── heartbeat.py        # Heartbeat thread
     ├── log_streamer.py     # SSE log streaming
     └── registration.py     # Server registration

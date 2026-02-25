@@ -97,6 +97,7 @@ class AgentManager:
                     hostname = ?, port = ?, status = 'online',
                     gpu_info = ?, gpu_count = ?, cpu_info = ?, ram_gb = ?,
                     environment_type = ?, fingerprint = ?, kitt_version = ?,
+                    hardware_details = ?,
                     last_heartbeat = ?
                    WHERE id = ?""",
                 (
@@ -109,6 +110,7 @@ class AgentManager:
                     reg.environment_type,
                     reg.fingerprint,
                     reg.kitt_version,
+                    reg.hardware_details,
                     now,
                     agent_id,
                 ),
@@ -120,8 +122,9 @@ class AgentManager:
                    (id, name, hostname, port, token, token_hash, token_prefix,
                     status, gpu_info, gpu_count,
                     cpu_info, ram_gb, environment_type, fingerprint, kitt_version,
+                    hardware_details,
                     last_heartbeat, registered_at)
-                   VALUES (?, ?, ?, ?, '', ?, ?, 'online', ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                   VALUES (?, ?, ?, ?, '', ?, ?, 'online', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
                     agent_id,
                     reg.name,
@@ -136,6 +139,7 @@ class AgentManager:
                     reg.environment_type,
                     reg.fingerprint,
                     reg.kitt_version,
+                    reg.hardware_details,
                     now,
                     now,
                 ),

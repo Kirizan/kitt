@@ -1,5 +1,8 @@
 """Agents blueprint — agent management pages."""
 
+import contextlib
+import json
+
 from flask import Blueprint, flash, redirect, render_template, request, url_for
 
 bp = Blueprint("agents", __name__, url_prefix="/agents")
@@ -28,7 +31,14 @@ def detail(agent_id):
         flash("Agent not found", "error")
         return redirect(url_for("agents.list_agents"))
 
-    return render_template("agents/detail.html", agent=agent)
+    # Parse hardware_details JSON for the template
+    hw_details = {}
+    raw_details = agent.get("hardware_details", "")
+    if raw_details:
+        with contextlib.suppress(json.JSONDecodeError, TypeError):
+            hw_details = json.loads(raw_details)
+
+    return render_template("agents/detail.html", agent=agent, hw=hw_details)
 
 
 @bp.route("/add")

@@ -27,40 +27,90 @@
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <!-- Hardware info -->
+        <!-- GPU info -->
         <div class="bg-kitt-surface rounded-lg p-5">
-            <h2 class="text-lg font-semibold mb-4">Hardware</h2>
+            <h2 class="text-lg font-semibold mb-4">GPU</h2>
             <dl class="space-y-3 text-sm">
-                {% if agent.gpu_info %}
                 <div class="flex justify-between">
-                    <dt class="text-kitt-dim">GPU</dt>
-                    <dd>{{ agent.gpu_info }}{% if agent.gpu_count > 1 %} x{{ agent.gpu_count }}{% endif %}</dd>
+                    <dt class="text-kitt-dim">Model</dt>
+                    <dd>{{ hw.get('gpu_model') or agent.gpu_info or '-' }}</dd>
+                </div>
+                <div class="flex justify-between">
+                    <dt class="text-kitt-dim">VRAM</dt>
+                    <dd>{% if hw.get('gpu_vram_gb') %}{{ hw.gpu_vram_gb }}GB{% elif agent.gpu_info %}{{ agent.gpu_info.split()[-1] if 'GB' in agent.gpu_info else '-' }}{% else %}-{% endif %}</dd>
+                </div>
+                <div class="flex justify-between">
+                    <dt class="text-kitt-dim">Count</dt>
+                    <dd>{{ hw.get('gpu_count') or agent.gpu_count or '-' }}</dd>
+                </div>
+                {% if hw.get('gpu_compute_capability') %}
+                <div class="flex justify-between">
+                    <dt class="text-kitt-dim">Compute Capability</dt>
+                    <dd>{{ hw.gpu_compute_capability }}</dd>
                 </div>
                 {% endif %}
-                {% if agent.cpu_info %}
+                {% if hw.get('cuda_version') %}
+                <div class="flex justify-between">
+                    <dt class="text-kitt-dim">CUDA</dt>
+                    <dd>{{ hw.cuda_version }}</dd>
+                </div>
+                {% endif %}
+                {% if hw.get('driver_version') %}
+                <div class="flex justify-between">
+                    <dt class="text-kitt-dim">Driver</dt>
+                    <dd>{{ hw.driver_version }}</dd>
+                </div>
+                {% endif %}
+            </dl>
+        </div>
+
+        <!-- CPU & Memory -->
+        <div class="bg-kitt-surface rounded-lg p-5">
+            <h2 class="text-lg font-semibold mb-4">CPU & Memory</h2>
+            <dl class="space-y-3 text-sm">
                 <div class="flex justify-between">
                     <dt class="text-kitt-dim">CPU</dt>
-                    <dd>{{ agent.cpu_info }}</dd>
+                    <dd>{{ hw.get('cpu_model') or agent.cpu_info or '-' }}</dd>
+                </div>
+                {% if hw.get('cpu_cores') %}
+                <div class="flex justify-between">
+                    <dt class="text-kitt-dim">Cores</dt>
+                    <dd>{{ hw.cpu_cores }}{% if hw.get('cpu_threads') and hw.cpu_threads != hw.cpu_cores %} ({{ hw.cpu_threads }} threads){% endif %}</dd>
                 </div>
                 {% endif %}
-                {% if agent.ram_gb %}
                 <div class="flex justify-between">
                     <dt class="text-kitt-dim">RAM</dt>
-                    <dd>{{ agent.ram_gb }}GB</dd>
+                    <dd>{% if agent.ram_gb %}{{ agent.ram_gb }}GB{% if hw.get('ram_type') %} {{ hw.ram_type }}{% endif %}{% else %}-{% endif %}</dd>
+                </div>
+            </dl>
+        </div>
+
+        <!-- Storage & OS -->
+        <div class="bg-kitt-surface rounded-lg p-5">
+            <h2 class="text-lg font-semibold mb-4">Storage & OS</h2>
+            <dl class="space-y-3 text-sm">
+                {% if hw.get('storage_model') %}
+                <div class="flex justify-between">
+                    <dt class="text-kitt-dim">Storage</dt>
+                    <dd>{% if hw.get('storage_brand') and hw.storage_brand != 'Unknown' %}{{ hw.storage_brand }} {% endif %}{{ hw.storage_model }}{% if hw.get('storage_type') %} ({{ hw.storage_type | upper }}){% endif %}</dd>
                 </div>
                 {% endif %}
-                {% if agent.environment_type %}
+                {% if hw.get('os') %}
+                <div class="flex justify-between">
+                    <dt class="text-kitt-dim">OS</dt>
+                    <dd>{{ hw.os }}</dd>
+                </div>
+                {% endif %}
+                {% if hw.get('kernel') %}
+                <div class="flex justify-between">
+                    <dt class="text-kitt-dim">Kernel</dt>
+                    <dd class="text-xs font-mono truncate max-w-xs" title="{{ hw.kernel }}">{{ hw.kernel }}</dd>
+                </div>
+                {% endif %}
                 <div class="flex justify-between">
                     <dt class="text-kitt-dim">Environment</dt>
-                    <dd>{{ agent.environment_type }}</dd>
+                    <dd>{{ hw.get('environment_type') or agent.environment_type or '-' }}</dd>
                 </div>
-                {% endif %}
-                {% if agent.fingerprint %}
-                <div class="flex justify-between">
-                    <dt class="text-kitt-dim">Fingerprint</dt>
-                    <dd class="text-xs font-mono truncate max-w-xs" title="{{ agent.fingerprint }}">{{ agent.fingerprint }}</dd>
-                </div>
-                {% endif %}
             </dl>
         </div>
 
@@ -83,6 +133,15 @@
             </dl>
         </div>
     </div>
+
+    <!-- Fingerprint -->
+    {% set fp = hw.get('fingerprint') or agent.fingerprint %}
+    {% if fp %}
+    <div class="bg-kitt-surface rounded-lg p-5">
+        <h2 class="text-lg font-semibold mb-2">Hardware Fingerprint</h2>
+        <p class="text-xs font-mono break-all text-kitt-dim">{{ fp }}</p>
+    </div>
+    {% endif %}
 
     {% if agent.notes %}
     <div class="bg-kitt-surface rounded-lg p-5">
