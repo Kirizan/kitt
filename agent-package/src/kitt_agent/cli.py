@@ -298,6 +298,176 @@ def stop():
         click.echo("No PID file found — agent may not be running")
 
 
+def _load_agent_config(config_path=None):
+    """Load agent config from ~/.kitt/agent.yaml."""
+    config_file = (
+        Path(config_path) if config_path else Path.home() / ".kitt" / "agent.yaml"
+    )
+    if not config_file.exists():
+        click.echo("Agent not configured. Run: kitt-agent init --server <URL>")
+        raise SystemExit(1)
+
+    with open(config_file) as f:
+        config = yaml.safe_load(f)
+
+    if not config.get("server_url"):
+        click.echo("Invalid agent config — missing server_url")
+        raise SystemExit(1)
+
+    return config
+
+
+def _server_request(method, path, config, data=None):
+    """Make an authenticated request to the KITT server."""
+    import json
+    import ssl
+    import urllib.request
+
+    server_url = config["server_url"].rstrip("/")
+    token = config.get("token", "")
+    url = f"{server_url}{path}"
+
+    headers = {"Authorization": f"Bearer {token}"}
+    body = None
+    if data is not None:
+        body = json.dumps(data).encode("utf-8")
+        headers["Content-Type"] = "application/json"
+
+    req = urllib.request.Request(url, data=body, headers=headers, method=method)
+
+    ctx = None
+    if server_url.startswith("https"):
+        ctx = ssl.create_default_context()
+        tls_config = config.get("tls", {})
+        ca = tls_config.get("ca")
+        if ca:
+            ctx.load_verify_locations(ca)
+        cert = tls_config.get("cert")
+        key = tls_config.get("key")
+        if cert and key:
+            ctx.load_cert_chain(cert, key)
+
+    with urllib.request.urlopen(req, context=ctx, timeout=15) as resp:
+        return json.loads(resp.read().decode("utf-8"))
+
+
+# --- test subgroup ---
+
+
+@cli.group()
+def test():
+    """Manage tests running on this agent."""
+
+
+@test.command("list")
+@click.option("--status", "status_filter", default="", help="Filter by status (e.g., running, completed, failed)")
+@click.option("--limit", default=20, type=int, help="Max results to return")
+def test_list(status_filter, limit):
+    """List tests for this agent."""
+    config = _load_agent_config()
+    agent_name = config.get("name", "unknown")
+
+    path = f"/api/v1/quicktest/?agent_name={agent_name}&per_page={limit}"
+    if status_filter:
+        path += f"&status={status_filter}"
+
+    try:
+        result = _server_request("GET", path, config)
+    except Exception as e:
+        click.echo(f"Failed to fetch tests: {e}")
+        raise SystemExit(1) from None
+
+    items = result.get("items", [])
+    if not items:
+        click.echo("No tests found.")
+        return
+
+    # Simple table output
+    header = f"{'ID':<18} {'Model':<30} {'Engine':<12} {'Status':<12} {'Created'}"
+    click.echo(f"Tests for agent: {agent_name}")
+    click.echo(header)
+    click.echo("-" * len(header))
+
+    for item in items:
+        model = item.get("model_path", "")
+        if "/" in model:
+            model = model.rsplit("/", 1)[-1]
+        if len(model) > 28:
+            model = model[:25] + "..."
+
+        click.echo(
+            f"{item.get('id', ''):<18} "
+            f"{model:<30} "
+            f"{item.get('engine_name', ''):<12} "
+            f"{item.get('status', ''):<12} "
+            f"{item.get('created_at', '')}"
+        )
+
+    click.echo(f"\nTotal: {result.get('total', len(items))}")
+
+
+@test.command("stop")
+@click.argument("test_id")
+def test_stop(test_id):
+    """Stop a running test by ID."""
+    import json
+    import urllib.request
+
+    config = _load_agent_config()
+    agent_name = config.get("name", "unknown")
+
+    # Fetch the test to verify it exists and belongs to this agent
+    try:
+        test_data = _server_request("GET", f"/api/v1/quicktest/{test_id}", config)
+    except Exception as e:
+        click.echo(f"Failed to fetch test {test_id}: {e}")
+        raise SystemExit(1) from None
+
+    # Check agent ownership
+    test_agent = test_data.get("agent_name", "")
+    if test_agent and test_agent != agent_name:
+        click.echo(
+            f"Test {test_id} belongs to agent '{test_agent}', not '{agent_name}'"
+        )
+        raise SystemExit(1)
+
+    # Check if already terminal
+    current_status = test_data.get("status", "")
+    if current_status in ("completed", "failed"):
+        click.echo(f"Test {test_id} is already {current_status} — nothing to do.")
+        return
+
+    # Mark as failed on the server
+    try:
+        _server_request(
+            "POST",
+            f"/api/v1/quicktest/{test_id}/status",
+            config,
+            data={"status": "failed", "error": "Cancelled by user"},
+        )
+        click.echo(f"Test {test_id} marked as cancelled on server.")
+    except Exception as e:
+        click.echo(f"Failed to update test status: {e}")
+
+    # Best-effort: kill local process via agent daemon
+    port = config.get("port", 8090)
+    try:
+        cancel_req = urllib.request.Request(
+            f"http://127.0.0.1:{port}/api/commands",
+            data=json.dumps({"type": "cancel"}).encode("utf-8"),
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {config.get('token', '')}",
+            },
+            method="POST",
+        )
+        with urllib.request.urlopen(cancel_req, timeout=5) as resp:
+            resp.read()
+        click.echo("Local process cancellation sent.")
+    except Exception:
+        click.echo("Local daemon unreachable — skipped process cancel.")
+
+
 _SERVICE_NAME = "kitt-agent"
 _UNIT_PATH = Path(f"/etc/systemd/system/{_SERVICE_NAME}.service")
 

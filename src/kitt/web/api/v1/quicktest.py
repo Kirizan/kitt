@@ -29,20 +29,31 @@ def list_tests():
     conn = get_services()["db_conn"]
 
     status_filter = request.args.get("status", "")
+    agent_name_filter = request.args.get("agent_name", "")
     page = request.args.get("page", 1, type=int)
     per_page = request.args.get("per_page", 20, type=int)
     per_page = min(per_page, 100)
     page = max(page, 1)
 
-    where = ""
+    conditions: list[str] = []
     params: list = []
     if status_filter:
-        where = "WHERE qt.status = ?"
+        conditions.append("qt.status = ?")
         params.append(status_filter)
+    if agent_name_filter:
+        conditions.append("a.name = ?")
+        params.append(agent_name_filter)
 
-    # Count total
+    where = ""
+    if conditions:
+        where = "WHERE " + " AND ".join(conditions)
+
+    # Count total (join needed for agent_name filter)
     count_row = conn.execute(
-        f"SELECT COUNT(*) FROM quick_tests qt {where}", params
+        f"""SELECT COUNT(*) FROM quick_tests qt
+            LEFT JOIN agents a ON qt.agent_id = a.id
+            {where}""",
+        params,
     ).fetchone()
     total = count_row[0] if count_row else 0
     pages = math.ceil(total / per_page) if total > 0 else 1
