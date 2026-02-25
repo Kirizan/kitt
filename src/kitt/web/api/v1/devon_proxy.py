@@ -55,6 +55,10 @@ def proxy(subpath):
     if not devon_url:
         return jsonify({"error": "Devon not configured"}), 503
 
+    # Reject path traversal attempts
+    if ".." in subpath.split("/"):
+        return jsonify({"error": "Invalid path"}), 400
+
     # Build target URL
     target = f"{devon_url.rstrip('/')}/{subpath}"
     if request.query_string:
@@ -101,9 +105,10 @@ def proxy(subpath):
         k: v for k, v in resp_headers.items() if k.lower() not in _HOP_HEADERS
     }
 
-    # Remove security headers that conflict with KITT's context
+    # Replace Devon's security headers with KITT-appropriate ones
     for hdr in ("x-frame-options", "content-security-policy"):
         filtered_headers.pop(hdr, None)
+    filtered_headers["Content-Security-Policy"] = "frame-ancestors 'self'"
 
     # Rewrite BASE_URL in Devon's SPA index.html so relative API
     # paths resolve through this proxy.  Uses json.dumps for safe

@@ -116,7 +116,7 @@ def _migrate_token_hashes(conn: Any) -> None:
         token_hash = hashlib.sha256(row["token"].encode()).hexdigest()
         token_prefix = row["token"][:8]
         conn.execute(
-            "UPDATE agents SET token_hash = ?, token_prefix = ? WHERE id = ?",
+            "UPDATE agents SET token_hash = ?, token_prefix = ?, token = '' WHERE id = ?",
             (token_hash, token_prefix, row["id"]),
         )
     if rows:

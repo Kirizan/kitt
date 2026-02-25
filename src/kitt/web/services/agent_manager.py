@@ -170,6 +170,13 @@ class AgentManager:
 
         return {"ack": True, "commands": []}
 
+    # Fields that must never appear in API responses.
+    _SENSITIVE_FIELDS = {"token", "token_hash"}
+
+    def _sanitize(self, row: dict[str, Any]) -> dict[str, Any]:
+        """Strip sensitive fields from an agent dict before returning."""
+        return {k: v for k, v in row.items() if k not in self._SENSITIVE_FIELDS}
+
     def get_agent(self, agent_id: str) -> dict[str, Any] | None:
         """Get full agent details."""
         row = self._conn.execute(
@@ -177,13 +184,13 @@ class AgentManager:
         ).fetchone()
         if row is None:
             return None
-        return dict(row)
+        return self._sanitize(dict(row))
 
     def list_agents(self) -> list[dict[str, Any]]:
         """List all registered agents."""
         self._check_stale_agents()
         rows = self._conn.execute("SELECT * FROM agents ORDER BY name").fetchall()
-        return [dict(r) for r in rows]
+        return [self._sanitize(dict(r)) for r in rows]
 
     def delete_agent(self, agent_id: str) -> bool:
         """Remove an agent registration."""
