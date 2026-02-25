@@ -1,5 +1,7 @@
 """KITT thin agent daemon — Flask mini-app that receives Docker commands."""
 
+from __future__ import annotations
+
 import json
 import logging
 import ssl
@@ -77,6 +79,10 @@ def create_agent_app(
     log_streamers: dict[str, LogStreamer] = {}
     active_containers: dict[str, str] = {}  # command_id -> container_id
     _lock = threading.Lock()
+
+    # KITT Docker image used for running benchmarks (mutable so settings can update it).
+    _DEFAULT_KITT_IMAGE = "registry.internal.kirby.network/kirizan/infrastructure/kitt:latest"
+    _kitt_image_ref: list[str] = [_DEFAULT_KITT_IMAGE]
 
     # ---------------------------------------------------------------
     # Shared callback factories and execution helpers
@@ -183,7 +189,13 @@ def create_agent_app(
         on_log: Callable[[str], None],
         update_status: Callable[[str, str], None],
     ) -> None:
-        """Execute a run_test command (kitt run subprocess)."""
+        """Execute a run_test command via Docker container.
+
+        The thin agent doesn't have the full KITT package installed, so
+        benchmarks run inside the KITT Docker image. The model is mounted
+        at the same host path so engine containers (launched by KITT via
+        the host Docker socket) can also access it.
+        """
         engine = payload.get("engine_name", "vllm")
         suite = payload.get("suite_name", "quick")
         model_path = payload.get("model_path", "")
@@ -199,7 +211,26 @@ def create_agent_app(
         if model_storage:
             local_model_path = model_storage.resolve_model(model_path, on_log=on_log)
 
-        args = ["kitt", "run", "-m", local_model_path, "-e", engine, "-s", suite]
+        # Determine the KITT Docker image to use for running benchmarks.
+        # Prefer the server-synced setting, fall back to a sensible default.
+        kitt_image = _kitt_image_ref[0]
+        container_name = f"kitt-run-{command_id[:8]}"
+
+        # Build docker run command.
+        # Mount: model at same host path (so engine sibling containers see it),
+        # Docker socket (so KITT can launch engine containers), and /tmp for output.
+        args = [
+            "docker", "run", "--rm",
+            "--name", container_name,
+            "--gpus", "all",
+            "--network", "host",
+            "-v", "/var/run/docker.sock:/var/run/docker.sock",
+            "-v", f"{local_model_path}:{local_model_path}:ro",
+            kitt_image,
+            "run", "-m", local_model_path, "-e", engine, "-s", suite,
+        ]
+
+        on_log(f"Running KITT benchmark in container ({kitt_image})")
         try:
             proc = sp.Popen(
                 args,
@@ -208,6 +239,8 @@ def create_agent_app(
                 text=True,
                 bufsize=1,
             )
+            with _lock:
+                active_containers[command_id] = container_name
             for line in proc.stdout or []:
                 on_log(line.rstrip())
             proc.wait()
@@ -229,6 +262,8 @@ def create_agent_app(
                 insecure,
             )
         finally:
+            with _lock:
+                active_containers.pop(command_id, None)
             if model_storage and model_storage.auto_cleanup and local_model_path != model_path:
                 model_storage.cleanup_model(local_model_path)
 
@@ -390,6 +425,13 @@ def create_agent_app(
         _dispatch_command(cmd_type, payload, command_id, test_id)
 
     app.handle_command = handle_command  # type: ignore[attr-defined]
+
+    def set_kitt_image(image: str) -> None:
+        """Update the KITT Docker image used for benchmarks."""
+        if image:
+            _kitt_image_ref[0] = image
+
+    app.set_kitt_image = set_kitt_image  # type: ignore[attr-defined]
 
     return app
 

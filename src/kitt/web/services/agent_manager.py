@@ -344,6 +344,7 @@ class AgentManager:
         "model_share_mount": "",
         "auto_cleanup": "true",
         "heartbeat_interval_s": "30",
+        "kitt_image": "",
     }
 
     def _ensure_default_settings(self, agent_id: str) -> None:

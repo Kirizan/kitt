@@ -237,6 +237,8 @@ def start(config_path, insecure, run_preflight):
             if "auto_cleanup" in settings
             else None,
         )
+        if "kitt_image" in settings:
+            app.set_kitt_image(settings["kitt_image"])
 
     # Heartbeat
     from kitt_agent.heartbeat import HeartbeatThread
