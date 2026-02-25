@@ -258,7 +258,9 @@ def create_app(
     # --- Legacy compat: /api/health ---
     @app.route("/api/health")
     def legacy_health():
-        return jsonify({"status": "ok", "version": "1.1.0"})
+        import kitt
+
+        return jsonify({"status": "ok", "version": kitt.__version__})
 
     # --- Shutdown cleanup ---
     def _shutdown():
@@ -601,7 +603,9 @@ def create_legacy_app(
 
     @app.route("/api/health")
     def health():
-        return jsonify({"status": "ok", "version": "1.1.0"})
+        import kitt
+
+        return jsonify({"status": "ok", "version": kitt.__version__})
 
     return app
 

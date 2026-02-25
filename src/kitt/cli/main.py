@@ -7,7 +7,7 @@ console = Console()
 
 
 @click.group()
-@click.version_option(version="1.1.0", prog_name="KITT")
+@click.version_option(version="1.2.0", prog_name="KITT")
 def cli():
     """KITT - Kirizan's Inference Testing Tools
 

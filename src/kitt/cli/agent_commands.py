@@ -1,8 +1,14 @@
-"""CLI commands for the KITT agent daemon."""
+"""CLI commands for the KITT agent daemon.
+
+These commands proxy to the thin agent (kitt-agent) binary.
+The full agent (src/kitt/agent/) was removed in v1.2.0.
+"""
 
 import logging
 import os
 import signal
+import subprocess
+import sys
 from pathlib import Path
 
 import click
@@ -13,9 +19,25 @@ console = Console()
 logger = logging.getLogger(__name__)
 
 
+def _find_kitt_agent() -> str | None:
+    """Locate the kitt-agent binary in the current venv or PATH."""
+    # Check the current venv first
+    venv_bin = Path(sys.prefix) / "bin" / "kitt-agent"
+    if venv_bin.exists():
+        return str(venv_bin)
+    # Check PATH
+    import shutil
+
+    return shutil.which("kitt-agent")
+
+
 @click.group()
 def agent():
-    """Manage the KITT agent daemon."""
+    """Manage the KITT agent daemon.
+
+    These commands proxy to the thin agent (kitt-agent).
+    Install the agent package first: pip install kitt-agent
+    """
 
 
 @agent.command()
@@ -26,60 +48,23 @@ def agent():
 @click.option("--name", default="", help="Agent name (defaults to hostname)")
 @click.option("--port", default=8090, help="Agent listening port")
 def init(server, token, name, port):
-    """Initialize agent configuration and certificates.
+    """Initialize agent configuration.
 
-    This fetches the server's CA certificate, generates agent certificates,
-    and stores configuration in ~/.kitt/agent.yaml.
+    Proxies to: kitt-agent init
     """
-    import socket
+    binary = _find_kitt_agent()
+    if not binary:
+        console.print("[red]kitt-agent not found.[/red]")
+        console.print("Install with: pip install kitt-agent")
+        raise SystemExit(1)
 
-    agent_name = name or socket.gethostname()
-    config_dir = Path.home() / ".kitt"
-    config_dir.mkdir(parents=True, exist_ok=True)
-    config_path = config_dir / "agent.yaml"
+    args = [binary, "init", "--server", server, "--port", str(port)]
+    if token:
+        args.extend(["--token", token])
+    if name:
+        args.extend(["--name", name])
 
-    config = {
-        "name": agent_name,
-        "server_url": server,
-        "token": token,
-        "port": port,
-    }
-
-    # Generate agent certificate if server is HTTPS
-    if server.startswith("https"):
-        try:
-            from kitt.security.cert_manager import generate_agent_cert
-            from kitt.security.tls_config import DEFAULT_CERTS_DIR
-
-            ca_path = DEFAULT_CERTS_DIR / "ca.pem"
-            if not ca_path.exists():
-                console.print("[yellow]CA certificate not found locally.[/yellow]")
-                console.print("Copy ca.pem from the server to ~/.kitt/certs/ca.pem")
-            else:
-                cert_path, key_path = generate_agent_cert(agent_name)
-                config["tls"] = {
-                    "cert": str(cert_path),
-                    "key": str(key_path),
-                    "ca": str(ca_path),
-                }
-                console.print(
-                    f"[green]Agent certificate generated:[/green] {cert_path}"
-                )
-        except ImportError:
-            console.print(
-                "[yellow]cryptography not installed — skipping cert generation[/yellow]"
-            )
-
-    # Write config
-    with open(config_path, "w") as f:
-        yaml.dump(config, f, default_flow_style=False)
-
-    console.print(f"[green]Agent config saved:[/green] {config_path}")
-    console.print(f"  Name: {agent_name}")
-    console.print(f"  Server: {server}")
-    console.print(f"  Port: {port}")
-    console.print()
-    console.print("Start the agent with: [bold]kitt agent start[/bold]")
+    os.execv(binary, args)
 
 
 @agent.command()
@@ -87,107 +72,23 @@ def init(server, token, name, port):
 @click.option("--insecure", is_flag=True, help="Disable TLS verification")
 @click.option("--foreground", is_flag=True, help="Run in foreground (no daemonize)")
 def start(config_path, insecure, foreground):
-    """Start the KITT agent daemon."""
-    config_file = (
-        Path(config_path) if config_path else Path.home() / ".kitt" / "agent.yaml"
-    )
+    """Start the KITT agent daemon.
 
-    if not config_file.exists():
-        console.print("[red]Agent not configured.[/red]")
-        console.print("Run: kitt agent init --server <URL>")
+    Proxies to: kitt-agent start
+    """
+    binary = _find_kitt_agent()
+    if not binary:
+        console.print("[red]kitt-agent not found.[/red]")
+        console.print("Install with: pip install kitt-agent")
         raise SystemExit(1)
 
-    with open(config_file) as f:
-        config = yaml.safe_load(f)
+    args = [binary, "start"]
+    if config_path:
+        args.extend(["--config", config_path])
+    if insecure:
+        args.append("--insecure")
 
-    agent_name = config.get("name", "unknown")
-    server_url = config.get("server_url", "")
-    token = config.get("token", "")
-    port = config.get("port", 8090)
-
-    if not server_url:
-        console.print("[red]Invalid agent config — missing server_url[/red]")
-        raise SystemExit(1)
-
-    console.print(f"[bold]KITT Agent: {agent_name}[/bold]")
-    console.print(f"  Server: {server_url}")
-    console.print(f"  Port: {port}")
-
-    # Register with server
-    try:
-        from kitt.agent.registration import register_with_server
-
-        tls_config = config.get("tls", {})
-        verify: str | bool = tls_config.get("ca", True)
-        client_cert = None
-        if tls_config.get("cert") and tls_config.get("key"):
-            client_cert = (tls_config["cert"], tls_config["key"])
-
-        if insecure:
-            verify = False
-
-        result = register_with_server(
-            server_url=server_url,
-            token=token,
-            name=agent_name,
-            port=port,
-            verify=verify,
-            client_cert=client_cert,
-        )
-        agent_id = result.get("agent_id", "")
-        heartbeat_interval = result.get("heartbeat_interval_s", 30)
-        console.print(f"  [green]Registered:[/green] {agent_id}")
-    except Exception as e:
-        console.print(f"  [red]Registration failed:[/red] {e}")
-        console.print("  Starting anyway — will retry on heartbeat")
-        agent_id = agent_name
-        heartbeat_interval = 30
-
-    # Start agent Flask app (created before heartbeat so we can wire command handler)
-    try:
-        from kitt.agent.daemon import create_agent_app
-    except ImportError:
-        console.print("[red]Flask is not installed.[/red]")
-        console.print("Install with: pip install kitt[web]")
-        raise SystemExit(1) from None
-
-    app = create_agent_app(
-        name=agent_name,
-        server_url=server_url,
-        token=token,
-        port=port,
-        insecure=insecure,
-    )
-
-    # Start heartbeat thread with command dispatch from heartbeat response
-    from kitt.agent.heartbeat import HeartbeatThread
-
-    hb = HeartbeatThread(
-        server_url=server_url,
-        agent_id=agent_id,
-        token=token,
-        interval_s=heartbeat_interval,
-        verify=verify if not insecure else False,
-        client_cert=client_cert if not insecure else None,
-        on_command=app.handle_command,
-    )
-    hb.start()
-
-    ssl_ctx = None
-    if not insecure:
-        tls_config = config.get("tls", {})
-        if tls_config.get("cert") and tls_config.get("key"):
-            ssl_ctx = (tls_config["cert"], tls_config["key"])
-
-    console.print(f"  Listening on port {port}")
-    console.print()
-
-    try:
-        app.run(host="0.0.0.0", port=port, ssl_context=ssl_ctx, use_reloader=False)
-    except KeyboardInterrupt:
-        console.print("\n[yellow]Agent stopped[/yellow]")
-    finally:
-        hb.stop()
+    os.execv(binary, args)
 
 
 @agent.command()
@@ -219,7 +120,7 @@ def status():
 
             data = json.loads(resp.read())
             console.print("  Running: [green]yes[/green]")
-            console.print(f"  Active task: {data.get('running', False)}")
+            console.print(f"  Active containers: {data.get('active_containers', 0)}")
     except Exception:
         console.print("  Running: [red]no[/red]")
 
@@ -228,92 +129,23 @@ def status():
 @click.option("--config", "config_path", type=click.Path(), help="Path to agent.yaml")
 @click.option("--restart", is_flag=True, help="Restart the agent after update")
 def update(config_path, restart):
-    """Update the agent to the latest version from the server."""
-    import sys
-    import tempfile
-    import urllib.request
+    """Update the agent to the latest version from the server.
 
-    config_file = (
-        Path(config_path) if config_path else Path.home() / ".kitt" / "agent.yaml"
-    )
-
-    if not config_file.exists():
-        console.print("[red]Agent not configured.[/red]")
-        console.print("Run: kitt agent init --server <URL>")
+    Proxies to: kitt-agent update
+    """
+    binary = _find_kitt_agent()
+    if not binary:
+        console.print("[red]kitt-agent not found.[/red]")
+        console.print("Install with: pip install kitt-agent")
         raise SystemExit(1)
 
-    with open(config_file) as f:
-        config = yaml.safe_load(f)
-
-    server_url = config.get("server_url", "")
-    if not server_url:
-        console.print("[red]Invalid agent config — missing server_url[/red]")
-        raise SystemExit(1)
-
-    try:
-        import kitt
-
-        current_version = getattr(kitt, "__version__", "unknown")
-    except Exception:
-        current_version = "unknown"
-
-    console.print(f"Current version: {current_version}")
-    console.print(f"Downloading latest agent package from {server_url}...")
-
-    # Download the package
-    package_url = f"{server_url.rstrip('/')}/api/v1/agent/package"
-    with tempfile.NamedTemporaryFile(
-        suffix=".tar.gz", prefix="kitt-agent-", delete=False
-    ) as tmp:
-        tmp_path = Path(tmp.name)
-
-    try:
-        urllib.request.urlretrieve(package_url, str(tmp_path))
-    except Exception as e:
-        tmp_path.unlink(missing_ok=True)
-        console.print(f"[red]Failed to download package:[/red] {e}")
-        raise SystemExit(1) from None
-
-    # Install using the current venv's pip
-    import subprocess
-
-    venv_pip = Path(sys.prefix) / "bin" / "pip"
-    if not venv_pip.exists():
-        venv_pip = Path(sys.prefix) / "Scripts" / "pip.exe"
-
-    console.print("Installing update...")
-    try:
-        result = subprocess.run(
-            [str(venv_pip), "install", "--upgrade", str(tmp_path)],
-            capture_output=True,
-            text=True,
-            timeout=120,
-        )
-        if result.returncode != 0:
-            console.print(f"[red]Installation failed:[/red]\n{result.stderr}")
-            raise SystemExit(1)
-    finally:
-        tmp_path.unlink(missing_ok=True)
-
-    console.print("[green]Update installed successfully.[/green]")
-
+    args = [binary, "update"]
+    if config_path:
+        args.extend(["--config", config_path])
     if restart:
-        pid_file = Path.home() / ".kitt" / "agent.pid"
-        if pid_file.exists():
-            pid = int(pid_file.read_text().strip())
-            try:
-                os.kill(pid, signal.SIGTERM)
-                console.print(f"Stopped running agent (PID {pid})")
-                pid_file.unlink(missing_ok=True)
-            except ProcessLookupError:
-                pid_file.unlink(missing_ok=True)
+        args.append("--restart")
 
-        console.print("Starting updated agent...")
-        agent_bin = Path(sys.prefix) / "bin" / "kitt"
-        os.execv(str(agent_bin), [str(agent_bin), "agent", "start"])
-    else:
-        console.print("Restart the agent to use the new version:")
-        console.print("  [bold]kitt agent stop && kitt agent start[/bold]")
+    os.execv(binary, args)
 
 
 @agent.command()

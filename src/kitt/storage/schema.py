@@ -1,7 +1,7 @@
 """Shared database schema definitions for KITT storage backends."""
 
 # SQLite schema — version-tracked for migrations.
-SCHEMA_VERSION = 7
+SCHEMA_VERSION = 8
 
 SQLITE_SCHEMA = """
 CREATE TABLE IF NOT EXISTS schema_version (
@@ -221,4 +221,14 @@ CREATE INDEX IF NOT EXISTS idx_quick_tests_status ON quick_tests(status);
 CREATE INDEX IF NOT EXISTS idx_events_type ON events(event_type);
 CREATE INDEX IF NOT EXISTS idx_events_source ON events(source_id);
 CREATE INDEX IF NOT EXISTS idx_quick_test_logs_test ON quick_test_logs(test_id);
+
+-- v8: agent_settings
+CREATE TABLE IF NOT EXISTS agent_settings (
+    id SERIAL PRIMARY KEY,
+    agent_id TEXT NOT NULL REFERENCES agents(id) ON DELETE CASCADE,
+    key TEXT NOT NULL,
+    value TEXT NOT NULL DEFAULT '',
+    UNIQUE(agent_id, key)
+);
+CREATE INDEX IF NOT EXISTS idx_agent_settings_agent ON agent_settings(agent_id);
 """
