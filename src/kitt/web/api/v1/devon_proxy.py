@@ -98,9 +98,7 @@ def proxy(subpath):
 
     # Filter hop-by-hop headers
     filtered_headers = {
-        k: v
-        for k, v in resp_headers.items()
-        if k.lower() not in _HOP_HEADERS
+        k: v for k, v in resp_headers.items() if k.lower() not in _HOP_HEADERS
     }
 
     # Remove security headers that conflict with KITT's context
