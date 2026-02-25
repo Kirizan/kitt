@@ -3,6 +3,8 @@
 Stores key-value UI settings in the web_settings SQLite table.
 """
 
+from __future__ import annotations
+
 import logging
 import os
 import sqlite3

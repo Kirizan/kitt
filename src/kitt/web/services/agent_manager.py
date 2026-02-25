@@ -4,6 +4,8 @@ Manages agent registration, heartbeats, command dispatch,
 and status tracking.
 """
 
+from __future__ import annotations
+
 import hashlib
 import hmac
 import logging

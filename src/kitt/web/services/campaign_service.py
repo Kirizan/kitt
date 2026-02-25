@@ -3,6 +3,8 @@
 Handles campaign CRUD, launch via agent, and status tracking.
 """
 
+from __future__ import annotations
+
 import json
 import logging
 import sqlite3
