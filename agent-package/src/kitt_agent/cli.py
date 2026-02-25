@@ -122,7 +122,7 @@ def build(server, tag, no_cache):
     extract_dir = Path(tempfile.mkdtemp(prefix="kitt-build-"))
     try:
         with tarfile.open(str(tmp_path), "r:gz") as tar:
-            tar.extractall(str(extract_dir))
+            tar.extractall(str(extract_dir), filter="data")
     except Exception as e:
         tmp_path.unlink(missing_ok=True)
         click.echo(f"Failed to extract build context: {e}")

@@ -342,6 +342,7 @@ def create_agent_app(
         finally:
             with _lock:
                 active_containers.pop(command_id, None)
+                log_streamers.pop(command_id, None)
             if (
                 model_storage
                 and model_storage.auto_cleanup
