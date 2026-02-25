@@ -4,12 +4,15 @@ from __future__ import annotations
 
 import json
 import logging
+import shutil as _shutil
 import ssl
 import subprocess as sp
+import tempfile
 import threading
 import urllib.request
 import uuid
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -225,10 +228,13 @@ def create_agent_app(
         if model_storage:
             local_model_path = model_storage.resolve_model(model_path, on_log=on_log)
 
+        # Writable output directory for benchmark results
+        output_dir = Path(tempfile.gettempdir()) / f"kitt-results-{command_id}"
+        output_dir.mkdir(parents=True, exist_ok=True)
+
         # Decide execution method: Docker container (preferred) or local CLI (fallback).
         import shutil
         import sys
-        from pathlib import Path
 
         kitt_image = _kitt_image_ref[0]
         use_docker = DockerOps.image_exists(kitt_image)
@@ -259,6 +265,8 @@ def create_agent_app(
                 "/var/run/docker.sock:/var/run/docker.sock",
                 "-v",
                 f"{local_model_path}:{local_model_path}:ro",
+                "-v",
+                f"{output_dir}:{output_dir}",
                 kitt_image,
                 "run",
                 "-m",
@@ -267,6 +275,8 @@ def create_agent_app(
                 engine,
                 "-s",
                 suite,
+                "-o",
+                str(output_dir),
             ]
             on_log(f"Running KITT benchmark in container ({kitt_image})")
         else:
@@ -283,6 +293,8 @@ def create_agent_app(
                     engine,
                     "-s",
                     suite,
+                    "-o",
+                    str(output_dir),
                 ]
                 on_log(f"Running KITT benchmark locally ({kitt_bin})")
             else:
@@ -320,6 +332,18 @@ def create_agent_app(
             error_msg = "" if final_status == "completed" else f"Exit {proc.returncode}"
             on_log(f"--- Finished: {final_status} ---")
             update_status(final_status, error=error_msg)
+
+            # Read benchmark results if the run succeeded
+            result_data = None
+            if final_status == "completed":
+                metrics_path = output_dir / "metrics.json"
+                if metrics_path.exists():
+                    try:
+                        result_data = json.loads(metrics_path.read_text())
+                        on_log("Benchmark results captured — forwarding to server")
+                    except (json.JSONDecodeError, OSError) as e:
+                        on_log(f"Warning: Could not read metrics.json: {e}")
+
             _report(
                 server_url,
                 token,
@@ -327,6 +351,7 @@ def create_agent_app(
                 command_id,
                 {"status": final_status, "error": error_msg},
                 insecure,
+                result_data=result_data,
             )
         except Exception as e:
             on_log(f"Error: {e}")
@@ -340,6 +365,8 @@ def create_agent_app(
                 insecure,
             )
         finally:
+            # Clean up temp output directory
+            _shutil.rmtree(output_dir, ignore_errors=True)
             with _lock:
                 active_containers.pop(command_id, None)
                 log_streamers.pop(command_id, None)
@@ -358,8 +385,6 @@ def create_agent_app(
 
         target = payload.get("model_path", "")
         if target:
-            from pathlib import Path
-
             local_path = str(model_storage.storage_dir / Path(target).name)
             logger.info("Cleaning up specific model: %s", local_path)
             model_storage.cleanup_model(local_path)
@@ -528,19 +553,21 @@ def _report(
     insecure: bool = False,
     verify: str | bool = True,
     client_cert: tuple[str, str] | None = None,
+    result_data: dict[str, Any] | None = None,
 ) -> None:
     """Report a result back to the server."""
     from urllib.parse import quote
 
     url = f"{server_url.rstrip('/')}/api/v1/agents/{quote(agent_name, safe='')}/results"
-    data = json.dumps(
-        {
-            "command_id": command_id,
-            "status": result.get("status", ""),
-            "container_id": result.get("container_id", ""),
-            "error": result.get("error", ""),
-        }
-    ).encode("utf-8")
+    payload = {
+        "command_id": command_id,
+        "status": result.get("status", ""),
+        "container_id": result.get("container_id", ""),
+        "error": result.get("error", ""),
+    }
+    if result_data is not None:
+        payload["result_data"] = result_data
+    data = json.dumps(payload).encode("utf-8")
 
     req = urllib.request.Request(
         url,

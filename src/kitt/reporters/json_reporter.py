@@ -35,7 +35,7 @@ def suite_result_to_dict(
         Dictionary suitable for JSON serialization.
     """
     data: dict[str, Any] = {
-        "kitt_version": "1.1.0",
+        "kitt_version": "1.2.1",
         "suite_name": suite_result.suite_name,
         "timestamp": suite_result.timestamp.isoformat(),
         "engine": engine_name,

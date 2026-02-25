@@ -2,6 +2,14 @@
 
 All notable changes to KITT are documented on this page.
 
+## 1.2.1
+
+- Fixed agent benchmark results never reaching the server — `_execute_test()` now reads `metrics.json` from the output directory and forwards it as `result_data` in `_report()`
+- Fixed `PermissionError` when `kitt run` defaults to relative `kitt-results/` inside a Docker container — agent now passes `-o` with a writable temp directory to `kitt run`
+- Changed default output directory for `kitt run` from relative `kitt-results/` to `~/.kitt/results/` for robustness across environments
+- Temp output directories (`/tmp/kitt-results-*`) are cleaned up after agent benchmarks complete
+- Updated hardcoded `kitt_version` references from `1.1.0` to `1.2.1`
+
 ## 1.2.0
 
 - Agent model workflow: copy models from NFS share to local storage, benchmark, cleanup

@@ -188,7 +188,7 @@ def run(model, engine, suite, output, skip_warmup, runs, config, store_karr):
     output_dir = (
         Path(output)
         if output
-        else Path(f"kitt-results/{model_name_clean}/{engine}/{timestamp}")
+        else Path.home() / ".kitt" / "results" / model_name_clean / engine / timestamp
     )
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -214,7 +214,7 @@ def run(model, engine, suite, output, skip_warmup, runs, config, store_karr):
         "skip_warmup": skip_warmup,
         "runs_override": runs,
         "timestamp": timestamp,
-        "kitt_version": "1.1.0",
+        "kitt_version": "1.2.1",
     }
     with open(output_dir / "config.json", "w") as f:
         json.dump(run_config, f, indent=2)
