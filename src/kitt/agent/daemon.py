@@ -103,7 +103,9 @@ def _run_command(
 
     def _run() -> None:
         _update_status("running")
-        _on_log(f"Agent starting benchmark: {payload.get('benchmark_name', 'throughput')}")
+        _on_log(
+            f"Agent starting benchmark: {payload.get('benchmark_name', 'throughput')}"
+        )
 
         result = executor.run_benchmark(
             model_path=payload.get("model_path", ""),

@@ -62,12 +62,14 @@ class LocalModelService:
             source = parts[0] if len(parts) == 2 else entry.get("source", "unknown")
             model_id = parts[1] if len(parts) == 2 else key
 
-            models.append({
-                "model_id": model_id,
-                "path": entry.get("path", ""),
-                "source": source,
-                "size_bytes": entry.get("size_bytes", 0),
-            })
+            models.append(
+                {
+                    "model_id": model_id,
+                    "path": entry.get("path", ""),
+                    "source": source,
+                    "size_bytes": entry.get("size_bytes", 0),
+                }
+            )
 
         models.sort(key=lambda m: m["model_id"].lower())
         return models

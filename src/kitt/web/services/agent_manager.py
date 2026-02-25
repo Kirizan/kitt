@@ -188,17 +188,19 @@ class AgentManager:
 
         for row in rows:
             test_id = row["id"]
-            commands.append({
-                "command_id": row["command_id"],
-                "test_id": test_id,
-                "type": "run_test",
-                "payload": {
-                    "model_path": row["model_path"],
-                    "engine_name": row["engine_name"],
-                    "benchmark_name": row["benchmark_name"],
-                    "suite_name": row["suite_name"],
-                },
-            })
+            commands.append(
+                {
+                    "command_id": row["command_id"],
+                    "test_id": test_id,
+                    "type": "run_test",
+                    "payload": {
+                        "model_path": row["model_path"],
+                        "engine_name": row["engine_name"],
+                        "benchmark_name": row["benchmark_name"],
+                        "suite_name": row["suite_name"],
+                    },
+                }
+            )
             # Mark as dispatched
             self._conn.execute(
                 "UPDATE quick_tests SET status = 'dispatched' WHERE id = ?",
