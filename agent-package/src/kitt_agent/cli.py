@@ -120,6 +120,17 @@ def start(config_path, insecure):
         agent_id = agent_name
         heartbeat_interval = 30
 
+    # Flask app (created first so heartbeat can dispatch commands to it)
+    from kitt_agent.daemon import create_agent_app
+
+    app = create_agent_app(
+        name=agent_name,
+        server_url=server_url,
+        token=token,
+        port=port,
+        insecure=insecure,
+    )
+
     # Heartbeat
     from kitt_agent.heartbeat import HeartbeatThread
 
@@ -130,19 +141,9 @@ def start(config_path, insecure):
         interval_s=heartbeat_interval,
         verify=verify if not insecure else False,
         client_cert=client_cert if not insecure else None,
+        on_command=app.handle_command,
     )
     hb.start()
-
-    # Flask app
-    from kitt_agent.daemon import create_agent_app
-
-    app = create_agent_app(
-        name=agent_name,
-        server_url=server_url,
-        token=token,
-        port=port,
-        insecure=insecure,
-    )
 
     ssl_ctx = None
     if not insecure:
