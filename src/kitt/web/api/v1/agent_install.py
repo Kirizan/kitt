@@ -7,7 +7,7 @@ import tempfile
 import threading
 from pathlib import Path
 
-from flask import Blueprint, Response, current_app, jsonify, request, send_file
+from flask import Blueprint, Response, jsonify, request, send_file
 
 logger = logging.getLogger(__name__)
 

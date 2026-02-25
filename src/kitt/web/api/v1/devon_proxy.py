@@ -5,7 +5,6 @@ all requests server-side and injecting Devon's API key.  The browser
 never sees or needs Devon's credentials.
 """
 
-import json
 import logging
 import os
 import urllib.error
