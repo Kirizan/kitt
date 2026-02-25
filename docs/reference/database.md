@@ -5,7 +5,7 @@ KARR uses a relational database to store benchmark results, agent state, campaig
 progress, and event logs. The schema is versioned and managed through an
 automatic migration system.
 
-**Current schema version:** 2
+**Current schema version:** 8
 
 ## Migration System
 
@@ -95,7 +95,9 @@ Registered agent daemons for distributed execution.
 | `name` | TEXT | UNIQUE | Human-readable agent name |
 | `hostname` | TEXT | | Agent hostname or IP |
 | `port` | INTEGER | | Agent listen port |
-| `token` | TEXT | | Authentication token |
+| `token` | TEXT | | Legacy raw token (migrated to hash) |
+| `token_hash` | TEXT | | SHA-256 hash of authentication token (v4) |
+| `token_prefix` | TEXT | | First 8 chars of raw token for display (v4) |
 | `status` | TEXT | | Current status (`online`, `offline`, `busy`) |
 | `gpu_info` | TEXT | | GPU description string |
 | `gpu_count` | INTEGER | | Number of GPUs on the agent |
@@ -104,10 +106,11 @@ Registered agent daemons for distributed execution.
 | `environment_type` | TEXT | | Environment type |
 | `fingerprint` | TEXT | | Hardware fingerprint |
 | `kitt_version` | TEXT | | KITT version running on the agent |
+| `hardware_details` | TEXT | | Detailed hardware JSON blob (v5) |
 | `last_heartbeat` | TEXT | | ISO-8601 timestamp of last heartbeat |
 | `registered_at` | TEXT | | ISO-8601 registration timestamp |
 | `notes` | TEXT | | Free-form notes |
-| `tags` | TEXT | | Comma-separated tags for filtering |
+| `tags` | TEXT | | JSON array of tags for filtering |
 
 ### web_campaigns
 
@@ -143,6 +146,7 @@ Single benchmark dispatches from the web UI.
 | `benchmark_name` | TEXT | | Benchmark to run |
 | `suite_name` | TEXT | | Suite name (if applicable) |
 | `status` | TEXT | | Current status |
+| `command_id` | TEXT | | Command ID for heartbeat dispatch (v6) |
 | `created_at` | TEXT | | Creation timestamp |
 | `started_at` | TEXT | | Execution start timestamp |
 | `completed_at` | TEXT | | Completion timestamp |
@@ -160,6 +164,37 @@ Append-only event log for auditing and real-time feeds.
 | `source_id` | TEXT | | ID of the entity that produced the event |
 | `data` | TEXT | | JSON payload with event-specific details |
 | `created_at` | TEXT | | ISO-8601 event timestamp |
+
+### web_settings
+
+Server-wide key-value settings (v3).
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `key` | TEXT | PRIMARY KEY | Setting key |
+| `value` | TEXT | | Setting value |
+
+### quick_test_logs
+
+Persistent log storage for quick test output (v7).
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | Row identifier |
+| `test_id` | TEXT | FOREIGN KEY -> quick_tests(id) | Parent quick test |
+| `line` | TEXT | | Log line content |
+| `created_at` | TEXT | | ISO-8601 timestamp |
+
+### agent_settings
+
+Per-agent configurable settings, synced to agents via heartbeat (v8).
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | Row identifier |
+| `agent_id` | TEXT | FOREIGN KEY -> agents(id) ON DELETE CASCADE | Parent agent |
+| `key` | TEXT | UNIQUE(agent_id, key) | Setting key |
+| `value` | TEXT | | Setting value |
 
 ## Indexes
 

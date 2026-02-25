@@ -10,10 +10,50 @@ execute it.
 ## How It Works
 
 The agent is a lightweight Flask application that listens for commands over
-HTTPS. When the server sends a `run_test` command, the agent starts a benchmark
-in a background thread and streams logs back via Server-Sent Events (SSE). A
-heartbeat thread runs alongside the daemon, reporting status and GPU utilization
-to the server at a configurable interval (default 30 seconds).
+HTTPS. When the server sends a `run_test` command, the agent resolves the
+model to local storage, starts a benchmark in a background thread, and streams
+logs back via Server-Sent Events (SSE). A heartbeat thread runs alongside the
+daemon, reporting status and GPU utilization to the server at a configurable
+interval (default 30 seconds). Settings configured on the server are synced
+to the agent via the heartbeat response.
+
+---
+
+## Model Workflow
+
+When a benchmark is dispatched, the agent resolves the model path through the
+`ModelStorageManager`:
+
+1. **Check local storage** — if the model is already under the configured
+   `model_storage_dir`, use it directly.
+2. **Mount NFS share** — if `model_share_mount` is configured, ensure it is
+   mounted (via fstab or explicit `sudo mount -t nfs`).
+3. **Copy from share** — copy the model from the share to local storage using
+   `shutil.copytree`.
+4. **Run benchmark** — execute `kitt run` with the local model path.
+5. **Cleanup** — if `auto_cleanup` is enabled, delete the local copy after the
+   benchmark completes.
+
+This ensures benchmarks always run against a local copy, avoiding NFS latency
+during inference.
+
+### NFS share configuration
+
+Set the share source and mount point via the web UI (**Agents > Detail >
+Settings**) or during initialization:
+
+```bash
+kitt-agent init --server https://server:8080 \
+    --model-dir /data/models \
+    --share-source nas:/volume1/models \
+    --share-mount /mnt/models
+```
+
+For passwordless mounts, add an entry to `/etc/fstab`:
+
+```
+nas:/volume1/models  /mnt/models  nfs  defaults,nofail  0  0
+```
 
 ---
 
@@ -25,26 +65,56 @@ Before starting the agent you must register it with a KITT server:
 kitt-agent init --server https://server:8080
 ```
 
-This command:
-
-1. Writes `~/.kitt/agent.yaml` with the server URL, token, and agent name.
-2. If the server uses HTTPS, generates an agent TLS certificate signed by the
-   server CA (requires `ca.pem` in `~/.kitt/certs/`).
-
-Optional flags:
+This command writes `~/.kitt/agent.yaml` with the server URL, token, agent
+name, and optional model storage paths.
 
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--token` | *(empty)* | Bearer token for server authentication |
 | `--name` | hostname | Friendly agent name |
 | `--port` | 8090 | Port the agent listens on |
+| `--model-dir` | `~/.kitt/models` | Local model storage directory |
+| `--share-source` | *(empty)* | NFS share source (e.g., `nas:/volume1/models`) |
+| `--share-mount` | *(empty)* | Local mount point for NFS share |
+
+---
+
+## Preflight Checks
+
+Run prerequisite checks before starting:
+
+```bash
+kitt-agent preflight --server https://server:8080 --port 8090
+```
+
+Checks performed:
+
+| Check | Required | How |
+|-------|----------|-----|
+| Python >= 3.10 | Yes | `sys.version_info` |
+| Docker available | Yes | `docker info` subprocess |
+| Docker GPU access | Yes | `docker run --gpus all nvidia/cuda:...` |
+| NVIDIA drivers | Yes | `nvidia-smi` subprocess |
+| NFS utilities | No | Check for `mount.nfs` in PATH |
+| Disk space (>= 50GB) | No | `shutil.disk_usage` on model dir |
+| Server reachable | Yes | HTTP GET to `/api/v1/health` |
+| Port available | No | `socket.bind` on agent port |
+
+Required checks that fail cause exit code 1.
+
+The install script runs preflight automatically. You can also use the
+`--preflight` flag on start:
+
+```bash
+kitt-agent start --preflight
+```
 
 ---
 
 ## Starting the Agent
 
 ```bash
-kitt agent start
+kitt-agent start
 ```
 
 On startup the agent:
@@ -53,21 +123,37 @@ On startup the agent:
 2. Detects hardware — GPU (with unified memory fallback for architectures like
    DGX Spark GB10), CPU, RAM, storage, CUDA version, driver version, environment
    type, and compute capability.
-3. Registers with the server via `POST /api/v1/agents/register`, sending a full
+3. Initializes `ModelStorageManager` from config.
+4. Registers with the server via `POST /api/v1/agents/register`, sending a full
    hardware fingerprint and detailed hardware info.
-4. Starts a `HeartbeatThread` that sends periodic status, GPU utilization, and
-   memory usage to the server.
-5. Launches the Flask app on the configured port with optional TLS.
+5. Starts a `HeartbeatThread` that sends periodic status, GPU utilization,
+   memory usage, and storage availability to the server.
+6. Launches the Flask app on the configured port with optional TLS.
 
-Use `--foreground` to keep the process in the foreground (useful for debugging).
 Use `--insecure` to skip TLS verification during development.
+
+---
+
+## Agent Settings
+
+Settings are stored on the server in the `agent_settings` table and synced to
+the agent via the heartbeat response. Edit them from the web UI on the agent
+detail page or via the REST API.
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `model_storage_dir` | `~/.kitt/models` | Local directory for model copies |
+| `model_share_source` | *(empty)* | NFS share source |
+| `model_share_mount` | *(empty)* | Local mount point for NFS share |
+| `auto_cleanup` | `true` | Delete local model copies after benchmarks |
+| `heartbeat_interval_s` | `30` | Seconds between heartbeats (10-300) |
 
 ---
 
 ## mTLS Communication
 
 When the server uses HTTPS, agent-server communication is secured with mutual
-TLS. During `kitt agent init` KITT generates a client certificate and stores the
+TLS. During `kitt-agent init` KITT generates a client certificate and stores the
 paths in `agent.yaml` under the `tls` key:
 
 ```yaml
@@ -125,22 +211,28 @@ sudo systemctl restart kitt-agent
 ## Heartbeat and Command Dispatch
 
 The `HeartbeatThread` sends a JSON payload to
-`/api/v1/agents/<agent_id>/heartbeat` every 30 seconds (configurable by the
-server response at registration). The payload includes:
+`/api/v1/agents/<agent_id>/heartbeat` at the configured interval. The payload
+includes:
 
 - Agent status (`idle`, `running`, `error`)
 - Current task identifier
 - GPU utilization percentage (via pynvml)
 - GPU memory used in GB
+- Storage free space in GB
 - Agent uptime
 
-The heartbeat response may include a `commands` list containing pending
-jobs (e.g. quick tests queued from the web UI). The agent processes each
-command automatically — for `run_test` commands it starts the benchmark
-executor and streams log lines back to the server via
-`POST /api/v1/quicktest/<test_id>/logs`. Status transitions are reported
-via `POST /api/v1/quicktest/<test_id>/status` so the web UI can display
-real-time progress through SSE.
+During active benchmarks, the heartbeat interval is automatically increased to
+at least 60 seconds to reduce overhead.
+
+The heartbeat response includes:
+
+- `commands` — pending jobs (e.g., quick tests queued from the web UI)
+- `settings` — current agent settings for sync
+
+The agent processes each command automatically — for `run_test` commands it
+resolves the model, starts the benchmark, and streams log lines back to the
+server via `POST /api/v1/quicktest/<test_id>/logs`. Status transitions are
+reported via `POST /api/v1/quicktest/<test_id>/status`.
 
 ---
 
@@ -155,7 +247,7 @@ authorized client can subscribe to this stream for real-time log output.
 ## Checking Status
 
 ```bash
-kitt agent status
+kitt-agent status
 ```
 
 This reads `~/.kitt/agent.yaml` and probes the local agent at
@@ -182,15 +274,14 @@ kitt-agent test stop <test_id>
 
 The `stop` command marks the test as failed on the server with an
 "Cancelled by user" error and sends a cancel signal to the local daemon
-to kill the running process. If the test is already completed or failed,
-the command prints a message and exits without changes.
+to kill the running process.
 
 ---
 
 ## Stopping the Agent
 
 ```bash
-kitt agent stop
+kitt-agent stop
 ```
 
 Sends `SIGTERM` to the agent process using the PID stored in

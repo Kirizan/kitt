@@ -102,10 +102,22 @@ The server sends JSON commands to the agent's `/api/commands` endpoint:
 | Command | Payload | Action |
 |---------|---------|--------|
 | `run_container` | image, port, volumes, env, health_url | Pull image, start container, stream logs |
+| `run_test` | model_path, engine_name, suite_name, benchmark_name | Resolve model, run `kitt run`, stream logs |
 | `stop_container` | command_id | Stop a running container |
 | `check_docker` | _(none)_ | Verify Docker is available |
+| `cleanup_storage` | model_path (optional) | Delete specific or all cached models |
 
 The agent reports results back to the server at `/api/v1/agents/{name}/results`.
+
+### Model storage workflow
+
+When executing `run_test`, the agent uses `ModelStorageManager` to resolve the model:
+
+1. Check if already in local `model_storage_dir`
+2. Mount NFS share if configured (`model_share_source` → `model_share_mount`)
+3. Copy model from share to local storage
+4. Run benchmark with local path
+5. Clean up local copy if `auto_cleanup` is enabled
 
 ### Standalone agent package
 
@@ -115,13 +127,15 @@ The agent package lives in `agent-package/` at the repository root:
 agent-package/
 ├── pyproject.toml          # Standalone package (kitt-agent)
 └── src/kitt_agent/
-    ├── cli.py              # Click CLI: init, start, status, update, stop, test, service
+    ├── cli.py              # Click CLI: init, start, status, update, stop, test, service, preflight
     ├── config.py           # Pydantic config models
     ├── daemon.py           # Flask mini-app receiving commands
     ├── docker_ops.py       # Docker container management
     ├── hardware.py         # Hardware detection with unified memory support
-    ├── heartbeat.py        # Heartbeat thread
+    ├── heartbeat.py        # Heartbeat thread with settings sync
     ├── log_streamer.py     # SSE log streaming
+    ├── model_storage.py    # NFS mount, local copy, cleanup
+    ├── preflight.py        # Prerequisite checks (Docker, GPU, disk, etc.)
     └── registration.py     # Server registration
 ```
 
@@ -140,7 +154,6 @@ src/kitt/
 ├── git_ops/       # KARR legacy Git-backed storage
 ├── monitoring/    # Monitoring stack config, generator, deployer
 ├── stack/         # Composable Docker stack config + generator
-├── agent/         # Agent daemon, heartbeat, executor, log streamer
 ├── security/      # TLS cert generation and config
 ├── web/           # Flask dashboard + REST API + blueprints + Devon iframe
 └── utils/         # Compression, validation, versioning

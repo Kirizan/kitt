@@ -2,6 +2,25 @@
 
 All notable changes to KITT are documented on this page.
 
+## 1.2.0
+
+- Agent model workflow: copy models from NFS share to local storage, benchmark, cleanup
+- Per-agent settings configurable from the web UI (model storage, share mount, cleanup, heartbeat interval)
+- Agent settings synced to agents via heartbeat response
+- NFS share mounting support with fstab and explicit mount fallback
+- Preflight prerequisite checks (`kitt-agent preflight`) — Docker, GPU, drivers, NFS, disk space, connectivity
+- Install script runs preflight before completing installation
+- Heartbeat throttling during benchmarks (auto-increases interval to 60s minimum)
+- `cleanup_storage` command for remote model cleanup via heartbeat dispatch
+- Storage usage reporting in heartbeat payload
+- Removed full agent (`src/kitt/agent/`) — thin agent (`agent-package/`) is now the only agent
+- `kitt agent` CLI commands now proxy to `kitt-agent` binary
+- Agent settings REST API endpoints (`GET`/`PUT /api/v1/agents/<id>/settings`)
+- Storage cleanup REST API (`POST /api/v1/agents/<id>/cleanup`)
+- DB migration v8: `agent_settings` key-value table per agent
+- Daemon refactored — consolidated duplicated run methods into shared helpers
+- Version policy: every PR must increment version going forward
+
 ## 1.1.0
 
 - Added composable Docker deployment stacks (`kitt stack`)

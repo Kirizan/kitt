@@ -16,7 +16,7 @@ End-to-end testing suite for LLM inference engines. Measures quality consistency
 - **Devon integration** — embedded [Devon](https://github.com/kirizan/devon) web UI via server-side reverse proxy, with automatic fallback to local Devon
 - **Web dashboard & REST API** — browse results, manage agents, and configure settings with TLS and per-agent token auth
 - **Local model browser** — scan and display models from a local directory
-- **Remote agents** — deploy thin agents to GPU servers via `curl | bash`; agents receive Docker commands from the server
+- **Remote agents** — deploy thin agents to GPU servers via `curl | bash`; agents copy models from NFS shares, run benchmarks locally, and clean up. Per-agent settings are configurable from the web UI and synced via heartbeat
 - **Monitoring** — Prometheus + Grafana + InfluxDB stack generation
 - **Custom benchmarks** — define evaluations with YAML configuration files
 
