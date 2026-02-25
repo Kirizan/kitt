@@ -385,6 +385,7 @@ def start(config_path, insecure, run_preflight):
         port=port,
         insecure=insecure,
         model_storage=model_storage,
+        agent_id=agent_id,
     )
 
     # Callback for syncing settings from heartbeat response

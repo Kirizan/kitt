@@ -65,6 +65,7 @@ def create_agent_app(
     port: int = 8090,
     insecure: bool = False,
     model_storage: Any = None,
+    agent_id: str = "",
 ) -> Flask:
     """Create the thin agent Flask app.
 
@@ -88,6 +89,9 @@ def create_agent_app(
         "registry.internal.kirby.network/kirizan/infrastructure/kitt:latest"
     )
     _kitt_image_ref: list[str] = [_DEFAULT_KITT_IMAGE]
+
+    # Agent identifier for server API calls (agent_id is the DB primary key)
+    _agent_report_id = agent_id or name
 
     # ---------------------------------------------------------------
     # Shared callback factories and execution helpers
@@ -161,7 +165,7 @@ def create_agent_app(
                     _report(
                         server_url,
                         token,
-                        name,
+                        _agent_report_id,
                         command_id,
                         {
                             "status": "failed",
@@ -179,7 +183,7 @@ def create_agent_app(
             _report(
                 server_url,
                 token,
-                name,
+                _agent_report_id,
                 command_id,
                 {"status": "completed", "container_id": container_id},
                 insecure,
@@ -190,7 +194,7 @@ def create_agent_app(
             _report(
                 server_url,
                 token,
-                name,
+                _agent_report_id,
                 command_id,
                 {"status": "failed", "error": str(e)},
                 insecure,
@@ -319,7 +323,7 @@ def create_agent_app(
                 _report(
                     server_url,
                     token,
-                    name,
+                    _agent_report_id,
                     command_id,
                     {"status": "failed", "error": msg},
                     insecure,
@@ -359,7 +363,7 @@ def create_agent_app(
             _report(
                 server_url,
                 token,
-                name,
+                _agent_report_id,
                 command_id,
                 {"status": final_status, "error": error_msg},
                 insecure,
@@ -371,7 +375,7 @@ def create_agent_app(
             _report(
                 server_url,
                 token,
-                name,
+                _agent_report_id,
                 command_id,
                 {"status": "failed", "error": str(e)},
                 insecure,
