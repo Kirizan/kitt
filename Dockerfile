@@ -9,11 +9,13 @@ WORKDIR /app
 
 # Install poetry and project dependencies
 COPY pyproject.toml poetry.lock ./
-RUN pip install poetry && poetry install --no-root --without dev --extras web --extras devon
+RUN pip install poetry && poetry install --no-root --without dev --extras web --extras devon \
+    && poetry run pip install build
 
 COPY README.md ./
 COPY src/ ./src/
 COPY configs/ ./configs/
+COPY agent-package/ ./agent-package/
 RUN poetry install --only-root --extras web --extras devon
 
 ENTRYPOINT ["poetry", "run", "kitt"]
