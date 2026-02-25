@@ -19,16 +19,16 @@ logger = logging.getLogger(__name__)
 class CampaignService:
     """Manages web campaigns stored in the database."""
 
-    def __init__(self, db_conn: sqlite3.Connection) -> None:
+    def __init__(
+        self, db_conn: sqlite3.Connection, write_lock: threading.Lock | None = None
+    ) -> None:
         self._conn = db_conn
-        self._write_lock: threading.Lock = getattr(
-            db_conn, "_write_lock", threading.Lock()
-        )
+        self._write_lock: threading.Lock = write_lock or threading.Lock()
 
     def _commit(self) -> None:
         """Thread-safe commit."""
         with self._write_lock:
-            self._commit()
+            self._conn.commit()
 
     def create(
         self,

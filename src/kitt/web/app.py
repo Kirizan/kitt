@@ -120,7 +120,7 @@ def create_app(
     db_conn.row_factory = sqlite3.Row
     db_conn.execute("PRAGMA journal_mode=WAL")
     db_conn.execute("PRAGMA foreign_keys=ON")
-    db_conn._write_lock = threading.Lock()  # type: ignore[attr-defined]
+    db_write_lock = threading.Lock()
 
     # Ensure v2 schema is applied
     from kitt.storage.migrations import (
@@ -144,7 +144,7 @@ def create_app(
     devon_api_key = os.environ.get("DEVON_API_KEY")
     default_model_dir = str(Path.home() / ".kitt" / "models")
 
-    settings_service = SettingsService(db_conn)
+    settings_service = SettingsService(db_conn, db_write_lock)
 
     # Resolve effective values: DB (non-empty) > env var > fallback
     devon_url = settings_service.get_effective("devon_url", "DEVON_URL", "")
@@ -160,8 +160,8 @@ def create_app(
     global _services
     _services = {
         "result_service": ResultService(store),
-        "agent_manager": AgentManager(db_conn),
-        "campaign_service": CampaignService(db_conn),
+        "agent_manager": AgentManager(db_conn, db_write_lock),
+        "campaign_service": CampaignService(db_conn, db_write_lock),
         "model_service": ModelService(devon_url=devon_url, devon_api_key=devon_api_key),
         "settings_service": settings_service,
         "local_model_service": LocalModelService(model_dir),

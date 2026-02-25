@@ -27,17 +27,16 @@ HEARTBEAT_TIMEOUT_S = 90
 class AgentManager:
     """Manages agent lifecycle and command dispatch."""
 
-    def __init__(self, db_conn: sqlite3.Connection) -> None:
+    def __init__(
+        self, db_conn: sqlite3.Connection, write_lock: threading.Lock | None = None
+    ) -> None:
         self._conn = db_conn
-        # Use the write lock attached in app.py, or create a local one
-        self._write_lock: threading.Lock = getattr(
-            db_conn, "_write_lock", threading.Lock()
-        )
+        self._write_lock: threading.Lock = write_lock or threading.Lock()
 
     def _commit(self) -> None:
         """Thread-safe commit — serializes write flushes."""
         with self._write_lock:
-            self._commit()
+            self._conn.commit()
 
     @staticmethod
     def _hash_token(token: str) -> str:
