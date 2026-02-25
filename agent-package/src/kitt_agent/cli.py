@@ -1,6 +1,7 @@
 """CLI for the KITT thin agent."""
 
 import logging
+import logging.handlers
 import os
 import pwd
 import signal
@@ -15,15 +16,41 @@ import yaml
 
 logger = logging.getLogger(__name__)
 
+# Log rotation: 5 MB per file, keep 3 backups (~20 MB max)
+_LOG_MAX_BYTES = 5 * 1024 * 1024
+_LOG_BACKUP_COUNT = 3
+
+
+def _setup_logging() -> None:
+    """Configure logging with console and rotating file handlers."""
+    log_format = "%(asctime)s [%(name)s] %(levelname)s: %(message)s"
+    root_logger = logging.getLogger()
+    root_logger.setLevel(logging.INFO)
+
+    # Console handler (captured by systemd/journalctl)
+    console = logging.StreamHandler()
+    console.setFormatter(logging.Formatter(log_format))
+    root_logger.addHandler(console)
+
+    # Rotating file handler
+    log_dir = Path.home() / ".kitt" / "logs"
+    log_dir.mkdir(parents=True, exist_ok=True)
+    log_file = log_dir / "agent.log"
+
+    file_handler = logging.handlers.RotatingFileHandler(
+        log_file,
+        maxBytes=_LOG_MAX_BYTES,
+        backupCount=_LOG_BACKUP_COUNT,
+    )
+    file_handler.setFormatter(logging.Formatter(log_format))
+    root_logger.addHandler(file_handler)
+
 
 @click.group()
 @click.version_option()
 def cli():
     """KITT thin agent — Docker orchestration daemon."""
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
-    )
+    _setup_logging()
 
 
 @cli.command()

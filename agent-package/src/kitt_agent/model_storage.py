@@ -1,8 +1,10 @@
 """Model storage manager — copy models from NFS share to local storage."""
 
+from __future__ import annotations
+
 import logging
-import os
 import shutil
+import subprocess
 from collections.abc import Callable
 from pathlib import Path
 
@@ -52,22 +54,38 @@ class ModelStorageManager:
             True if the share is mounted and accessible, False otherwise.
         """
         if not self.share_mount:
+            logger.warning("No share_mount configured — cannot mount NFS share")
             return False
 
         # Check if already mounted
         if self.share_mount.is_mount():
+            logger.debug("Share already mounted at %s", self.share_mount)
             return True
 
         # Check if path has content (might be a bind mount or symlink)
         if self.share_mount.exists() and any(self.share_mount.iterdir()):
+            logger.debug("Share path %s has content (bind/symlink)", self.share_mount)
             return True
 
         # Create mount point if needed
-        self.share_mount.mkdir(parents=True, exist_ok=True)
+        try:
+            self.share_mount.mkdir(parents=True, exist_ok=True)
+        except PermissionError:
+            logger.warning(
+                "Cannot create mount point %s — trying with sudo", self.share_mount
+            )
+            try:
+                subprocess.run(
+                    ["sudo", "mkdir", "-p", str(self.share_mount)],
+                    capture_output=True,
+                    timeout=10,
+                    check=True,
+                )
+            except Exception as e:
+                logger.error("Failed to create mount point %s: %s", self.share_mount, e)
+                return False
 
         # Attempt mount (works if fstab is configured)
-        import subprocess
-
         try:
             result = subprocess.run(
                 ["mount", str(self.share_mount)],
@@ -78,6 +96,7 @@ class ModelStorageManager:
             if result.returncode == 0:
                 logger.info("Mounted share at %s via fstab", self.share_mount)
                 return True
+            logger.debug("fstab mount failed (rc=%d): %s", result.returncode, result.stderr.strip())
         except Exception as e:
             logger.debug("fstab mount failed: %s", e)
 
@@ -99,13 +118,50 @@ class ModelStorageManager:
                         self.share_source, self.share_mount,
                     )
                     return True
-                logger.warning(
-                    "NFS mount failed: %s", result.stderr.strip()
+                logger.error(
+                    "NFS mount failed (rc=%d): %s",
+                    result.returncode, result.stderr.strip(),
                 )
             except Exception as e:
-                logger.warning("NFS mount failed: %s", e)
+                logger.error("NFS mount failed: %s", e)
+        else:
+            logger.warning(
+                "Share not mounted at %s and no share_source configured for NFS mount",
+                self.share_mount,
+            )
 
         return False
+
+    def _find_on_share(self, model_path: str) -> Path | None:
+        """Search the share for a model using progressively broader matches.
+
+        Tries (in order):
+        1. Relative path from the model_path (strip leading /data/models or similar)
+        2. Last two path components (e.g., Qwen/Qwen3.5-27B)
+        3. Recursive glob for the final directory name
+        """
+        if not self.share_mount or not self.share_mount.exists():
+            return None
+
+        parts = Path(model_path).parts
+
+        # Strategy 1: Try stripping common prefixes to get the relative path
+        # e.g., /data/models/huggingface/Qwen/Qwen3.5-27B → huggingface/Qwen/Qwen3.5-27B
+        for i in range(len(parts)):
+            candidate = self.share_mount / Path(*parts[i:])
+            if candidate.exists():
+                logger.debug("Found model on share at %s (from part %d)", candidate, i)
+                return candidate
+
+        # Strategy 2: Recursive glob for the final directory name
+        model_name = parts[-1] if parts else ""
+        if model_name:
+            matches = list(self.share_mount.glob(f"**/{model_name}"))
+            if matches:
+                logger.debug("Found model on share via glob: %s", matches[0])
+                return matches[0]
+
+        return None
 
     def resolve_model(
         self,
@@ -115,7 +171,7 @@ class ModelStorageManager:
         """Ensure model is available in local storage. Returns local path.
 
         1. If model_path is already under storage_dir, return as-is.
-        2. If model exists in the share at share_mount/model_name, copy to storage_dir.
+        2. If model exists on the NFS share, copy to storage_dir.
         3. If model_path is directly accessible, return as-is.
 
         Args:
@@ -143,25 +199,30 @@ class ModelStorageManager:
             _log(f"Model at local path: {model_path}")
             return model_path
 
-        # Try to mount share and copy from it
+        # Try to mount share and find the model on it
         if self.share_mount:
-            self.ensure_share_mounted()
-            share_model = self.share_mount / model_name
-            if share_model.exists():
-                _log(f"Copying model from share: {share_model} -> {local_path}")
-                try:
-                    if share_model.is_dir():
-                        shutil.copytree(
-                            share_model,
-                            local_path,
-                            dirs_exist_ok=True,
-                        )
-                    else:
-                        shutil.copy2(share_model, local_path)
-                    _log(f"Model copied to local storage: {local_path}")
-                    return str(local_path)
-                except Exception as e:
-                    _log(f"Failed to copy model from share: {e}")
+            mounted = self.ensure_share_mounted()
+            if mounted:
+                share_model = self._find_on_share(model_path)
+                if share_model:
+                    _log(f"Copying model from share: {share_model} -> {local_path}")
+                    try:
+                        if share_model.is_dir():
+                            shutil.copytree(
+                                share_model,
+                                local_path,
+                                dirs_exist_ok=True,
+                            )
+                        else:
+                            shutil.copy2(share_model, local_path)
+                        _log(f"Model copied to local storage: {local_path}")
+                        return str(local_path)
+                    except Exception as e:
+                        _log(f"Failed to copy model from share: {e}")
+                else:
+                    _log(f"Model not found on share for path: {model_path}")
+            else:
+                _log("Share mount failed — cannot look up model on share")
 
         # Fall through: model_path is directly accessible (e.g., absolute path)
         if Path(model_path).exists():
