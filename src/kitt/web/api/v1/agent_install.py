@@ -17,6 +17,10 @@ bp = Blueprint("api_agent_install", __name__, url_prefix="/api/v1/agent")
 _sdist_cache: dict[str, Path | None] = {"path": None}
 _build_lock = threading.Lock()
 
+# Cache the build context tarball similarly.
+_context_cache: dict[str, Path | None] = {"path": None}
+_context_lock = threading.Lock()
+
 AGENT_PACKAGE_DIR = (
     Path(__file__).parent.parent.parent.parent.parent.parent / "agent-package"
 )
@@ -52,6 +56,17 @@ curl -fL "$KITT_SERVER/api/v1/agent/package" \\
 echo "==> Installing agent package"
 "$VENV_DIR/bin/pip" install "$TMPFILE" -q
 rm -f "$TMPFILE"
+
+# Build KITT Docker image (native architecture)
+echo "==> Building KITT Docker image"
+if command -v docker &>/dev/null; then
+    "$VENV_DIR/bin/kitt-agent" build --server "$KITT_SERVER" || {
+        echo "WARNING: Docker image build failed."
+        echo "         You can retry later with: kitt-agent build"
+    }
+else
+    echo "WARNING: Docker not available — skipping image build."
+fi
 
 # Run prerequisite checks
 echo "==> Running prerequisite checks"
@@ -160,6 +175,108 @@ def package_sha256():
 
     sha256 = hashlib.sha256(sdist_path.read_bytes()).hexdigest()
     return jsonify({"sha256": sha256, "filename": sdist_path.name})
+
+
+@bp.route("/build-context")
+def build_context():
+    """Serve the Docker build context as a tarball."""
+    ctx_path = _get_or_build_context()
+    if ctx_path is None:
+        return jsonify({"error": "Failed to build Docker context"}), 500
+
+    return send_file(
+        ctx_path,
+        mimetype="application/gzip",
+        as_attachment=True,
+        download_name=ctx_path.name,
+    )
+
+
+@bp.route("/build-context/sha256")
+def build_context_sha256():
+    """Return the SHA-256 digest of the Docker build context tarball."""
+    import hashlib
+
+    ctx_path = _get_or_build_context()
+    if ctx_path is None:
+        return jsonify({"error": "Failed to build Docker context"}), 500
+
+    sha256 = hashlib.sha256(ctx_path.read_bytes()).hexdigest()
+    return jsonify({"sha256": sha256, "filename": ctx_path.name})
+
+
+def _get_or_build_context() -> Path | None:
+    """Build the Docker build context tarball if not already cached."""
+    import tarfile
+
+    with _context_lock:
+        if _context_cache["path"] and _context_cache["path"].exists():
+            return _context_cache["path"]
+
+        project_root = AGENT_PACKAGE_DIR.parent
+        if not project_root.exists():
+            logger.error(f"Project root not found: {project_root}")
+            return None
+
+        # Directories/files to include in the build context
+        include_paths = [
+            "docker/web/Dockerfile",
+            "pyproject.toml",
+            "poetry.lock",
+            "README.md",
+            "src",
+            "configs",
+            "agent-package",
+        ]
+
+        # Patterns to exclude
+        exclude_patterns = {
+            "__pycache__",
+            ".git",
+            ".venv",
+            "tests",
+            "docs",
+            "dist",
+        }
+        exclude_suffixes = {".pyc", ".egg-info"}
+
+        def _should_exclude(path: Path) -> bool:
+            for part in path.parts:
+                if part in exclude_patterns:
+                    return True
+                if any(part.endswith(s) for s in exclude_suffixes):
+                    return True
+            return False
+
+        try:
+            dest_dir = Path.home() / ".kitt" / "agent-dist"
+            dest_dir.mkdir(parents=True, exist_ok=True)
+            dest = dest_dir / "kitt-build-context.tar.gz"
+
+            with tarfile.open(dest, "w:gz") as tar:
+                for rel in include_paths:
+                    src = project_root / rel
+                    if not src.exists():
+                        continue
+                    if src.is_file():
+                        tar.add(str(src), arcname=f"kitt-build-context/{rel}")
+                    else:
+                        for child in src.rglob("*"):
+                            child_rel = child.relative_to(project_root)
+                            if _should_exclude(child_rel):
+                                continue
+                            tar.add(
+                                str(child),
+                                arcname=f"kitt-build-context/{child_rel}",
+                            )
+
+            _context_cache["path"] = dest
+            logger.info(f"Build context created: {dest}")
+            return dest
+
+        except Exception as e:
+            logger.error(f"Failed to build Docker context: {e}")
+            return None
 
 
 def _get_or_build_package() -> Path | None:

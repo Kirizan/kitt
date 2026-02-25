@@ -54,6 +54,145 @@ def cli():
 
 
 @cli.command()
+@click.option("--server", default="", help="KITT server URL (reads from agent.yaml if not set)")
+@click.option("--tag", default="", help="Image tag override")
+@click.option("--no-cache", "no_cache", is_flag=True, help="Build without Docker cache")
+def build(server, tag, no_cache):
+    """Build the KITT Docker image locally for this architecture."""
+    import hashlib
+    import json
+    import tarfile
+    import urllib.request
+
+    # Resolve server URL from config if not provided
+    config_file = Path.home() / ".kitt" / "agent.yaml"
+    server_url = server
+    default_image = "kitt:latest"
+    if not server_url and config_file.exists():
+        with open(config_file) as f:
+            cfg = yaml.safe_load(f) or {}
+        server_url = cfg.get("server_url", "")
+        default_image = cfg.get("kitt_image", "") or default_image
+
+    if not server_url:
+        click.echo("No server URL. Provide --server or run 'kitt-agent init' first.")
+        raise SystemExit(1)
+
+    image_tag = tag or default_image
+    base_api = f"{server_url.rstrip('/')}/api/v1/agent"
+
+    # Download build context
+    click.echo(f"Downloading build context from {server_url}...")
+    with tempfile.NamedTemporaryFile(
+        suffix=".tar.gz", prefix="kitt-build-ctx-", delete=False
+    ) as tmp:
+        tmp_path = Path(tmp.name)
+
+    try:
+        urllib.request.urlretrieve(f"{base_api}/build-context", str(tmp_path))
+    except Exception as e:
+        tmp_path.unlink(missing_ok=True)
+        click.echo(f"Failed to download build context: {e}")
+        raise SystemExit(1) from None
+
+    # Verify SHA-256
+    try:
+        with urllib.request.urlopen(
+            f"{base_api}/build-context/sha256", timeout=10
+        ) as resp:
+            digest_info = json.loads(resp.read())
+        expected_sha = digest_info.get("sha256", "")
+        actual_sha = hashlib.sha256(tmp_path.read_bytes()).hexdigest()
+        if expected_sha and actual_sha != expected_sha:
+            tmp_path.unlink(missing_ok=True)
+            click.echo(
+                f"Integrity check failed: expected {expected_sha[:16]}... "
+                f"got {actual_sha[:16]}..."
+            )
+            raise SystemExit(1)
+        click.echo("Build context integrity verified (SHA-256).")
+    except SystemExit:
+        raise
+    except Exception as e:
+        click.echo(f"Warning: could not verify build context integrity: {e}")
+
+    # Extract to temp directory
+    extract_dir = Path(tempfile.mkdtemp(prefix="kitt-build-"))
+    try:
+        with tarfile.open(str(tmp_path), "r:gz") as tar:
+            tar.extractall(str(extract_dir))
+    except Exception as e:
+        tmp_path.unlink(missing_ok=True)
+        click.echo(f"Failed to extract build context: {e}")
+        raise SystemExit(1) from None
+    finally:
+        tmp_path.unlink(missing_ok=True)
+
+    # Find the extracted context directory
+    context_dir = extract_dir / "kitt-build-context"
+    if not context_dir.exists():
+        # Fall back to extract_dir itself if tarball root differs
+        context_dir = extract_dir
+
+    dockerfile = context_dir / "docker" / "web" / "Dockerfile"
+    if not dockerfile.exists():
+        click.echo(f"Dockerfile not found at {dockerfile}")
+        raise SystemExit(1)
+
+    # Run docker build
+    click.echo(f"Building Docker image: {image_tag}")
+    build_args = [
+        "docker", "build",
+        "-f", str(dockerfile),
+        "-t", image_tag,
+    ]
+    if no_cache:
+        build_args.append("--no-cache")
+    build_args.append(str(context_dir))
+
+    try:
+        result = subprocess.run(build_args, timeout=1800)
+        if result.returncode != 0:
+            click.echo("Docker build failed.")
+            raise SystemExit(1)
+    except subprocess.TimeoutExpired:
+        click.echo("Docker build timed out.")
+        raise SystemExit(1)
+    except FileNotFoundError:
+        click.echo("Docker not found. Install Docker to build images.")
+        raise SystemExit(1)
+    finally:
+        import shutil as _shutil
+        _shutil.rmtree(str(extract_dir), ignore_errors=True)
+
+    # Also tag as kitt:latest if the primary tag differs
+    if image_tag != "kitt:latest":
+        subprocess.run(
+            ["docker", "tag", image_tag, "kitt:latest"],
+            capture_output=True,
+            timeout=10,
+        )
+
+    # Report architecture
+    try:
+        inspect_result = subprocess.run(
+            ["docker", "image", "inspect", "--format", "{{.Architecture}}", image_tag],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        arch = inspect_result.stdout.strip() or "unknown"
+    except Exception:
+        arch = "unknown"
+
+    click.echo(f"KITT Docker image built successfully.")
+    click.echo(f"  Tag: {image_tag}")
+    click.echo(f"  Architecture: {arch}")
+    if image_tag != "kitt:latest":
+        click.echo(f"  Also tagged: kitt:latest")
+
+
+@cli.command()
 @click.option(
     "--server", required=True, help="KITT server URL (e.g., https://server:8080)"
 )

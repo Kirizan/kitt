@@ -54,6 +54,19 @@ class DockerOps:
             return False
 
     @staticmethod
+    def image_exists(image: str) -> bool:
+        """Check if a Docker image exists locally."""
+        try:
+            result = subprocess.run(
+                ["docker", "image", "inspect", image],
+                capture_output=True,
+                timeout=10,
+            )
+            return result.returncode == 0
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            return False
+
+    @staticmethod
     def pull_image(image: str) -> bool:
         """Pull a Docker image."""
         logger.info(f"Pulling image: {image}")

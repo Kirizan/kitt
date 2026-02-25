@@ -217,6 +217,53 @@ def check_server_reachable(server_url: str) -> CheckResult:
         )
 
 
+def check_kitt_image(image: str = "kitt:latest") -> CheckResult:
+    """Check if the KITT Docker image is available locally."""
+    try:
+        result = subprocess.run(
+            ["docker", "image", "inspect", image],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        if result.returncode != 0:
+            return CheckResult(
+                name="KITT Docker image",
+                passed=False,
+                required=False,
+                message=f"Image '{image}' not found — run 'kitt-agent build'",
+            )
+
+        # Extract architecture from inspect JSON
+        import json
+
+        inspect_data = json.loads(result.stdout)
+        arch = "unknown"
+        if inspect_data and isinstance(inspect_data, list):
+            arch = inspect_data[0].get("Architecture", "unknown")
+
+        return CheckResult(
+            name="KITT Docker image",
+            passed=True,
+            required=False,
+            message=f"{image} ({arch})",
+        )
+    except FileNotFoundError:
+        return CheckResult(
+            name="KITT Docker image",
+            passed=False,
+            required=False,
+            message="docker not found",
+        )
+    except Exception as e:
+        return CheckResult(
+            name="KITT Docker image",
+            passed=False,
+            required=False,
+            message=str(e)[:80],
+        )
+
+
 def check_port_available(port: int) -> CheckResult:
     """Check if the agent port is available."""
     try:
@@ -247,6 +294,7 @@ def run_all_checks(
         check_python_version(),
         check_docker_available(),
         check_docker_gpu(),
+        check_kitt_image(),
         check_nvidia_drivers(),
         check_nfs_utilities(),
         check_disk_space(model_storage_dir),

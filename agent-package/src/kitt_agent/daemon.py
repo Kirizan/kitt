@@ -211,29 +211,21 @@ def create_agent_app(
         if model_storage:
             local_model_path = model_storage.resolve_model(model_path, on_log=on_log)
 
-        # Decide execution method: local kitt CLI or Docker container.
-        # Local is preferred (faster, works on all architectures).
-        # Docker is the fallback for hosts without kitt installed.
+        # Decide execution method: Docker container (preferred) or local CLI (fallback).
         import shutil
         import sys
         from pathlib import Path
 
-        # Check venv bin first (systemd PATH may not include it)
-        venv_kitt = Path(sys.prefix) / "bin" / "kitt"
-        kitt_bin = (
-            str(venv_kitt) if venv_kitt.exists()
-            else shutil.which("kitt")
-        )
         kitt_image = _kitt_image_ref[0]
-        use_local = kitt_bin is not None
+        use_docker = DockerOps.image_exists(kitt_image)
+        if not use_docker and kitt_image != "kitt:latest":
+            # Try the local fallback tag
+            if DockerOps.image_exists("kitt:latest"):
+                kitt_image = "kitt:latest"
+                use_docker = True
 
-        if use_local:
-            args = [
-                kitt_bin, "run",
-                "-m", local_model_path, "-e", engine, "-s", suite,
-            ]
-            on_log(f"Running KITT benchmark locally ({kitt_bin})")
-        else:
+        if use_docker:
+            # Docker container is the preferred execution method.
             # Mount: model at same host path (so engine sibling containers see it),
             # Docker socket (so KITT can launch engine containers).
             args = [
@@ -247,6 +239,32 @@ def create_agent_app(
                 "run", "-m", local_model_path, "-e", engine, "-s", suite,
             ]
             on_log(f"Running KITT benchmark in container ({kitt_image})")
+        else:
+            # Fallback: local kitt CLI
+            venv_kitt = Path(sys.prefix) / "bin" / "kitt"
+            kitt_bin = (
+                str(venv_kitt) if venv_kitt.exists()
+                else shutil.which("kitt")
+            )
+            if kitt_bin:
+                args = [
+                    kitt_bin, "run",
+                    "-m", local_model_path, "-e", engine, "-s", suite,
+                ]
+                on_log(f"Running KITT benchmark locally ({kitt_bin})")
+            else:
+                msg = (
+                    "No KITT Docker image or local CLI found. "
+                    "Run 'kitt-agent build' to build the Docker image."
+                )
+                on_log(f"Error: {msg}")
+                update_status("failed", error=msg)
+                _report(
+                    server_url, token, name, command_id,
+                    {"status": "failed", "error": msg},
+                    insecure,
+                )
+                return
 
         try:
             proc = sp.Popen(
@@ -256,7 +274,7 @@ def create_agent_app(
                 text=True,
                 bufsize=1,
             )
-            tracking_id = str(proc.pid) if use_local else f"kitt-run-{command_id[:8]}"
+            tracking_id = f"kitt-run-{command_id[:8]}" if use_docker else str(proc.pid)
             with _lock:
                 active_containers[command_id] = tracking_id
             for line in proc.stdout or []:
