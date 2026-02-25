@@ -261,13 +261,17 @@ def update(config_path, restart):
 
     # Download the package
     package_url = f"{server_url.rstrip('/')}/api/v1/agent/package"
-    tmp_path = Path(tempfile.mktemp(suffix=".tar.gz", prefix="kitt-agent-"))
+    with tempfile.NamedTemporaryFile(
+        suffix=".tar.gz", prefix="kitt-agent-", delete=False
+    ) as tmp:
+        tmp_path = Path(tmp.name)
 
     try:
         urllib.request.urlretrieve(package_url, str(tmp_path))
     except Exception as e:
+        tmp_path.unlink(missing_ok=True)
         console.print(f"[red]Failed to download package:[/red] {e}")
-        raise SystemExit(1)
+        raise SystemExit(1) from None
 
     # Install using the current venv's pip
     import subprocess

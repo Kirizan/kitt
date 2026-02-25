@@ -1,5 +1,6 @@
 """Agents blueprint — agent management pages."""
 
+import contextlib
 import json
 
 from flask import Blueprint, flash, redirect, render_template, request, url_for
@@ -34,10 +35,8 @@ def detail(agent_id):
     hw_details = {}
     raw_details = agent.get("hardware_details", "")
     if raw_details:
-        try:
+        with contextlib.suppress(json.JSONDecodeError, TypeError):
             hw_details = json.loads(raw_details)
-        except (json.JSONDecodeError, TypeError):
-            pass
 
     return render_template("agents/detail.html", agent=agent, hw=hw_details)
 
