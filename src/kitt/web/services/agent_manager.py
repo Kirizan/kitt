@@ -191,11 +191,16 @@ class AgentManager:
 
         for row in rows:
             test_id = row["id"]
+            # Determine command type: cleanup rows use engine_name='cleanup'
+            if row["engine_name"] == "cleanup":
+                cmd_type = "cleanup_storage"
+            else:
+                cmd_type = "run_test"
             commands.append(
                 {
                     "command_id": row["command_id"],
                     "test_id": test_id,
-                    "type": "run_test",
+                    "type": cmd_type,
                     "payload": {
                         "model_path": row["model_path"],
                         "engine_name": row["engine_name"],

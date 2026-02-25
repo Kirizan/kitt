@@ -41,6 +41,7 @@ class HeartbeatThread(threading.Thread):
         self.on_settings = on_settings
         self._storage_dir = storage_dir
         self._stop_event = threading.Event()
+        self._start_time = time.monotonic()
         self._status = "idle"
         self._current_task = ""
 
@@ -131,7 +132,7 @@ class HeartbeatThread(threading.Thread):
         except OSError:
             pass
 
-        payload["uptime_s"] = time.monotonic()
+        payload["uptime_s"] = time.monotonic() - self._start_time
 
         data = json.dumps(payload).encode("utf-8")
         req = urllib.request.Request(

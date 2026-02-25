@@ -38,10 +38,10 @@ class ModelStorageManager:
         if storage_dir:
             self.storage_dir = Path(storage_dir).expanduser()
             self.storage_dir.mkdir(parents=True, exist_ok=True)
-        if share_source is not None:
+        if share_source:
             self.share_source = share_source
-        if share_mount is not None:
-            self.share_mount = Path(share_mount).expanduser() if share_mount else None
+        if share_mount:
+            self.share_mount = Path(share_mount).expanduser()
         if auto_cleanup is not None:
             self.auto_cleanup = auto_cleanup
 

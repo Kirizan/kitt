@@ -206,7 +206,7 @@ def start(config_path, insecure, run_preflight):
             storage_dir=settings.get("model_storage_dir", ""),
             share_source=settings.get("model_share_source", ""),
             share_mount=settings.get("model_share_mount", ""),
-            auto_cleanup=settings.get("auto_cleanup", "true") == "true"
+            auto_cleanup=str(settings.get("auto_cleanup", "")).lower() == "true"
             if "auto_cleanup" in settings
             else None,
         )
