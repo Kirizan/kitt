@@ -102,6 +102,13 @@ MIGRATIONS: list[Migration] = [
         ALTER TABLE agents ADD COLUMN token_prefix TEXT DEFAULT '';
         """,
     ),
+    (
+        5,
+        "Add hardware_details JSON column to agents",
+        """
+        ALTER TABLE agents ADD COLUMN hardware_details TEXT DEFAULT '';
+        """,
+    ),
 ]
 
 

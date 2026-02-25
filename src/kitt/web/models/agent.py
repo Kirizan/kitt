@@ -17,6 +17,7 @@ class AgentRegistration(BaseModel):
     fingerprint: str = ""
     kitt_version: str = ""
     capabilities: list[str] = Field(default_factory=list)
+    hardware_details: str = ""
 
 
 class AgentHeartbeat(BaseModel):

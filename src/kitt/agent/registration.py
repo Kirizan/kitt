@@ -1,5 +1,6 @@
 """Agent registration with the KITT server."""
 
+import json
 import logging
 import socket
 from typing import Any
@@ -19,16 +20,49 @@ def build_registration_payload() -> dict[str, Any]:
         from kitt.hardware.fingerprint import HardwareFingerprint
 
         info = HardwareFingerprint.detect_system()
-        payload["fingerprint"] = HardwareFingerprint.generate()
+        fingerprint_str = HardwareFingerprint.generate()
+        payload["fingerprint"] = fingerprint_str
         payload["environment_type"] = info.environment_type
         payload["ram_gb"] = info.ram_gb
         payload["cpu_info"] = f"{info.cpu.model} ({info.cpu.cores}c)"
 
         if info.gpu:
+            # Unified memory fallback: use system RAM when dedicated VRAM is 0
+            vram = info.gpu.vram_gb if info.gpu.vram_gb > 0 else info.ram_gb
             payload["gpu_info"] = info.gpu.model
-            if info.gpu.vram_gb:
-                payload["gpu_info"] += f" {info.gpu.vram_gb}GB"
+            if vram:
+                payload["gpu_info"] += f" {vram}GB"
             payload["gpu_count"] = info.gpu.count
+
+        # Build hardware_details JSON
+        hw = {
+            "gpu_model": info.gpu.model if info.gpu else "",
+            "gpu_vram_gb": info.gpu.vram_gb if info.gpu else 0,
+            "gpu_count": info.gpu.count if info.gpu else 0,
+            "gpu_compute_capability": (
+                f"{info.gpu.compute_capability[0]}.{info.gpu.compute_capability[1]}"
+                if info.gpu and info.gpu.compute_capability
+                else ""
+            ),
+            "cpu_model": info.cpu.model,
+            "cpu_cores": info.cpu.cores,
+            "cpu_threads": info.cpu.threads,
+            "ram_gb": info.ram_gb,
+            "ram_type": info.ram_type,
+            "storage_brand": info.storage.brand,
+            "storage_model": info.storage.model,
+            "storage_type": info.storage.type,
+            "cuda_version": info.cuda_version or "",
+            "driver_version": info.driver_version or "",
+            "os": info.os,
+            "kernel": info.kernel,
+            "environment_type": info.environment_type,
+            "fingerprint": fingerprint_str,
+        }
+        # For unified memory, store the effective VRAM
+        if info.gpu and info.gpu.vram_gb == 0 and info.ram_gb > 0:
+            hw["gpu_vram_gb"] = info.ram_gb
+        payload["hardware_details"] = json.dumps(hw)
     except Exception as e:
         logger.warning(f"Hardware detection failed: {e}")
 

@@ -224,6 +224,94 @@ def status():
 
 
 @agent.command()
+@click.option("--config", "config_path", type=click.Path(), help="Path to agent.yaml")
+@click.option("--restart", is_flag=True, help="Restart the agent after update")
+def update(config_path, restart):
+    """Update the agent to the latest version from the server."""
+    import sys
+    import tempfile
+    import urllib.request
+
+    config_file = (
+        Path(config_path) if config_path else Path.home() / ".kitt" / "agent.yaml"
+    )
+
+    if not config_file.exists():
+        console.print("[red]Agent not configured.[/red]")
+        console.print("Run: kitt agent init --server <URL>")
+        raise SystemExit(1)
+
+    with open(config_file) as f:
+        config = yaml.safe_load(f)
+
+    server_url = config.get("server_url", "")
+    if not server_url:
+        console.print("[red]Invalid agent config — missing server_url[/red]")
+        raise SystemExit(1)
+
+    try:
+        import kitt
+
+        current_version = getattr(kitt, "__version__", "unknown")
+    except Exception:
+        current_version = "unknown"
+
+    console.print(f"Current version: {current_version}")
+    console.print(f"Downloading latest agent package from {server_url}...")
+
+    # Download the package
+    package_url = f"{server_url.rstrip('/')}/api/v1/agent/package"
+    tmp_path = Path(tempfile.mktemp(suffix=".tar.gz", prefix="kitt-agent-"))
+
+    try:
+        urllib.request.urlretrieve(package_url, str(tmp_path))
+    except Exception as e:
+        console.print(f"[red]Failed to download package:[/red] {e}")
+        raise SystemExit(1)
+
+    # Install using the current venv's pip
+    import subprocess
+
+    venv_pip = Path(sys.prefix) / "bin" / "pip"
+    if not venv_pip.exists():
+        venv_pip = Path(sys.prefix) / "Scripts" / "pip.exe"
+
+    console.print("Installing update...")
+    try:
+        result = subprocess.run(
+            [str(venv_pip), "install", "--upgrade", str(tmp_path)],
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+        if result.returncode != 0:
+            console.print(f"[red]Installation failed:[/red]\n{result.stderr}")
+            raise SystemExit(1)
+    finally:
+        tmp_path.unlink(missing_ok=True)
+
+    console.print("[green]Update installed successfully.[/green]")
+
+    if restart:
+        pid_file = Path.home() / ".kitt" / "agent.pid"
+        if pid_file.exists():
+            pid = int(pid_file.read_text().strip())
+            try:
+                os.kill(pid, signal.SIGTERM)
+                console.print(f"Stopped running agent (PID {pid})")
+                pid_file.unlink(missing_ok=True)
+            except ProcessLookupError:
+                pid_file.unlink(missing_ok=True)
+
+        console.print("Starting updated agent...")
+        agent_bin = Path(sys.prefix) / "bin" / "kitt"
+        os.execv(str(agent_bin), [str(agent_bin), "agent", "start"])
+    else:
+        console.print("Restart the agent to use the new version:")
+        console.print("  [bold]kitt agent stop && kitt agent start[/bold]")
+
+
+@agent.command()
 def stop():
     """Stop the KITT agent daemon."""
     pid_file = Path.home() / ".kitt" / "agent.pid"
