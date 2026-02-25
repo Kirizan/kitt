@@ -4,6 +4,7 @@ import contextlib
 import json
 
 from flask import Blueprint, flash, redirect, render_template, request, url_for
+from markupsafe import Markup
 
 bp = Blueprint("agents", __name__, url_prefix="/agents")
 
@@ -38,7 +39,10 @@ def detail(agent_id):
         with contextlib.suppress(json.JSONDecodeError, TypeError):
             hw_details = json.loads(raw_details)
 
-    return render_template("agents/detail.html", agent=agent, hw=hw_details)
+    settings = agent_mgr.get_agent_settings(agent_id)
+    return render_template(
+        "agents/detail.html", agent=agent, hw=hw_details, settings=settings
+    )
 
 
 @bp.route("/add")
@@ -53,6 +57,48 @@ def add():
         "agents/add.html",
         server_url=server_url,
         auth_token=auth_token,
+    )
+
+
+@bp.route("/<agent_id>/settings", methods=["POST"])
+def update_settings(agent_id):
+    """HTMX endpoint: save a single agent setting."""
+    from kitt.web.app import get_services
+
+    agent_mgr = get_services()["agent_manager"]
+    agent = agent_mgr.get_agent(agent_id)
+    if agent is None:
+        return Markup(
+            '<span class="text-xs text-red-400">Agent not found</span>'
+        )
+
+    key = request.form.get("key", "")
+    value = request.form.get("value", "")
+
+    if not key:
+        return Markup(
+            '<span class="text-xs text-red-400">Missing key</span>'
+        )
+
+    # Validate heartbeat_interval_s range
+    if key == "heartbeat_interval_s":
+        try:
+            val = int(value)
+            if not (10 <= val <= 300):
+                return Markup(
+                    '<span class="text-xs text-red-400">Must be 10-300</span>'
+                )
+        except (ValueError, TypeError):
+            return Markup(
+                '<span class="text-xs text-red-400">Must be a number</span>'
+            )
+
+    if agent_mgr.update_agent_settings(agent_id, {key: value}):
+        return Markup(
+            '<span class="text-xs text-green-400">Saved</span>'
+        )
+    return Markup(
+        '<span class="text-xs text-red-400">Unknown setting</span>'
     )
 
 
