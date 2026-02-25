@@ -1,5 +1,6 @@
 """Quick test REST API endpoints."""
 
+import math
 import uuid
 from datetime import datetime
 
@@ -18,6 +19,54 @@ def models():
 
     local_model_service = get_services()["local_model_service"]
     return jsonify(local_model_service.read_manifest())
+
+
+@bp.route("/", methods=["GET"])
+def list_tests():
+    """List quick tests with pagination and optional status filter."""
+    from kitt.web.app import get_services
+
+    conn = get_services()["db_conn"]
+
+    status_filter = request.args.get("status", "")
+    page = request.args.get("page", 1, type=int)
+    per_page = request.args.get("per_page", 20, type=int)
+    per_page = min(per_page, 100)
+    page = max(page, 1)
+
+    where = ""
+    params: list = []
+    if status_filter:
+        where = "WHERE qt.status = ?"
+        params.append(status_filter)
+
+    # Count total
+    count_row = conn.execute(
+        f"SELECT COUNT(*) FROM quick_tests qt {where}", params
+    ).fetchone()
+    total = count_row[0] if count_row else 0
+    pages = math.ceil(total / per_page) if total > 0 else 1
+
+    # Fetch page with agent name join
+    offset = (page - 1) * per_page
+    rows = conn.execute(
+        f"""SELECT qt.*, a.name AS agent_name
+            FROM quick_tests qt
+            LEFT JOIN agents a ON qt.agent_id = a.id
+            {where}
+            ORDER BY qt.created_at DESC
+            LIMIT ? OFFSET ?""",
+        params + [per_page, offset],
+    ).fetchall()
+
+    items = [dict(r) for r in rows]
+
+    return jsonify({
+        "items": items,
+        "total": total,
+        "page": page,
+        "pages": pages,
+    })
 
 
 @bp.route("/", methods=["POST"])
@@ -90,6 +139,24 @@ def status(test_id):
     return jsonify(dict(row))
 
 
+@bp.route("/<test_id>/logs", methods=["GET"])
+def get_logs(test_id):
+    """Return stored log lines for a test."""
+    from kitt.web.app import get_services
+
+    conn = get_services()["db_conn"]
+    row = conn.execute("SELECT id FROM quick_tests WHERE id = ?", (test_id,)).fetchone()
+    if row is None:
+        return jsonify({"error": "Quick test not found"}), 404
+
+    rows = conn.execute(
+        "SELECT line, created_at FROM quick_test_logs WHERE test_id = ? ORDER BY id",
+        (test_id,),
+    ).fetchall()
+
+    return jsonify({"lines": [dict(r) for r in rows]})
+
+
 @bp.route("/<test_id>/logs", methods=["POST"])
 @require_auth
 def post_log(test_id):
@@ -104,6 +171,13 @@ def post_log(test_id):
     data = request.get_json(silent=True)
     if not data or "line" not in data:
         return jsonify({"error": "'line' is required"}), 400
+
+    # Persist log line to database
+    conn.execute(
+        "INSERT INTO quick_test_logs (test_id, line) VALUES (?, ?)",
+        (test_id, data["line"]),
+    )
+    conn.commit()
 
     # Publish log line to SSE subscribers
     event_bus.publish(

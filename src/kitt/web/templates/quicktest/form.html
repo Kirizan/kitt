@@ -1,11 +1,14 @@
 {% extends "base.html" %}
-{% block title %}KITT - Quick Test{% endblock %}
+{% block title %}KITT - New Quick Test{% endblock %}
 
 {% block content %}
 <div x-data="quickTest()" class="space-y-6 max-w-3xl" x-init="loadModels()">
-    <div>
-        <h1 class="text-2xl font-bold">Quick Test</h1>
-        <p class="text-kitt-dim text-sm mt-1">Run a single benchmark quickly on an agent</p>
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-bold">New Quick Test</h1>
+            <p class="text-kitt-dim text-sm mt-1">Run a single benchmark quickly on an agent</p>
+        </div>
+        <a href="/quicktest" class="text-kitt-dim hover:text-white text-sm transition-colors">&larr; Back to history</a>
     </div>
 
     <div class="bg-kitt-surface rounded-lg p-6 space-y-4">
@@ -81,35 +84,11 @@
             </select>
         </div>
 
-        <button @click="launch()" :disabled="running"
+        <button @click="launch()" :disabled="launching"
                 class="w-full bg-kitt-accent hover:bg-kitt-accent/80 disabled:opacity-50 text-white px-6 py-2.5 rounded-md text-sm font-medium transition-colors">
-            <span x-show="!running">Run Test</span>
-            <span x-show="running">Running...</span>
+            <span x-show="!launching">Run Test</span>
+            <span x-show="launching">Launching...</span>
         </button>
-    </div>
-
-    <!-- Live output -->
-    <div x-show="testId" class="bg-kitt-surface rounded-lg p-5">
-        <div class="flex items-center justify-between mb-3">
-            <h2 class="text-lg font-semibold">Output</h2>
-            <div class="flex items-center gap-2">
-                <span x-show="sseConnected" class="w-2 h-2 rounded-full bg-green-400" title="SSE connected"></span>
-                <span x-show="!sseConnected && testId" class="w-2 h-2 rounded-full bg-yellow-400 animate-pulse" title="Connecting..."></span>
-                <span x-text="status"
-                      :class="{
-                          'bg-blue-900/50 text-blue-300': status === 'queued' || status === 'dispatched',
-                          'bg-yellow-900/50 text-yellow-300': status === 'running',
-                          'bg-green-900/50 text-green-300': status === 'completed',
-                          'bg-red-900/50 text-red-300': status === 'failed',
-                      }"
-                      class="text-xs px-2 py-0.5 rounded"></span>
-            </div>
-        </div>
-        <div x-ref="logContainer" class="bg-kitt-bg rounded-md p-4 h-80 overflow-y-auto font-mono text-xs text-kitt-dim space-y-0.5">
-            <template x-for="(line, i) in logLines" :key="i">
-                <div x-text="line"></div>
-            </template>
-        </div>
     </div>
 </div>
 {% endblock %}
@@ -125,12 +104,7 @@ function quickTest() {
             benchmark_name: 'throughput',
         },
         allModels: [],
-        running: false,
-        testId: null,
-        status: '',
-        logLines: [],
-        sseConnected: false,
-        _eventSource: null,
+        launching: false,
 
         async loadModels() {
             try {
@@ -141,65 +115,8 @@ function quickTest() {
             }
         },
 
-        _timestamp() {
-            const now = new Date();
-            return now.toTimeString().split(' ')[0];
-        },
-
-        _appendLog(msg) {
-            this.logLines.push('[' + this._timestamp() + '] ' + msg);
-            this.$nextTick(() => {
-                const el = this.$refs.logContainer;
-                if (el) el.scrollTop = el.scrollHeight;
-            });
-        },
-
-        _connectSSE() {
-            if (this._eventSource) {
-                this._eventSource.close();
-            }
-
-            const url = '/api/v1/events/stream/' + this.testId;
-            const es = new EventSource(url);
-            this._eventSource = es;
-
-            es.onopen = () => {
-                this.sseConnected = true;
-            };
-
-            es.addEventListener('log', (e) => {
-                const data = JSON.parse(e.data);
-                this._appendLog(data.line || data.message || '');
-            });
-
-            es.addEventListener('status', (e) => {
-                const data = JSON.parse(e.data);
-                const newStatus = data.status || '';
-                if (newStatus && newStatus !== this.status) {
-                    this.status = newStatus;
-                    this._appendLog('Status changed: ' + newStatus);
-                }
-                if (newStatus === 'completed' || newStatus === 'failed') {
-                    this.running = false;
-                    es.close();
-                    this.sseConnected = false;
-                }
-            });
-
-            es.onerror = () => {
-                this.sseConnected = false;
-                // EventSource auto-reconnects; if test is terminal, close
-                if (this.status === 'completed' || this.status === 'failed') {
-                    es.close();
-                }
-            };
-        },
-
         async launch() {
-            this.running = true;
-            this.logLines = [];
-            this.testId = null;
-            this.sseConnected = false;
+            this.launching = true;
 
             // Use search text as model_path if not set by combobox selection
             if (!this.form.model_path) {
@@ -214,17 +131,14 @@ function quickTest() {
                 });
                 const data = await resp.json();
                 if (data.id) {
-                    this.testId = data.id;
-                    this.status = data.status;
-                    this._appendLog('Test queued \u2014 waiting for agent pickup...');
-                    this._connectSSE();
+                    window.location = '/quicktest/' + data.id;
                 } else {
                     alert(data.error || 'Failed to launch test');
-                    this.running = false;
+                    this.launching = false;
                 }
             } catch (e) {
                 alert('Failed to connect to server: ' + e.message);
-                this.running = false;
+                this.launching = false;
             }
         },
     };

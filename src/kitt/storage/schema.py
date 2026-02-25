@@ -1,7 +1,7 @@
 """Shared database schema definitions for KITT storage backends."""
 
 # SQLite schema — version-tracked for migrations.
-SCHEMA_VERSION = 6
+SCHEMA_VERSION = 7
 
 SQLITE_SCHEMA = """
 CREATE TABLE IF NOT EXISTS schema_version (
@@ -195,6 +195,14 @@ CREATE TABLE IF NOT EXISTS web_settings (
     value TEXT NOT NULL
 );
 
+-- v7: quick_test_logs
+CREATE TABLE IF NOT EXISTS quick_test_logs (
+    id SERIAL PRIMARY KEY,
+    test_id TEXT NOT NULL REFERENCES quick_tests(id),
+    line TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 CREATE INDEX IF NOT EXISTS idx_runs_model ON runs(model);
 CREATE INDEX IF NOT EXISTS idx_runs_engine ON runs(engine);
 CREATE INDEX IF NOT EXISTS idx_runs_timestamp ON runs(timestamp);
@@ -212,4 +220,5 @@ CREATE INDEX IF NOT EXISTS idx_quick_tests_agent ON quick_tests(agent_id);
 CREATE INDEX IF NOT EXISTS idx_quick_tests_status ON quick_tests(status);
 CREATE INDEX IF NOT EXISTS idx_events_type ON events(event_type);
 CREATE INDEX IF NOT EXISTS idx_events_source ON events(source_id);
+CREATE INDEX IF NOT EXISTS idx_quick_test_logs_test ON quick_test_logs(test_id);
 """
