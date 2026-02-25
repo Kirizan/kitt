@@ -136,7 +136,6 @@ def update_status(test_id):
         return jsonify({"error": f"Status must be one of: {allowed}"}), 400
 
     now = datetime.now().isoformat()
-    updates = {"status": new_status}
 
     if new_status == "running":
         conn.execute(
@@ -149,7 +148,6 @@ def update_status(test_id):
             "UPDATE quick_tests SET status = ?, completed_at = ?, error = ? WHERE id = ?",
             (new_status, now, error, test_id),
         )
-        updates["error"] = error
     conn.commit()
 
     # Publish status event for SSE subscribers

@@ -68,6 +68,9 @@ CREATE INDEX IF NOT EXISTS idx_hardware_run_id ON hardware(run_id);
 """
 
 # PostgreSQL equivalent (uses SERIAL, BOOLEAN, JSONB)
+# NOTE: This schema must include ALL tables through SCHEMA_VERSION because
+# fresh Postgres installs apply this schema and set the version directly,
+# skipping migrations.
 POSTGRES_SCHEMA = """
 CREATE TABLE IF NOT EXISTS schema_version (
     version INTEGER NOT NULL,
@@ -121,6 +124,77 @@ CREATE TABLE IF NOT EXISTS hardware (
     fingerprint TEXT
 );
 
+-- v2: agents, web_campaigns, quick_tests, events
+CREATE TABLE IF NOT EXISTS agents (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE,
+    hostname TEXT NOT NULL,
+    port INTEGER NOT NULL DEFAULT 8090,
+    token TEXT NOT NULL DEFAULT '',
+    token_hash TEXT DEFAULT '',
+    token_prefix TEXT DEFAULT '',
+    status TEXT NOT NULL DEFAULT 'offline',
+    gpu_info TEXT DEFAULT '',
+    gpu_count INTEGER DEFAULT 0,
+    cpu_info TEXT DEFAULT '',
+    ram_gb INTEGER DEFAULT 0,
+    environment_type TEXT DEFAULT '',
+    fingerprint TEXT DEFAULT '',
+    kitt_version TEXT DEFAULT '',
+    hardware_details TEXT DEFAULT '',
+    last_heartbeat TEXT DEFAULT '',
+    registered_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    notes TEXT DEFAULT '',
+    tags TEXT DEFAULT '[]'
+);
+
+CREATE TABLE IF NOT EXISTS web_campaigns (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    description TEXT DEFAULT '',
+    config_json TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'draft',
+    agent_id TEXT REFERENCES agents(id),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    started_at TEXT DEFAULT '',
+    completed_at TEXT DEFAULT '',
+    total_runs INTEGER DEFAULT 0,
+    succeeded INTEGER DEFAULT 0,
+    failed INTEGER DEFAULT 0,
+    skipped INTEGER DEFAULT 0,
+    error TEXT DEFAULT ''
+);
+
+CREATE TABLE IF NOT EXISTS quick_tests (
+    id TEXT PRIMARY KEY,
+    agent_id TEXT NOT NULL REFERENCES agents(id),
+    model_path TEXT NOT NULL,
+    engine_name TEXT NOT NULL,
+    benchmark_name TEXT NOT NULL,
+    suite_name TEXT DEFAULT 'quick',
+    status TEXT NOT NULL DEFAULT 'queued',
+    command_id TEXT DEFAULT '',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    started_at TEXT DEFAULT '',
+    completed_at TEXT DEFAULT '',
+    result_id TEXT REFERENCES runs(id),
+    error TEXT DEFAULT ''
+);
+
+CREATE TABLE IF NOT EXISTS events (
+    id SERIAL PRIMARY KEY,
+    event_type TEXT NOT NULL,
+    source_id TEXT NOT NULL,
+    data TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- v3: web_settings
+CREATE TABLE IF NOT EXISTS web_settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+);
+
 CREATE INDEX IF NOT EXISTS idx_runs_model ON runs(model);
 CREATE INDEX IF NOT EXISTS idx_runs_engine ON runs(engine);
 CREATE INDEX IF NOT EXISTS idx_runs_timestamp ON runs(timestamp);
@@ -130,4 +204,12 @@ CREATE INDEX IF NOT EXISTS idx_benchmarks_test_name ON benchmarks(test_name);
 CREATE INDEX IF NOT EXISTS idx_metrics_benchmark_id ON metrics(benchmark_id);
 CREATE INDEX IF NOT EXISTS idx_metrics_name ON metrics(metric_name);
 CREATE INDEX IF NOT EXISTS idx_hardware_run_id ON hardware(run_id);
+CREATE INDEX IF NOT EXISTS idx_agents_name ON agents(name);
+CREATE INDEX IF NOT EXISTS idx_agents_status ON agents(status);
+CREATE INDEX IF NOT EXISTS idx_web_campaigns_status ON web_campaigns(status);
+CREATE INDEX IF NOT EXISTS idx_web_campaigns_agent ON web_campaigns(agent_id);
+CREATE INDEX IF NOT EXISTS idx_quick_tests_agent ON quick_tests(agent_id);
+CREATE INDEX IF NOT EXISTS idx_quick_tests_status ON quick_tests(status);
+CREATE INDEX IF NOT EXISTS idx_events_type ON events(event_type);
+CREATE INDEX IF NOT EXISTS idx_events_source ON events(source_id);
 """

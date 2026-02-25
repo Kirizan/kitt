@@ -182,7 +182,8 @@ class AgentManager:
                       suite_name
                FROM quick_tests
                WHERE agent_id = ? AND status = 'queued'
-               ORDER BY created_at""",
+               ORDER BY created_at
+               LIMIT 1""",
             (agent_id,),
         ).fetchall()
 
