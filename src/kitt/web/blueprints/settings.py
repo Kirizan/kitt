@@ -6,6 +6,8 @@ from urllib.parse import urlparse
 
 from flask import Blueprint, render_template, render_template_string, request
 
+from kitt.web.auth import csrf_protect
+
 logger = logging.getLogger(__name__)
 
 bp = Blueprint("settings", __name__, url_prefix="/settings")
@@ -70,6 +72,7 @@ def index():
 
 
 @bp.route("/toggle", methods=["POST"])
+@csrf_protect
 def toggle():
     """Toggle a boolean web setting."""
     from kitt.web.app import get_services
@@ -87,6 +90,7 @@ def toggle():
 
 
 @bp.route("/update", methods=["POST"])
+@csrf_protect
 def update():
     """Update a string setting and apply it live."""
     from flask import current_app

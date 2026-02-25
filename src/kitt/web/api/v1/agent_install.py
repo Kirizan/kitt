@@ -149,6 +149,19 @@ def package():
     )
 
 
+@bp.route("/package/sha256")
+def package_sha256():
+    """Return the SHA-256 digest of the agent package tarball."""
+    import hashlib
+
+    sdist_path = _get_or_build_package()
+    if sdist_path is None:
+        return jsonify({"error": "Failed to build agent package"}), 500
+
+    sha256 = hashlib.sha256(sdist_path.read_bytes()).hexdigest()
+    return jsonify({"sha256": sha256, "filename": sdist_path.name})
+
+
 def _get_or_build_package() -> Path | None:
     """Build the agent sdist if not already cached."""
     with _build_lock:

@@ -6,6 +6,8 @@ import json
 from flask import Blueprint, flash, redirect, render_template, request, url_for
 from markupsafe import Markup
 
+from kitt.web.auth import csrf_protect
+
 bp = Blueprint("agents", __name__, url_prefix="/agents")
 
 
@@ -48,19 +50,13 @@ def detail(agent_id):
 @bp.route("/add")
 def add():
     """Add agent page with setup instructions."""
-    from flask import current_app
-
     server_url = request.host_url.rstrip("/")
-    auth_token = current_app.config.get("AUTH_TOKEN", "")
 
-    return render_template(
-        "agents/add.html",
-        server_url=server_url,
-        auth_token=auth_token,
-    )
+    return render_template("agents/add.html", server_url=server_url)
 
 
 @bp.route("/<agent_id>/settings", methods=["POST"])
+@csrf_protect
 def update_settings(agent_id):
     """HTMX endpoint: save a single agent setting."""
     from kitt.web.app import get_services
@@ -93,6 +89,7 @@ def update_settings(agent_id):
 
 
 @bp.route("/<agent_id>/cleanup", methods=["POST"])
+@csrf_protect
 def cleanup_storage(agent_id):
     """HTMX endpoint: queue cleanup_storage command for agent."""
     import uuid
@@ -112,12 +109,13 @@ def cleanup_storage(agent_id):
            VALUES (?, ?, '__cleanup__', 'cleanup', 'cleanup_storage', 'quick', 'queued', ?)""",
         (command_id, agent_id, command_id),
     )
-    agent_mgr._conn.commit()
+    agent_mgr._commit()
 
     return Markup('<span class="text-xs text-green-400">Cleanup command queued</span>')
 
 
 @bp.route("/<agent_id>/delete", methods=["POST"])
+@csrf_protect
 def delete(agent_id):
     """Delete an agent."""
     from kitt.web.app import get_services

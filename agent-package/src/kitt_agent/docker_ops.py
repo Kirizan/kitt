@@ -104,7 +104,20 @@ class DockerOps:
         args.append(spec.image)
         args.extend(spec.command_args)
 
-        logger.info(f"Starting container: {' '.join(args)}")
+        # Redact -e values to avoid leaking secrets in logs
+        safe_args = []
+        redact_next = False
+        for arg in args:
+            if redact_next:
+                key = arg.split("=", 1)[0] if "=" in arg else arg
+                safe_args.append(f"{key}=***")
+                redact_next = False
+            elif arg == "-e":
+                safe_args.append(arg)
+                redact_next = True
+            else:
+                safe_args.append(arg)
+        logger.info(f"Starting container: {' '.join(safe_args)}")
         result = subprocess.run(args, capture_output=True, text=True, timeout=60)
 
         if result.returncode != 0:

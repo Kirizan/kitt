@@ -211,7 +211,7 @@ def trigger_cleanup(agent_id):
            VALUES (?, ?, ?, 'cleanup', 'cleanup_storage', 'quick', 'queued', ?)""",
         (command_id, agent_id, model_path or "__cleanup__", command_id),
     )
-    mgr._conn.commit()
+    mgr._commit()
 
     return jsonify({"queued": True, "command_id": command_id}), 202
 

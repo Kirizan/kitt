@@ -6,6 +6,7 @@ Stores key-value UI settings in the web_settings SQLite table.
 import logging
 import os
 import sqlite3
+import threading
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +24,14 @@ class SettingsService:
 
     def __init__(self, db_conn: sqlite3.Connection) -> None:
         self._conn = db_conn
+        self._write_lock: threading.Lock = getattr(
+            db_conn, "_write_lock", threading.Lock()
+        )
+
+    def _commit(self) -> None:
+        """Thread-safe commit."""
+        with self._write_lock:
+            self._conn.commit()
 
     def get(self, key: str, default: str | None = None) -> str:
         """Get a setting value, falling back to built-in defaults."""
@@ -67,7 +76,7 @@ class SettingsService:
             " ON CONFLICT(key) DO UPDATE SET value = excluded.value",
             (key, value),
         )
-        self._conn.commit()
+        self._commit()
 
     def get_all(self) -> dict[str, str]:
         """Return all stored settings merged with defaults."""

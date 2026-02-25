@@ -9,6 +9,7 @@ import hmac
 import logging
 import secrets
 import sqlite3
+import threading
 import time
 import uuid
 from datetime import datetime
@@ -28,6 +29,15 @@ class AgentManager:
 
     def __init__(self, db_conn: sqlite3.Connection) -> None:
         self._conn = db_conn
+        # Use the write lock attached in app.py, or create a local one
+        self._write_lock: threading.Lock = getattr(
+            db_conn, "_write_lock", threading.Lock()
+        )
+
+    def _commit(self) -> None:
+        """Thread-safe commit — serializes write flushes."""
+        with self._write_lock:
+            self._commit()
 
     @staticmethod
     def _hash_token(token: str) -> str:
@@ -69,7 +79,7 @@ class AgentManager:
             )
             logger.info(f"Provisioned new agent: {name} ({agent_id})")
 
-        self._conn.commit()
+        self._commit()
         self._ensure_default_settings(agent_id)
         return {
             "agent_id": agent_id,
@@ -146,7 +156,7 @@ class AgentManager:
                 ),
             )
 
-        self._conn.commit()
+        self._commit()
         self._ensure_default_settings(agent_id)
         event_bus.publish(
             "agent_status",
@@ -175,7 +185,7 @@ class AgentManager:
                WHERE id = ?""",
             (hb.status or "idle", now, agent_id),
         )
-        self._conn.commit()
+        self._commit()
 
         # Check for queued quick_tests assigned to this agent
         commands: list[dict[str, Any]] = []
@@ -221,7 +231,7 @@ class AgentManager:
             )
 
         if commands:
-            self._conn.commit()
+            self._commit()
             logger.info(
                 "Dispatched %d command(s) to agent %s via heartbeat",
                 len(commands),
@@ -256,7 +266,7 @@ class AgentManager:
     def delete_agent(self, agent_id: str) -> bool:
         """Remove an agent registration."""
         cursor = self._conn.execute("DELETE FROM agents WHERE id = ?", (agent_id,))
-        self._conn.commit()
+        self._commit()
         return cursor.rowcount > 0
 
     def update_agent(self, agent_id: str, updates: dict[str, Any]) -> bool:
@@ -269,7 +279,7 @@ class AgentManager:
         clauses = ", ".join(f"{k} = ?" for k in to_set)
         values = list(to_set.values()) + [agent_id]
         self._conn.execute(f"UPDATE agents SET {clauses} WHERE id = ?", values)
-        self._conn.commit()
+        self._commit()
         return True
 
     def verify_token(self, agent_id: str, token: str) -> bool:
@@ -320,7 +330,7 @@ class AgentManager:
             "UPDATE agents SET token_hash = ?, token_prefix = ?, token = '' WHERE id = ?",
             (token_hash, token_prefix, agent_id),
         )
-        self._conn.commit()
+        self._commit()
         logger.info(f"Rotated token for agent {agent_id}")
 
         return {"token": raw_token, "token_prefix": token_prefix}
@@ -342,7 +352,7 @@ class AgentManager:
                 "INSERT OR IGNORE INTO agent_settings (agent_id, key, value) VALUES (?, ?, ?)",
                 (agent_id, key, value),
             )
-        self._conn.commit()
+        self._commit()
 
     def get_agent_settings(self, agent_id: str) -> dict[str, str]:
         """Get all settings for an agent as a flat dict."""
@@ -367,7 +377,7 @@ class AgentManager:
                    ON CONFLICT(agent_id, key) DO UPDATE SET value = excluded.value""",
                 (agent_id, key, value),
             )
-        self._conn.commit()
+        self._commit()
         return True
 
     def _check_stale_agents(self) -> None:
@@ -390,4 +400,4 @@ class AgentManager:
                 except (ValueError, OSError):
                     pass
 
-        self._conn.commit()
+        self._commit()

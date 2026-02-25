@@ -6,6 +6,7 @@ Handles campaign CRUD, launch via agent, and status tracking.
 import json
 import logging
 import sqlite3
+import threading
 import uuid
 from datetime import datetime
 from typing import Any
@@ -20,6 +21,14 @@ class CampaignService:
 
     def __init__(self, db_conn: sqlite3.Connection) -> None:
         self._conn = db_conn
+        self._write_lock: threading.Lock = getattr(
+            db_conn, "_write_lock", threading.Lock()
+        )
+
+    def _commit(self) -> None:
+        """Thread-safe commit."""
+        with self._write_lock:
+            self._commit()
 
     def create(
         self,
@@ -49,7 +58,7 @@ class CampaignService:
                 now,
             ),
         )
-        self._conn.commit()
+        self._commit()
 
         event_bus.publish("campaign_created", campaign_id, {"name": name})
         return campaign_id
@@ -133,7 +142,7 @@ class CampaignService:
         params.append(campaign_id)
         sql = f"UPDATE web_campaigns SET {', '.join(sets)} WHERE id = ?"
         cursor = self._conn.execute(sql, params)
-        self._conn.commit()
+        self._commit()
 
         event_bus.publish(
             "campaign_status",
@@ -150,7 +159,7 @@ class CampaignService:
         cursor = self._conn.execute(
             "DELETE FROM web_campaigns WHERE id = ?", (campaign_id,)
         )
-        self._conn.commit()
+        self._commit()
         return cursor.rowcount > 0
 
     def update_config(self, campaign_id: str, config: dict[str, Any]) -> bool:
@@ -160,5 +169,5 @@ class CampaignService:
                WHERE id = ? AND status = 'draft'""",
             (json.dumps(config, default=str), campaign_id),
         )
-        self._conn.commit()
+        self._commit()
         return cursor.rowcount > 0

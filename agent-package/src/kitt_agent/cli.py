@@ -307,17 +307,41 @@ def update(config_path, restart):
     click.echo(f"Current version: {__version__}")
     click.echo(f"Downloading latest agent package from {server_url}...")
 
-    # Download the package
-    package_url = f"{server_url.rstrip('/')}/api/v1/agent/package"
+    # Download the package and verify integrity
+    base_api = f"{server_url.rstrip('/')}/api/v1/agent"
+    package_url = f"{base_api}/package"
+    digest_url = f"{base_api}/package/sha256"
+
     with tempfile.NamedTemporaryFile(
         suffix=".tar.gz", prefix="kitt-agent-", delete=False
     ) as tmp:
         tmp_path = Path(tmp.name)
 
     try:
+        import hashlib
+        import json
         import urllib.request
 
         urllib.request.urlretrieve(package_url, str(tmp_path))
+
+        # Verify SHA-256 digest
+        try:
+            with urllib.request.urlopen(digest_url, timeout=10) as resp:
+                digest_info = json.loads(resp.read())
+            expected_sha = digest_info.get("sha256", "")
+            actual_sha = hashlib.sha256(tmp_path.read_bytes()).hexdigest()
+            if expected_sha and actual_sha != expected_sha:
+                tmp_path.unlink(missing_ok=True)
+                click.echo(
+                    f"Integrity check failed: expected {expected_sha[:16]}... "
+                    f"got {actual_sha[:16]}..."
+                )
+                raise SystemExit(1)
+            click.echo("Package integrity verified (SHA-256).")
+        except (urllib.error.URLError, OSError) as e:
+            click.echo(f"Warning: could not verify package integrity: {e}")
+    except SystemExit:
+        raise
     except Exception as e:
         tmp_path.unlink(missing_ok=True)
         click.echo(f"Failed to download package: {e}")

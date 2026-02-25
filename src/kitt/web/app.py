@@ -11,6 +11,7 @@ import logging
 import os
 import secrets
 import sqlite3
+import threading
 from pathlib import Path
 from typing import Any
 
@@ -114,10 +115,12 @@ def create_app(
     app.config["DB_PATH"] = str(_db_path)
 
     # Get a raw connection for the new v2 tables (agents, campaigns, etc.)
+    # Attach a write lock to prevent concurrent write conflicts across threads.
     db_conn = sqlite3.connect(str(_db_path), check_same_thread=False)
     db_conn.row_factory = sqlite3.Row
     db_conn.execute("PRAGMA journal_mode=WAL")
     db_conn.execute("PRAGMA foreign_keys=ON")
+    db_conn._write_lock = threading.Lock()  # type: ignore[attr-defined]
 
     # Ensure v2 schema is applied
     from kitt.storage.migrations import (
