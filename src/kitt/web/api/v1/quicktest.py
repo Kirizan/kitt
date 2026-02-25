@@ -72,12 +72,14 @@ def list_tests():
 
     items = [dict(r) for r in rows]
 
-    return jsonify({
-        "items": items,
-        "total": total,
-        "page": page,
-        "pages": pages,
-    })
+    return jsonify(
+        {
+            "items": items,
+            "total": total,
+            "page": page,
+            "pages": pages,
+        }
+    )
 
 
 @bp.route("/", methods=["POST"])
