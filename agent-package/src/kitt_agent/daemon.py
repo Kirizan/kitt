@@ -215,8 +215,15 @@ def create_agent_app(
         # Local is preferred (faster, works on all architectures).
         # Docker is the fallback for hosts without kitt installed.
         import shutil
+        import sys
+        from pathlib import Path
 
-        kitt_bin = shutil.which("kitt")
+        # Check venv bin first (systemd PATH may not include it)
+        venv_kitt = Path(sys.prefix) / "bin" / "kitt"
+        kitt_bin = (
+            str(venv_kitt) if venv_kitt.exists()
+            else shutil.which("kitt")
+        )
         kitt_image = _kitt_image_ref[0]
         use_local = kitt_bin is not None
 
