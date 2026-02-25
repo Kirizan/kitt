@@ -143,20 +143,7 @@ def start(config_path, insecure, foreground):
         agent_id = agent_name
         heartbeat_interval = 30
 
-    # Start heartbeat thread
-    from kitt.agent.heartbeat import HeartbeatThread
-
-    hb = HeartbeatThread(
-        server_url=server_url,
-        agent_id=agent_id,
-        token=token,
-        interval_s=heartbeat_interval,
-        verify=verify if not insecure else False,
-        client_cert=client_cert if not insecure else None,
-    )
-    hb.start()
-
-    # Start agent Flask app
+    # Start agent Flask app (created before heartbeat so we can wire command handler)
     try:
         from kitt.agent.daemon import create_agent_app
     except ImportError:
@@ -171,6 +158,20 @@ def start(config_path, insecure, foreground):
         port=port,
         insecure=insecure,
     )
+
+    # Start heartbeat thread with command dispatch from heartbeat response
+    from kitt.agent.heartbeat import HeartbeatThread
+
+    hb = HeartbeatThread(
+        server_url=server_url,
+        agent_id=agent_id,
+        token=token,
+        interval_s=heartbeat_interval,
+        verify=verify if not insecure else False,
+        client_cert=client_cert if not insecure else None,
+        on_command=app.handle_command,
+    )
+    hb.start()
 
     ssl_ctx = None
     if not insecure:

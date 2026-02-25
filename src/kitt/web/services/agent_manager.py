@@ -160,6 +160,9 @@ class AgentManager:
     def heartbeat(self, agent_id: str, hb: AgentHeartbeat) -> dict[str, Any]:
         """Process agent heartbeat.
 
+        Checks for pending quick_tests assigned to this agent and returns
+        them as commands for the agent to execute.
+
         Returns:
             Dict with ack and any pending commands.
         """
@@ -172,7 +175,50 @@ class AgentManager:
         )
         self._conn.commit()
 
-        return {"ack": True, "commands": []}
+        # Check for queued quick_tests assigned to this agent
+        commands: list[dict[str, Any]] = []
+        rows = self._conn.execute(
+            """SELECT id, command_id, model_path, engine_name, benchmark_name,
+                      suite_name
+               FROM quick_tests
+               WHERE agent_id = ? AND status = 'queued'
+               ORDER BY created_at""",
+            (agent_id,),
+        ).fetchall()
+
+        for row in rows:
+            test_id = row["id"]
+            commands.append({
+                "command_id": row["command_id"],
+                "test_id": test_id,
+                "type": "run_test",
+                "payload": {
+                    "model_path": row["model_path"],
+                    "engine_name": row["engine_name"],
+                    "benchmark_name": row["benchmark_name"],
+                    "suite_name": row["suite_name"],
+                },
+            })
+            # Mark as dispatched
+            self._conn.execute(
+                "UPDATE quick_tests SET status = 'dispatched' WHERE id = ?",
+                (test_id,),
+            )
+            event_bus.publish(
+                "status",
+                test_id,
+                {"status": "dispatched", "test_id": test_id},
+            )
+
+        if commands:
+            self._conn.commit()
+            logger.info(
+                "Dispatched %d command(s) to agent %s via heartbeat",
+                len(commands),
+                agent_id,
+            )
+
+        return {"ack": True, "commands": commands}
 
     # Fields that must never appear in API responses.
     _SENSITIVE_FIELDS = {"token", "token_hash"}

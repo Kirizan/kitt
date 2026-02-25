@@ -4,6 +4,7 @@ Scans a configured directory for downloaded model files and returns
 structured metadata (name, format, size, path).
 """
 
+import json
 import logging
 from pathlib import Path
 
@@ -32,6 +33,44 @@ class LocalModelService:
     @property
     def configured(self) -> bool:
         return self.model_dir.is_dir()
+
+    def read_manifest(self) -> list[dict]:
+        """Read Devon's manifest.json from the model directory.
+
+        The manifest is keyed by ``{source}::{model_id}`` and each value
+        contains at least ``path``, ``source``, and ``size_bytes``.
+
+        Returns:
+            List of dicts with keys: model_id, path, source, size_bytes.
+            Returns empty list if manifest doesn't exist or is invalid.
+        """
+        manifest_path = self.model_dir / "manifest.json"
+        if not manifest_path.is_file():
+            logger.debug("No manifest.json found at %s", manifest_path)
+            return []
+
+        try:
+            data = json.loads(manifest_path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError) as e:
+            logger.warning("Failed to read manifest.json: %s", e)
+            return []
+
+        models: list[dict] = []
+        for key, entry in data.items():
+            # Key format: "source::model_id"
+            parts = key.split("::", 1)
+            source = parts[0] if len(parts) == 2 else entry.get("source", "unknown")
+            model_id = parts[1] if len(parts) == 2 else key
+
+            models.append({
+                "model_id": model_id,
+                "path": entry.get("path", ""),
+                "source": source,
+                "size_bytes": entry.get("size_bytes", 0),
+            })
+
+        models.sort(key=lambda m: m["model_id"].lower())
+        return models
 
     def list_models(self) -> list[dict]:
         """Scan model_dir and return a list of discovered models.

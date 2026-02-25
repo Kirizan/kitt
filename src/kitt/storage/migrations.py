@@ -109,6 +109,13 @@ MIGRATIONS: list[Migration] = [
         ALTER TABLE agents ADD COLUMN hardware_details TEXT DEFAULT '';
         """,
     ),
+    (
+        6,
+        "Add command_id column to quick_tests for heartbeat dispatch",
+        """
+        ALTER TABLE quick_tests ADD COLUMN command_id TEXT DEFAULT '';
+        """,
+    ),
 ]
 
 

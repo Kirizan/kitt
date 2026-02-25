@@ -2,7 +2,7 @@
 {% block title %}KITT - Quick Test{% endblock %}
 
 {% block content %}
-<div x-data="quickTest()" class="space-y-6 max-w-3xl">
+<div x-data="quickTest()" class="space-y-6 max-w-3xl" x-init="loadModels()">
     <div>
         <h1 class="text-2xl font-bold">Quick Test</h1>
         <p class="text-kitt-dim text-sm mt-1">Run a single benchmark quickly on an agent</p>
@@ -21,11 +21,39 @@
             </select>
         </div>
 
-        <!-- Model -->
-        <div>
-            <label class="block text-sm text-kitt-dim mb-1">Model Path</label>
-            <input type="text" x-model="form.model_path" placeholder="e.g., meta-llama/Llama-3-8B or /path/to/model"
+        <!-- Model (searchable combobox) -->
+        <div x-data="modelCombobox()" class="relative">
+            <label class="block text-sm text-kitt-dim mb-1">Model</label>
+            <input type="text"
+                   x-model="search"
+                   @input="open = true"
+                   @focus="open = true"
+                   @click="open = true"
+                   @keydown.escape="open = false"
+                   @keydown.arrow-down.prevent="highlightNext()"
+                   @keydown.arrow-up.prevent="highlightPrev()"
+                   @keydown.enter.prevent="selectHighlighted()"
+                   placeholder="Search models or enter a custom path..."
                    class="w-full bg-kitt-bg border border-kitt-primary/50 rounded-md px-4 py-2 text-sm focus:outline-none focus:border-kitt-accent">
+
+            <!-- Dropdown -->
+            <div x-show="open && filtered.length > 0"
+                 x-cloak
+                 @click.outside="open = false"
+                 class="absolute z-10 mt-1 w-full bg-kitt-bg border border-kitt-primary/50 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                <template x-for="(model, idx) in filtered" :key="model.model_id">
+                    <div @click="selectModel(model)"
+                         @mouseenter="highlighted = idx"
+                         :class="{ 'bg-kitt-accent/20': highlighted === idx }"
+                         class="px-4 py-2 cursor-pointer hover:bg-kitt-accent/10 text-sm">
+                        <div x-text="model.model_id" class="font-medium"></div>
+                        <div class="text-xs text-kitt-dim flex gap-3">
+                            <span x-text="model.source"></span>
+                            <span x-text="formatSize(model.size_bytes)"></span>
+                        </div>
+                    </div>
+                </template>
+            </div>
         </div>
 
         <!-- Engine -->
@@ -64,10 +92,23 @@
     <div x-show="testId" class="bg-kitt-surface rounded-lg p-5">
         <div class="flex items-center justify-between mb-3">
             <h2 class="text-lg font-semibold">Output</h2>
-            <span x-text="status" class="text-xs px-2 py-0.5 rounded bg-blue-900/50 text-blue-300"></span>
+            <div class="flex items-center gap-2">
+                <span x-show="sseConnected" class="w-2 h-2 rounded-full bg-green-400" title="SSE connected"></span>
+                <span x-show="!sseConnected && testId" class="w-2 h-2 rounded-full bg-yellow-400 animate-pulse" title="Connecting..."></span>
+                <span x-text="status"
+                      :class="{
+                          'bg-blue-900/50 text-blue-300': status === 'queued' || status === 'dispatched',
+                          'bg-yellow-900/50 text-yellow-300': status === 'running',
+                          'bg-green-900/50 text-green-300': status === 'completed',
+                          'bg-red-900/50 text-red-300': status === 'failed',
+                      }"
+                      class="text-xs px-2 py-0.5 rounded"></span>
+            </div>
         </div>
-        <div id="test-log" class="bg-kitt-bg rounded-md p-4 h-64 overflow-y-auto font-mono text-xs text-kitt-dim">
-            <p>Waiting for output...</p>
+        <div x-ref="logContainer" class="bg-kitt-bg rounded-md p-4 h-80 overflow-y-auto font-mono text-xs text-kitt-dim space-y-0.5">
+            <template x-for="(line, i) in logLines" :key="i">
+                <div x-text="line"></div>
+            </template>
         </div>
     </div>
 </div>
@@ -83,11 +124,88 @@ function quickTest() {
             engine_name: 'vllm',
             benchmark_name: 'throughput',
         },
+        allModels: [],
         running: false,
         testId: null,
         status: '',
+        logLines: [],
+        sseConnected: false,
+        _eventSource: null,
+
+        async loadModels() {
+            try {
+                const resp = await fetch('/api/v1/quicktest/models');
+                this.allModels = await resp.json();
+            } catch (e) {
+                console.warn('Failed to load models:', e);
+            }
+        },
+
+        _timestamp() {
+            const now = new Date();
+            return now.toTimeString().split(' ')[0];
+        },
+
+        _appendLog(msg) {
+            this.logLines.push('[' + this._timestamp() + '] ' + msg);
+            this.$nextTick(() => {
+                const el = this.$refs.logContainer;
+                if (el) el.scrollTop = el.scrollHeight;
+            });
+        },
+
+        _connectSSE() {
+            if (this._eventSource) {
+                this._eventSource.close();
+            }
+
+            const url = '/api/v1/events/stream/' + this.testId;
+            const es = new EventSource(url);
+            this._eventSource = es;
+
+            es.onopen = () => {
+                this.sseConnected = true;
+            };
+
+            es.addEventListener('log', (e) => {
+                const data = JSON.parse(e.data);
+                this._appendLog(data.line || data.message || '');
+            });
+
+            es.addEventListener('status', (e) => {
+                const data = JSON.parse(e.data);
+                const newStatus = data.status || '';
+                if (newStatus && newStatus !== this.status) {
+                    this.status = newStatus;
+                    this._appendLog('Status changed: ' + newStatus);
+                }
+                if (newStatus === 'completed' || newStatus === 'failed') {
+                    this.running = false;
+                    es.close();
+                    this.sseConnected = false;
+                }
+            });
+
+            es.onerror = () => {
+                this.sseConnected = false;
+                // EventSource auto-reconnects; if test is terminal, close
+                if (this.status === 'completed' || this.status === 'failed') {
+                    es.close();
+                }
+            };
+        },
+
         async launch() {
             this.running = true;
+            this.logLines = [];
+            this.testId = null;
+            this.sseConnected = false;
+
+            // Use search text as model_path if not set by combobox selection
+            if (!this.form.model_path) {
+                this.form.model_path = document.querySelector('[x-data="modelCombobox()"] input')?.value || '';
+            }
+
             const resp = await fetch('/api/v1/quicktest/', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
@@ -97,23 +215,64 @@ function quickTest() {
             if (data.id) {
                 this.testId = data.id;
                 this.status = data.status;
-                this.pollStatus();
+                this._appendLog('Test queued \u2014 waiting for agent pickup...');
+                this._connectSSE();
             } else {
                 alert(data.error || 'Failed to launch test');
                 this.running = false;
             }
         },
-        async pollStatus() {
-            if (!this.testId) return;
-            const resp = await fetch('/api/v1/quicktest/' + this.testId);
-            const data = await resp.json();
-            this.status = data.status;
-            if (data.status === 'queued' || data.status === 'running') {
-                setTimeout(() => this.pollStatus(), 2000);
+    };
+}
+
+function modelCombobox() {
+    return {
+        search: '',
+        open: false,
+        highlighted: 0,
+
+        get filtered() {
+            const q = this.search.toLowerCase();
+            if (!q) return this.$data.allModels || [];
+            return (this.$data.allModels || []).filter(m =>
+                m.model_id.toLowerCase().includes(q)
+            );
+        },
+
+        selectModel(model) {
+            this.search = model.model_id;
+            this.open = false;
+            // Set the parent form's model_path
+            this.$data.form.model_path = model.path;
+        },
+
+        selectHighlighted() {
+            if (this.filtered.length > 0 && this.highlighted < this.filtered.length) {
+                this.selectModel(this.filtered[this.highlighted]);
             } else {
-                this.running = false;
+                // Manual entry — use search text as model_path
+                this.$data.form.model_path = this.search;
+                this.open = false;
             }
-        }
+        },
+
+        highlightNext() {
+            if (this.highlighted < this.filtered.length - 1) {
+                this.highlighted++;
+            }
+        },
+
+        highlightPrev() {
+            if (this.highlighted > 0) {
+                this.highlighted--;
+            }
+        },
+
+        formatSize(bytes) {
+            if (!bytes) return '';
+            const gb = bytes / (1024 * 1024 * 1024);
+            return gb >= 1 ? gb.toFixed(1) + ' GB' : (bytes / (1024 * 1024)).toFixed(0) + ' MB';
+        },
     };
 }
 </script>
