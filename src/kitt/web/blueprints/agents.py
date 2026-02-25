@@ -68,17 +68,13 @@ def update_settings(agent_id):
     agent_mgr = get_services()["agent_manager"]
     agent = agent_mgr.get_agent(agent_id)
     if agent is None:
-        return Markup(
-            '<span class="text-xs text-red-400">Agent not found</span>'
-        )
+        return Markup('<span class="text-xs text-red-400">Agent not found</span>')
 
     key = request.form.get("key", "")
     value = request.form.get("value", "")
 
     if not key:
-        return Markup(
-            '<span class="text-xs text-red-400">Missing key</span>'
-        )
+        return Markup('<span class="text-xs text-red-400">Missing key</span>')
 
     # Validate heartbeat_interval_s range
     if key == "heartbeat_interval_s":
@@ -89,17 +85,11 @@ def update_settings(agent_id):
                     '<span class="text-xs text-red-400">Must be 10-300</span>'
                 )
         except (ValueError, TypeError):
-            return Markup(
-                '<span class="text-xs text-red-400">Must be a number</span>'
-            )
+            return Markup('<span class="text-xs text-red-400">Must be a number</span>')
 
     if agent_mgr.update_agent_settings(agent_id, {key: value}):
-        return Markup(
-            '<span class="text-xs text-green-400">Saved</span>'
-        )
-    return Markup(
-        '<span class="text-xs text-red-400">Unknown setting</span>'
-    )
+        return Markup('<span class="text-xs text-green-400">Saved</span>')
+    return Markup('<span class="text-xs text-red-400">Unknown setting</span>')
 
 
 @bp.route("/<agent_id>/cleanup", methods=["POST"])
@@ -112,9 +102,7 @@ def cleanup_storage(agent_id):
     agent_mgr = get_services()["agent_manager"]
     agent = agent_mgr.get_agent(agent_id)
     if agent is None:
-        return Markup(
-            '<span class="text-xs text-red-400">Agent not found</span>'
-        )
+        return Markup('<span class="text-xs text-red-400">Agent not found</span>')
 
     command_id = uuid.uuid4().hex[:16]
     agent_mgr._conn.execute(
@@ -126,9 +114,7 @@ def cleanup_storage(agent_id):
     )
     agent_mgr._conn.commit()
 
-    return Markup(
-        '<span class="text-xs text-green-400">Cleanup command queued</span>'
-    )
+    return Markup('<span class="text-xs text-green-400">Cleanup command queued</span>')
 
 
 @bp.route("/<agent_id>/delete", methods=["POST"])

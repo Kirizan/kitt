@@ -7,7 +7,6 @@ The full agent (src/kitt/agent/) was removed in v1.2.0.
 import logging
 import os
 import signal
-import subprocess
 import sys
 from pathlib import Path
 

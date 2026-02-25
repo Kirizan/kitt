@@ -202,12 +202,6 @@ def trigger_cleanup(agent_id):
     import uuid
 
     command_id = uuid.uuid4().hex[:16]
-    command = {
-        "command_id": command_id,
-        "type": "cleanup_storage",
-        "payload": {"model_path": model_path},
-    }
-
     # Store as a pending command — we piggyback on the heartbeat dispatch
     # by inserting a special quick_test entry
     mgr._conn.execute(

@@ -14,7 +14,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from kitt.web.models.agent import AgentHeartbeat, AgentRegistration, AgentSettings
+from kitt.web.models.agent import AgentHeartbeat, AgentRegistration
 from kitt.web.services.event_bus import event_bus
 
 logger = logging.getLogger(__name__)
