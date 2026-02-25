@@ -85,8 +85,11 @@ endpoints all require authentication.
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| POST | `/api/v1/quicktest/` | No | Launch a quick test (body: `agent_id`, `model_path`, `engine_name`) |
+| GET | `/api/v1/quicktest/models` | No | List available models from Devon manifest |
+| POST | `/api/v1/quicktest/` | Yes | Launch a quick test (body: `agent_id`, `model_path`, `engine_name`) |
 | GET | `/api/v1/quicktest/<id>` | No | Get quick test status |
+| POST | `/api/v1/quicktest/<id>/logs` | Yes | Post a log line from the agent (body: `line`) |
+| POST | `/api/v1/quicktest/<id>/status` | Yes | Update test status (body: `status`: `running`/`completed`/`failed`) |
 
 ### Events (SSE)
 

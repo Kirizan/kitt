@@ -87,6 +87,21 @@ The full dashboard registers API blueprints under `/api/v1/`:
 All mutable endpoints require a valid `Authorization` header when
 `--auth-token` is set.
 
+## Quick Test
+
+The Quick Test page lets you run a single benchmark on a remote agent
+directly from the browser.
+
+**Model selection**: A searchable dropdown loads models from Devon's
+`manifest.json` in the configured model directory. Type to filter by
+model name with fuzzy substring matching, or enter a custom path
+manually.
+
+**Live log output**: After launching a test, the page subscribes to
+`/api/v1/events/stream/<test_id>` via SSE. Log lines stream in real
+time as the agent executes the benchmark. The status badge updates
+through each phase: queued, dispatched, running, completed, or failed.
+
 ## Settings
 
 The **Settings** page lets you configure key paths and integrations

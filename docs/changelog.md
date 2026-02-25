@@ -10,6 +10,10 @@ All notable changes to KITT are documented on this page.
 - Added documentation site with MkDocs Material
 - Added UI-configurable settings — Model Directory, Devon URL, and Results Directory can be edited from the Settings page with live updates
 - Added inline Devon URL setup form on the Devon page
+- Added searchable model dropdown to Quick Test — loads from Devon's `manifest.json` with fuzzy search
+- Added heartbeat-based command dispatch — agents pull queued quick tests via heartbeat response
+- Added live SSE log streaming to Quick Test — real-time output with status progression
+- Added Quick Test API endpoints for log forwarding and status updates
 
 ## 1.0.0
 
