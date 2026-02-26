@@ -64,13 +64,19 @@ def build_registration_payload() -> dict[str, Any]:
         if result.returncode == 0:
             images = set(result.stdout.strip().splitlines())
             engine_images = {
-                "vllm": "vllm/vllm-openai",
-                "tgi": "ghcr.io/huggingface/text-generation-inference",
-                "llama_cpp": "ghcr.io/ggerganov/llama.cpp",
-                "ollama": "ollama/ollama",
+                "vllm": ["vllm/vllm-openai", "nvcr.io/nvidia/vllm"],
+                "tgi": ["ghcr.io/huggingface/text-generation-inference"],
+                "llama_cpp": [
+                    "ghcr.io/ggml-org/llama.cpp",
+                    "ghcr.io/ggerganov/llama.cpp",
+                    "kitt/llama-cpp",
+                ],
+                "ollama": ["ollama/ollama"],
             }
-            for engine, prefix in engine_images.items():
-                if any(img.startswith(prefix) for img in images):
+            for engine, prefixes in engine_images.items():
+                if any(
+                    img.startswith(pfx) for img in images for pfx in prefixes
+                ):
                     payload["capabilities"].append(engine)
 
     return payload

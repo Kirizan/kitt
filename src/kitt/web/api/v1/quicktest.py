@@ -21,6 +21,20 @@ def models():
     return jsonify(local_model_service.read_manifest())
 
 
+@bp.route("/engine-formats", methods=["GET"])
+def engine_formats():
+    """Return supported model formats per engine."""
+    from kitt.engines.registry import EngineRegistry
+
+    EngineRegistry.auto_discover()
+    return jsonify(
+        {
+            name: cls.supported_formats()
+            for name, cls in EngineRegistry.list_engines().items()
+        }
+    )
+
+
 @bp.route("/", methods=["GET"])
 def list_tests():
     """List quick tests with pagination and optional status filter."""
@@ -103,6 +117,16 @@ def launch():
     agent = agent_mgr.get_agent(data["agent_id"])
     if agent is None:
         return jsonify({"error": "Agent not found"}), 404
+
+    # Validate model/engine format compatibility (safety net)
+    from kitt.engines.registry import EngineRegistry
+
+    EngineRegistry.auto_discover()
+    engine_cls = EngineRegistry.get(data["engine_name"])
+    if engine_cls:
+        error = engine_cls.validate_model(data["model_path"])
+        if error:
+            return jsonify({"error": error}), 400
 
     # Create quick test record with command_id for heartbeat dispatch
     test_id = uuid.uuid4().hex[:16]

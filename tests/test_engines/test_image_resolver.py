@@ -209,3 +209,53 @@ class TestFutureHardwareCompatibility:
         """Ampere GPUs (RTX 30 series) return default image."""
         result = resolve_image("vllm", "vllm/vllm-openai:latest")
         assert result == "vllm/vllm-openai:latest"
+
+
+class TestUserConfigOverrides:
+    """Tests for user-configurable image overrides via ~/.kitt/engines.yaml."""
+
+    def setup_method(self):
+        clear_cache()
+
+    def teardown_method(self):
+        clear_cache()
+
+    @patch("kitt.engines.image_resolver._detect_cc", return_value=(12, 1))
+    @patch(
+        "kitt.engines.image_resolver._load_user_overrides",
+        return_value={"vllm": "vllm/vllm-openai:latest"},
+    )
+    def test_user_config_overrides_hardware(self, mock_user, mock_cc):
+        """User config takes priority over hardware-aware overrides."""
+        result = resolve_image("vllm", "default/image:latest")
+        assert result == "vllm/vllm-openai:latest"
+
+    @patch("kitt.engines.image_resolver._detect_cc", return_value=(12, 1))
+    @patch(
+        "kitt.engines.image_resolver._load_user_overrides",
+        return_value={},
+    )
+    def test_empty_user_config_falls_through(self, mock_user, mock_cc):
+        """Empty user config falls through to hardware overrides."""
+        result = resolve_image("vllm", "vllm/vllm-openai:latest")
+        assert result == "nvcr.io/nvidia/vllm:26.01-py3"
+
+    @patch("kitt.engines.image_resolver._detect_cc", return_value=None)
+    @patch(
+        "kitt.engines.image_resolver._load_user_overrides",
+        return_value={"llama_cpp": "custom/llama:v1"},
+    )
+    def test_user_config_without_gpu(self, mock_user, mock_cc):
+        """User config works even without GPU detection."""
+        result = resolve_image("llama_cpp", "default/llama:latest")
+        assert result == "custom/llama:v1"
+
+    @patch("kitt.engines.image_resolver._detect_cc", return_value=None)
+    @patch(
+        "kitt.engines.image_resolver._load_user_overrides",
+        return_value={"vllm": "custom/vllm:v2"},
+    )
+    def test_user_config_only_affects_specified_engine(self, mock_user, mock_cc):
+        """User config for vllm doesn't affect llama_cpp."""
+        result = resolve_image("llama_cpp", "default/llama:latest")
+        assert result == "default/llama:latest"

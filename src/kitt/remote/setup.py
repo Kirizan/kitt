@@ -111,6 +111,40 @@ class RemoteSetup:
 
         return info
 
+    def setup_engines(
+        self,
+        engines: list[str],
+        dry_run: bool = False,
+    ) -> dict[str, bool]:
+        """Set up engine images on the remote host.
+
+        Runs ``kitt engines setup <name>`` for each engine over SSH.
+
+        Args:
+            engines: List of engine names to set up.
+            dry_run: If True, pass --dry-run to kitt engines setup.
+
+        Returns:
+            Dict mapping engine name to success bool.
+        """
+        import shlex
+
+        results: dict[str, bool] = {}
+        for engine_name in engines:
+            cmd = f"kitt engines setup {shlex.quote(engine_name)}"
+            if dry_run:
+                cmd += " --dry-run"
+            logger.info("Setting up engine '%s' on %s", engine_name, self.conn.target)
+            rc, out, err = self.conn.run_command(cmd)
+            results[engine_name] = rc == 0
+            if rc != 0:
+                logger.warning(
+                    "Engine setup failed for '%s': %s", engine_name, err or out
+                )
+            else:
+                logger.info("Engine '%s' ready on %s", engine_name, self.conn.target)
+        return results
+
     def setup_host(
         self,
         name: str,

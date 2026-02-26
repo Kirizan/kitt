@@ -259,6 +259,20 @@ class AgentManager:
             return None
         return self._sanitize(dict(row))
 
+    def get_agent_by_name(self, name: str) -> dict[str, Any] | None:
+        """Look up an agent by name (hostname).
+
+        Unlike ``check_agent_auth_by_name`` (which returns success for
+        nonexistent agents to allow first-time registration), this method
+        returns ``None`` when no agent with the given name exists.
+        """
+        row = self._conn.execute(
+            "SELECT * FROM agents WHERE name = ?", (name,)
+        ).fetchone()
+        if row is None:
+            return None
+        return self._sanitize(dict(row))
+
     def list_agents(self) -> list[dict[str, Any]]:
         """List all registered agents."""
         self._check_stale_agents()

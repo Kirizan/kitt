@@ -202,3 +202,84 @@ class TestInferenceEngineABC:
         engine = DummyEngine()
         engine.cleanup()  # Should not raise
         mock_stop.assert_not_called()
+
+
+class TestValidateModel:
+    def test_compatible_format(self, tmp_path):
+        """validate_model returns None for compatible format."""
+
+        class GGUFEngine(InferenceEngine):
+            @classmethod
+            def name(cls):
+                return "test_gguf"
+
+            @classmethod
+            def supported_formats(cls):
+                return ["gguf"]
+
+            @classmethod
+            def default_image(cls):
+                return "test:latest"
+
+            @classmethod
+            def default_port(cls):
+                return 9999
+
+            @classmethod
+            def container_port(cls):
+                return 9999
+
+            @classmethod
+            def health_endpoint(cls):
+                return "/health"
+
+            def initialize(self, model_path, config):
+                pass
+
+            def generate(self, prompt, **kwargs):
+                pass
+
+        gguf_file = tmp_path / "model.gguf"
+        gguf_file.write_bytes(b"\x00" * 100)
+        assert GGUFEngine.validate_model(str(gguf_file)) is None
+
+    def test_incompatible_format(self, tmp_path):
+        """validate_model returns error for incompatible format."""
+
+        class GGUFEngine(InferenceEngine):
+            @classmethod
+            def name(cls):
+                return "test_gguf2"
+
+            @classmethod
+            def supported_formats(cls):
+                return ["gguf"]
+
+            @classmethod
+            def default_image(cls):
+                return "test:latest"
+
+            @classmethod
+            def default_port(cls):
+                return 9999
+
+            @classmethod
+            def container_port(cls):
+                return 9999
+
+            @classmethod
+            def health_endpoint(cls):
+                return "/health"
+
+            def initialize(self, model_path, config):
+                pass
+
+            def generate(self, prompt, **kwargs):
+                pass
+
+        model_dir = tmp_path / "model"
+        model_dir.mkdir()
+        (model_dir / "model.safetensors").write_bytes(b"\x00" * 100)
+        error = GGUFEngine.validate_model(str(model_dir))
+        assert error is not None
+        assert "safetensors" in error

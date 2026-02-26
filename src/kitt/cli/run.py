@@ -62,7 +62,12 @@ logger = logging.getLogger(__name__)
     is_flag=True,
     help="Store results in KARR repository",
 )
-def run(model, engine, suite, output, skip_warmup, runs, config, store_karr):
+@click.option(
+    "--auto-pull",
+    is_flag=True,
+    help="Automatically pull/build engine image if not available",
+)
+def run(model, engine, suite, output, skip_warmup, runs, config, store_karr, auto_pull):
     """Run benchmarks against a model using a specified engine."""
     from kitt.benchmarks.registry import BenchmarkRegistry
     from kitt.config.loader import load_suite_config
@@ -87,12 +92,28 @@ def run(model, engine, suite, output, skip_warmup, runs, config, store_karr):
 
     engine_cls = EngineRegistry.get_engine(engine)
     if not engine_cls.is_available():
-        diag = engine_cls.diagnose()
-        console.print(f"[red]Engine '{engine}' is not available.[/red]")
-        if diag.error:
-            console.print(f"  {diag.error}")
-        if diag.guidance:
-            console.print(f"  Fix: {diag.guidance}")
+        if auto_pull:
+            console.print(
+                f"[yellow]Engine '{engine}' not available — auto-pulling...[/yellow]"
+            )
+            try:
+                engine_cls.setup()
+            except Exception as e:
+                console.print(f"[red]Auto-pull failed: {e}[/red]")
+                raise SystemExit(1) from e
+        else:
+            diag = engine_cls.diagnose()
+            console.print(f"[red]Engine '{engine}' is not available.[/red]")
+            if diag.error:
+                console.print(f"  {diag.error}")
+            if diag.guidance:
+                console.print(f"  Fix: {diag.guidance}")
+            raise SystemExit(1)
+
+    # Preflight: validate model format compatibility
+    format_error = engine_cls.validate_model(model)
+    if format_error:
+        console.print(f"[red]Model/engine mismatch:[/red] {format_error}")
         raise SystemExit(1)
 
     console.print("[bold]KITT Benchmark Runner[/bold]")

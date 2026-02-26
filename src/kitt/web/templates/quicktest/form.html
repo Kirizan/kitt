@@ -49,7 +49,12 @@
                          @mouseenter="highlighted = idx"
                          :class="{ 'bg-kitt-accent/20': highlighted === idx }"
                          class="px-4 py-2 cursor-pointer hover:bg-kitt-accent/10 text-sm">
-                        <div x-text="model.model_id" class="font-medium"></div>
+                        <div class="flex items-center gap-2">
+                            <span x-text="model.model_id" class="font-medium"></span>
+                            <template x-for="fmt in (model.formats || [])" :key="fmt">
+                                <span x-text="fmt" class="text-[10px] px-1.5 py-0.5 rounded bg-kitt-accent/20 text-kitt-accent"></span>
+                            </template>
+                        </div>
                         <div class="text-xs text-kitt-dim flex gap-3">
                             <span x-text="model.source"></span>
                             <span x-text="formatSize(model.size_bytes)"></span>
@@ -104,14 +109,19 @@ function quickTest() {
             benchmark_name: 'throughput',
         },
         allModels: [],
+        engineFormats: {},
         launching: false,
 
         async loadModels() {
             try {
-                const resp = await fetch('/api/v1/quicktest/models');
-                this.allModels = await resp.json();
+                const [modelsResp, formatsResp] = await Promise.all([
+                    fetch('/api/v1/quicktest/models'),
+                    fetch('/api/v1/quicktest/engine-formats'),
+                ]);
+                this.allModels = await modelsResp.json();
+                this.engineFormats = await formatsResp.json();
             } catch (e) {
-                console.warn('Failed to load models:', e);
+                console.warn('Failed to load models/formats:', e);
             }
         },
 
@@ -152,8 +162,21 @@ function modelCombobox() {
 
         get filtered() {
             const q = this.search.toLowerCase();
-            if (!q) return this.$data.allModels || [];
-            return (this.$data.allModels || []).filter(m =>
+            let models = this.$data.allModels || [];
+
+            // Filter by engine format compatibility
+            const engine = this.$data.form?.engine_name;
+            const engineFmts = this.$data.engineFormats || {};
+            const supported = engine && engineFmts[engine];
+            if (supported && supported.length) {
+                models = models.filter(m => {
+                    if (!m.formats || !m.formats.length) return true;
+                    return m.formats.some(f => supported.includes(f));
+                });
+            }
+
+            if (!q) return models;
+            return models.filter(m =>
                 m.model_id.toLowerCase().includes(q)
             );
         },

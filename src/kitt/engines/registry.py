@@ -32,6 +32,11 @@ class EngineRegistry:
         return cls._engines[name]
 
     @classmethod
+    def get(cls, name: str) -> type[InferenceEngine] | None:
+        """Get engine class by name, returning None if not found."""
+        return cls._engines.get(name)
+
+    @classmethod
     def list_available(cls) -> list[str]:
         """List all available (installed and functional) engines."""
         return [
@@ -44,6 +49,11 @@ class EngineRegistry:
     def list_all(cls) -> list[str]:
         """List all registered engines (available or not)."""
         return list(cls._engines.keys())
+
+    @classmethod
+    def list_engines(cls) -> dict[str, type[InferenceEngine]]:
+        """Return all registered engine classes keyed by name."""
+        return dict(cls._engines)
 
     @classmethod
     def auto_discover(cls) -> None:

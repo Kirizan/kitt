@@ -24,6 +24,25 @@ for fmt, exts in _FORMAT_EXTENSIONS.items():
         _EXT_TO_FORMAT[ext] = fmt
 
 
+def _detect_formats_from_path(path: str) -> list[str]:
+    """Detect model formats from filesystem when Devon metadata is missing."""
+    p = Path(path)
+    if not p.exists():
+        return []
+
+    if p.is_file():
+        fmt = _EXT_TO_FORMAT.get(p.suffix.lower())
+        return [fmt] if fmt else []
+
+    formats: set[str] = set()
+    for child in p.iterdir():
+        if child.is_file():
+            fmt = _EXT_TO_FORMAT.get(child.suffix.lower())
+            if fmt:
+                formats.add(fmt)
+    return sorted(formats)
+
+
 class LocalModelService:
     """Scans a local directory for model files."""
 
@@ -62,12 +81,19 @@ class LocalModelService:
             source = parts[0] if len(parts) == 2 else entry.get("source", "unknown")
             model_id = parts[1] if len(parts) == 2 else key
 
+            # Extract format metadata from Devon manifest
+            metadata = entry.get("metadata", {})
+            formats = metadata.get("format", [])
+            if not formats:
+                formats = _detect_formats_from_path(entry.get("path", ""))
+
             models.append(
                 {
                     "model_id": model_id,
                     "path": entry.get("path", ""),
                     "source": source,
                     "size_bytes": entry.get("size_bytes", 0),
+                    "formats": formats,
                 }
             )
 

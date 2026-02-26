@@ -18,6 +18,26 @@ def _get_agent_manager():
     return get_services()["agent_manager"]
 
 
+def _resolve_agent_id(mgr, agent_id: str, token: str | None):
+    """Resolve agent_id with name-based fallback on 404.
+
+    Returns ``(resolved_id, None)`` on success or
+    ``(None, (response, status_code))`` on auth failure.
+    """
+    ok, error, status = mgr.check_agent_auth(agent_id, token)
+    if ok:
+        return agent_id, None
+    if status == 404:
+        agent = mgr.get_agent_by_name(agent_id)
+        if agent:
+            real_id = agent["id"]
+            ok2, error2, status2 = mgr.check_agent_auth(real_id, token)
+            if not ok2:
+                return None, (jsonify({"error": error2}), status2)
+            return real_id, None
+    return None, (jsonify({"error": error}), status)
+
+
 def _extract_bearer_token() -> str:
     """Extract bearer token from Authorization header, or empty string."""
     auth = request.headers.get("Authorization", "")
@@ -61,18 +81,26 @@ def heartbeat(agent_id):
 
     Verifies the agent's Bearer token against its stored hash.
     Agents with no token configured (empty hash) are allowed through.
+
+    When the agent_id is not found (404), treats it as a hostname and
+    falls back to a name-based lookup.  This handles the case where
+    registration failed and the agent is using its hostname as agent_id.
     """
     token = _extract_bearer_token()
-
     mgr = _get_agent_manager()
 
-    ok, error, status = mgr.check_agent_auth(agent_id, token)
-    if not ok:
-        return jsonify({"error": error}), status
+    agent_id, err = _resolve_agent_id(mgr, agent_id, token)
+    if err:
+        return err
 
     data = request.get_json(silent=True) or {}
-    hb = AgentHeartbeat(**data)
+    try:
+        hb = AgentHeartbeat(**data)
+    except Exception:
+        return jsonify({"error": "Invalid heartbeat payload"}), 400
     result = mgr.heartbeat(agent_id, hb)
+    # Include canonical agent_id so the agent can sync
+    result["agent_id"] = agent_id
     return jsonify(result)
 
 
@@ -124,14 +152,15 @@ def report_result(agent_id):
 
     Verifies the agent's Bearer token against its stored hash.
     Agents with no token configured (empty hash) are allowed through.
+
+    Falls back to name-based lookup when agent_id is not found (404).
     """
     token = _extract_bearer_token()
-
     mgr = _get_agent_manager()
 
-    ok, error, status = mgr.check_agent_auth(agent_id, token)
-    if not ok:
-        return jsonify({"error": error}), status
+    agent_id, err = _resolve_agent_id(mgr, agent_id, token)
+    if err:
+        return err
 
     data = request.get_json(silent=True)
     if not data:

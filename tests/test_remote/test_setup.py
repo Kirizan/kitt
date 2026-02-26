@@ -158,3 +158,47 @@ class TestSetupHost:
         setup = RemoteSetup(conn)
         result = setup.setup_host("dgx01")
         assert result is None
+
+
+class TestSetupEngines:
+    def test_single_engine_success(self):
+        conn = _make_connection()
+        conn.run_command.return_value = (0, "vllm ready.", "")
+        setup = RemoteSetup(conn)
+        results = setup.setup_engines(["vllm"])
+        assert results == {"vllm": True}
+        conn.run_command.assert_called_once_with("kitt engines setup vllm")
+
+    def test_single_engine_failure(self):
+        conn = _make_connection()
+        conn.run_command.return_value = (1, "", "Docker not found")
+        setup = RemoteSetup(conn)
+        results = setup.setup_engines(["vllm"])
+        assert results == {"vllm": False}
+
+    def test_multiple_engines(self):
+        conn = _make_connection()
+        conn.run_command.side_effect = [
+            (0, "ok", ""),
+            (1, "", "error"),
+            (0, "ok", ""),
+        ]
+        setup = RemoteSetup(conn)
+        results = setup.setup_engines(["vllm", "tgi", "llama_cpp"])
+        assert results == {"vllm": True, "tgi": False, "llama_cpp": True}
+        assert conn.run_command.call_count == 3
+
+    def test_dry_run_flag(self):
+        conn = _make_connection()
+        conn.run_command.return_value = (0, "would run: ...", "")
+        setup = RemoteSetup(conn)
+        results = setup.setup_engines(["vllm"], dry_run=True)
+        assert results == {"vllm": True}
+        conn.run_command.assert_called_once_with("kitt engines setup vllm --dry-run")
+
+    def test_empty_list(self):
+        conn = _make_connection()
+        setup = RemoteSetup(conn)
+        results = setup.setup_engines([])
+        assert results == {}
+        conn.run_command.assert_not_called()

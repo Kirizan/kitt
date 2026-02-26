@@ -28,6 +28,8 @@ class HeartbeatThread(threading.Thread):
         on_command: Callable[[dict[str, Any]], None] | None = None,
         on_settings: Callable[[dict[str, str]], None] | None = None,
         storage_dir: str = "",
+        register_fn: Callable[[], str | None] | None = None,
+        on_agent_id_change: Callable[[str], None] | None = None,
     ) -> None:
         super().__init__(daemon=True, name="kitt-heartbeat")
         self.server_url = server_url.rstrip("/")
@@ -40,7 +42,10 @@ class HeartbeatThread(threading.Thread):
         self.on_command = on_command
         self.on_settings = on_settings
         self._storage_dir = storage_dir
+        self._register_fn = register_fn
+        self._on_agent_id_change = on_agent_id_change
         self._stop_event = threading.Event()
+        self._retrying = False
         self._start_time = time.monotonic()
         self._status = "idle"
         self._current_task = ""
@@ -96,13 +101,8 @@ class HeartbeatThread(threading.Thread):
             if self._status != "running":
                 self._active_interval_s = seconds
 
-    def _send_heartbeat(self) -> dict[str, Any]:
-        from urllib.parse import quote
-
-        url = (
-            f"{self.server_url}/api/v1/agents/{quote(self.agent_id, safe='')}/heartbeat"
-        )
-
+    def _build_payload(self) -> dict[str, Any]:
+        """Build the heartbeat JSON payload."""
         payload: dict[str, Any] = {
             "status": self._status,
             "current_task": self._current_task,
@@ -133,7 +133,31 @@ class HeartbeatThread(threading.Thread):
             pass
 
         payload["uptime_s"] = time.monotonic() - self._start_time
+        return payload
 
+    def _make_ssl_context(self) -> ssl.SSLContext | None:
+        """Create an SSL context for HTTPS connections."""
+        if not self.server_url.startswith("https"):
+            return None
+        ctx = ssl.create_default_context()
+        if isinstance(self.verify, str):
+            ctx.load_verify_locations(self.verify)
+        elif not self.verify:
+            ctx.check_hostname = False
+            ctx.verify_mode = ssl.CERT_NONE
+        if self.client_cert:
+            ctx.load_cert_chain(self.client_cert[0], self.client_cert[1])
+        return ctx
+
+    def _send_heartbeat(self) -> dict[str, Any]:
+        from urllib.error import HTTPError
+        from urllib.parse import quote
+
+        url = (
+            f"{self.server_url}/api/v1/agents/{quote(self.agent_id, safe='')}/heartbeat"
+        )
+
+        payload = self._build_payload()
         data = json.dumps(payload).encode("utf-8")
         req = urllib.request.Request(
             url,
@@ -145,16 +169,39 @@ class HeartbeatThread(threading.Thread):
             method="POST",
         )
 
-        ctx = None
-        if self.server_url.startswith("https"):
-            ctx = ssl.create_default_context()
-            if isinstance(self.verify, str):
-                ctx.load_verify_locations(self.verify)
-            elif not self.verify:
-                ctx.check_hostname = False
-                ctx.verify_mode = ssl.CERT_NONE
-            if self.client_cert:
-                ctx.load_cert_chain(self.client_cert[0], self.client_cert[1])
+        ctx = self._make_ssl_context()
 
-        with urllib.request.urlopen(req, context=ctx, timeout=10) as response:
-            return json.loads(response.read().decode("utf-8"))
+        try:
+            with urllib.request.urlopen(req, context=ctx, timeout=10) as response:
+                resp = json.loads(response.read().decode("utf-8"))
+        except HTTPError as e:
+            if e.code == 404 and self._register_fn and not self._retrying:
+                # Agent not found — attempt re-registration (once)
+                self._retrying = True
+                try:
+                    logger.warning(
+                        "Heartbeat 404 for agent_id=%s — attempting re-registration",
+                        self.agent_id,
+                    )
+                    new_id = self._register_fn()
+                    if new_id:
+                        self.agent_id = new_id
+                        if self._on_agent_id_change:
+                            self._on_agent_id_change(new_id)
+                        # Retry with the new agent_id
+                        return self._send_heartbeat()
+                finally:
+                    self._retrying = False
+            raise
+
+        # Sync canonical agent_id from server response
+        canonical_id = resp.get("agent_id")
+        if canonical_id and canonical_id != self.agent_id:
+            logger.info(
+                "Syncing agent_id: %s -> %s", self.agent_id, canonical_id
+            )
+            self.agent_id = canonical_id
+            if self._on_agent_id_change:
+                self._on_agent_id_change(canonical_id)
+
+        return resp
