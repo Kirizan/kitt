@@ -405,6 +405,32 @@ def start(config_path, insecure, run_preflight):
         if "kitt_image" in settings:
             app.set_kitt_image(settings["kitt_image"])
 
+    # Re-registration closure: called by heartbeat thread on 404
+    def _register_retry() -> str | None:
+        try:
+            from kitt_agent.registration import register_with_server
+
+            result = register_with_server(
+                server_url=server_url,
+                token=token,
+                name=agent_name,
+                port=port,
+                verify=verify,
+                client_cert=client_cert,
+            )
+            new_id = result.get("agent_id", "")
+            if new_id:
+                logger.info("Re-registered with server, new agent_id: %s", new_id)
+                app.set_agent_id(new_id)
+                return new_id
+        except Exception as e:
+            logger.warning("Re-registration failed: %s", e)
+        return None
+
+    # Callback when heartbeat syncs a canonical agent_id
+    def _on_agent_id_change(new_id: str) -> None:
+        app.set_agent_id(new_id)
+
     # Heartbeat
     from kitt_agent.heartbeat import HeartbeatThread
 
@@ -418,6 +444,8 @@ def start(config_path, insecure, run_preflight):
         on_command=app.handle_command,
         on_settings=_on_settings,
         storage_dir=config.get("model_storage_dir", default_model_dir),
+        register_fn=_register_retry,
+        on_agent_id_change=_on_agent_id_change,
     )
     hb.start()
 

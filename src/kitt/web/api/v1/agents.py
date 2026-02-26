@@ -61,6 +61,10 @@ def heartbeat(agent_id):
 
     Verifies the agent's Bearer token against its stored hash.
     Agents with no token configured (empty hash) are allowed through.
+
+    When the agent_id is not found (404), treats it as a hostname and
+    falls back to a name-based lookup.  This handles the case where
+    registration failed and the agent is using its hostname as agent_id.
     """
     token = _extract_bearer_token()
 
@@ -68,11 +72,25 @@ def heartbeat(agent_id):
 
     ok, error, status = mgr.check_agent_auth(agent_id, token)
     if not ok:
-        return jsonify({"error": error}), status
+        if status == 404:
+            # Treat agent_id as hostname — look up by name
+            agent = mgr.get_agent_by_name(agent_id)
+            if agent:
+                real_id = agent["id"]
+                ok2, error2, status2 = mgr.check_agent_auth(real_id, token)
+                if not ok2:
+                    return jsonify({"error": error2}), status2
+                agent_id = real_id
+            else:
+                return jsonify({"error": error}), status
+        else:
+            return jsonify({"error": error}), status
 
     data = request.get_json(silent=True) or {}
     hb = AgentHeartbeat(**data)
     result = mgr.heartbeat(agent_id, hb)
+    # Include canonical agent_id so the agent can sync
+    result["agent_id"] = agent_id
     return jsonify(result)
 
 
@@ -124,6 +142,8 @@ def report_result(agent_id):
 
     Verifies the agent's Bearer token against its stored hash.
     Agents with no token configured (empty hash) are allowed through.
+
+    Falls back to name-based lookup when agent_id is not found (404).
     """
     token = _extract_bearer_token()
 
@@ -131,7 +151,18 @@ def report_result(agent_id):
 
     ok, error, status = mgr.check_agent_auth(agent_id, token)
     if not ok:
-        return jsonify({"error": error}), status
+        if status == 404:
+            agent = mgr.get_agent_by_name(agent_id)
+            if agent:
+                real_id = agent["id"]
+                ok2, error2, status2 = mgr.check_agent_auth(real_id, token)
+                if not ok2:
+                    return jsonify({"error": error2}), status2
+                agent_id = real_id
+            else:
+                return jsonify({"error": error}), status
+        else:
+            return jsonify({"error": error}), status
 
     data = request.get_json(silent=True)
     if not data:

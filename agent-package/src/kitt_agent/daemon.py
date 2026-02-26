@@ -562,6 +562,14 @@ def create_agent_app(
 
     app.set_kitt_image = set_kitt_image  # type: ignore[attr-defined]
 
+    def set_agent_id(new_id: str) -> None:
+        """Update the agent ID used for server API calls."""
+        nonlocal _agent_report_id
+        if new_id:
+            _agent_report_id = new_id
+
+    app.set_agent_id = set_agent_id  # type: ignore[attr-defined]
+
     return app
 
 
