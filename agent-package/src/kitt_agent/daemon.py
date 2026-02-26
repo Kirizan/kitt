@@ -261,9 +261,17 @@ def create_agent_app(
             and kitt_image != "kitt:latest"
             and DockerOps.image_exists("kitt:latest")
         ):
-            # Try the local fallback tag
-            kitt_image = "kitt:latest"
-            use_docker = True
+            # Verify kitt:latest arch matches host before using as fallback
+            fallback_arch = DockerOps.image_arch("kitt:latest")
+            host_arch = DockerOps.host_arch()
+            if not host_arch or not fallback_arch or host_arch == fallback_arch:
+                kitt_image = "kitt:latest"
+                use_docker = True
+            else:
+                on_log(
+                    f"kitt:latest is {fallback_arch}, host is {host_arch} — "
+                    "run 'kitt-agent build' to build a compatible image"
+                )
 
         if use_docker:
             # Docker container is the preferred execution method.
@@ -297,6 +305,7 @@ def create_agent_app(
                 suite,
                 "-o",
                 str(output_dir),
+                "--auto-pull",
             ]
             on_log(f"Running KITT benchmark in container ({kitt_image})")
         else:

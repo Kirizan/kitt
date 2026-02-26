@@ -89,6 +89,36 @@ class InferenceEngine(ABC):
         return resolve_image(cls.name(), cls.default_image())
 
     @classmethod
+    def setup(cls) -> None:
+        """Pull or build the Docker image for this engine.
+
+        Uses the build recipe for KITT-managed images, or pulls from the
+        registry for standard images.
+
+        Raises:
+            RuntimeError: If Docker is not available or pull/build fails.
+        """
+        from .docker_manager import DockerManager
+        from .image_resolver import get_build_recipe
+
+        if not DockerManager.is_docker_available():
+            raise RuntimeError("Docker is not installed or not running")
+
+        image = cls.resolved_image()
+        recipe = get_build_recipe(image)
+
+        if recipe is not None:
+            DockerManager.build_image(
+                image=image,
+                dockerfile=str(recipe.dockerfile_path),
+                context_dir=str(recipe.dockerfile_path.parent),
+                target=recipe.target,
+                build_args=recipe.build_args,
+            )
+        else:
+            DockerManager.pull_image(image)
+
+    @classmethod
     def validate_model(cls, model_path: str) -> str | None:
         """Check if a model's format is compatible with this engine.
 

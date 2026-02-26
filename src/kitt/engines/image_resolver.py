@@ -22,6 +22,9 @@ When adding new overrides:
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
+
+import yaml
 
 logger = logging.getLogger(__name__)
 
@@ -136,8 +139,49 @@ def _detect_cc() -> tuple[int, int] | None:
     return _cc_cache
 
 
+_USER_CONFIG_PATH = Path.home() / ".kitt" / "engines.yaml"
+
+# Cache for user config (None = not yet loaded, empty dict = loaded but empty/missing)
+_user_config_cache: dict[str, Any] | None = None
+
+
+def _load_user_overrides() -> dict[str, str]:
+    """Load user image overrides from ~/.kitt/engines.yaml.
+
+    Expected format::
+
+        image_overrides:
+          vllm: "vllm/vllm-openai:latest"
+          llama_cpp: "kitt/llama-cpp:spark"
+
+    Returns:
+        Flat dict mapping engine name to image string.
+    """
+    global _user_config_cache
+    if _user_config_cache is not None:
+        return _user_config_cache.get("image_overrides", {})
+
+    _user_config_cache = {}
+    if _USER_CONFIG_PATH.is_file():
+        try:
+            data = yaml.safe_load(_USER_CONFIG_PATH.read_text()) or {}
+            _user_config_cache = data
+            overrides = data.get("image_overrides", {})
+            if overrides:
+                logger.info("Loaded user image overrides from %s", _USER_CONFIG_PATH)
+            return overrides
+        except Exception as e:
+            logger.warning("Failed to read %s: %s", _USER_CONFIG_PATH, e)
+    return {}
+
+
 def resolve_image(engine_name: str, default_image: str) -> str:
     """Return the best Docker image for an engine on the current GPU.
+
+    Resolution order:
+    1. User config (~/.kitt/engines.yaml) — highest priority
+    2. Hardware-aware overrides (_IMAGE_OVERRIDES)
+    3. Engine's default_image — fallback
 
     Args:
         engine_name: Engine identifier (e.g. 'vllm', 'tgi').
@@ -146,26 +190,35 @@ def resolve_image(engine_name: str, default_image: str) -> str:
     Returns:
         Docker image string appropriate for the detected hardware.
     """
-    cc = _detect_cc()
-    if cc is None:
-        return default_image
+    # 1. Check user config first
+    user_overrides = _load_user_overrides()
+    user_image = user_overrides.get(engine_name)
+    if user_image and isinstance(user_image, str):
+        logger.info(
+            "Using user-configured image for %s: %s", engine_name, user_image
+        )
+        return user_image
 
-    overrides = _IMAGE_OVERRIDES.get(engine_name, [])
-    for min_cc, image in overrides:
-        if cc >= min_cc:
-            logger.info(
-                f"GPU cc {cc[0]}.{cc[1]} matched override for {engine_name}: {image}"
-            )
-            return image
+    # 2. Hardware-aware overrides
+    cc = _detect_cc()
+    if cc is not None:
+        overrides = _IMAGE_OVERRIDES.get(engine_name, [])
+        for min_cc, image in overrides:
+            if cc >= min_cc:
+                logger.info(
+                    f"GPU cc {cc[0]}.{cc[1]} matched override for {engine_name}: {image}"
+                )
+                return image
 
     return default_image
 
 
 def clear_cache() -> None:
-    """Reset the cached compute capability (for testing)."""
-    global _cc_cache, _cc_detected
+    """Reset all cached state (for testing)."""
+    global _cc_cache, _cc_detected, _user_config_cache
     _cc_cache = None
     _cc_detected = False
+    _user_config_cache = None
 
 
 def get_supported_engines() -> list[str]:
