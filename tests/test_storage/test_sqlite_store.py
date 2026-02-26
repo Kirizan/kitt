@@ -18,7 +18,7 @@ def _make_result(model="llama-3.1", engine="vllm", passed=True, suite="standard"
         "passed_count": 3 if passed else 1,
         "failed_count": 0 if passed else 2,
         "total_time_seconds": 120.5,
-        "kitt_version": "1.1.0",
+        "kitt_version": "1.2.1",
         "results": [
             {
                 "test_name": "throughput",

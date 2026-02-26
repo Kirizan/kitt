@@ -54,9 +54,50 @@ class DockerOps:
             return False
 
     @staticmethod
+    def image_exists(image: str) -> bool:
+        """Check if a Docker image exists locally."""
+        try:
+            result = subprocess.run(
+                ["docker", "image", "inspect", image],
+                capture_output=True,
+                timeout=10,
+            )
+            return result.returncode == 0
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            return False
+
+    @staticmethod
+    def image_arch(image: str) -> str:
+        """Return the architecture of a local Docker image (e.g. 'amd64', 'arm64')."""
+        try:
+            result = subprocess.run(
+                ["docker", "image", "inspect", "--format", "{{.Architecture}}", image],
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+            return result.stdout.strip() if result.returncode == 0 else ""
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            return ""
+
+    @staticmethod
+    def host_arch() -> str:
+        """Return the host architecture as Docker reports it."""
+        try:
+            result = subprocess.run(
+                ["docker", "info", "--format", "{{.Architecture}}"],
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+            return result.stdout.strip() if result.returncode == 0 else ""
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            return ""
+
+    @staticmethod
     def pull_image(image: str) -> bool:
         """Pull a Docker image."""
-        logger.info(f"Pulling image: {image}")
+        logger.info("Pulling image: %s", image)
         result = subprocess.run(
             ["docker", "pull", image],
             capture_output=True,
@@ -64,7 +105,7 @@ class DockerOps:
             timeout=600,
         )
         if result.returncode != 0:
-            logger.error(f"Pull failed: {result.stderr}")
+            logger.error("Pull failed: %s", result.stderr)
             return False
         return True
 
@@ -104,14 +145,27 @@ class DockerOps:
         args.append(spec.image)
         args.extend(spec.command_args)
 
-        logger.info(f"Starting container: {' '.join(args)}")
+        # Redact -e values to avoid leaking secrets in logs
+        safe_args = []
+        redact_next = False
+        for arg in args:
+            if redact_next:
+                key = arg.split("=", 1)[0] if "=" in arg else arg
+                safe_args.append(f"{key}=***")
+                redact_next = False
+            elif arg == "-e":
+                safe_args.append(arg)
+                redact_next = True
+            else:
+                safe_args.append(arg)
+        logger.info("Starting container: %s", " ".join(safe_args))
         result = subprocess.run(args, capture_output=True, text=True, timeout=60)
 
         if result.returncode != 0:
             raise RuntimeError(f"Container start failed: {result.stderr.strip()}")
 
         container_id = result.stdout.strip()[:12]
-        logger.info(f"Container started: {container_id} ({name})")
+        logger.info("Container started: %s (%s)", container_id, name)
 
         if on_log:
             on_log(f"Container started: {container_id}")
@@ -121,7 +175,7 @@ class DockerOps:
     @staticmethod
     def stop_container(container_id: str) -> bool:
         """Stop and remove a container."""
-        logger.info(f"Stopping container: {container_id}")
+        logger.info("Stopping container: %s", container_id)
         subprocess.run(
             ["docker", "stop", container_id],
             capture_output=True,

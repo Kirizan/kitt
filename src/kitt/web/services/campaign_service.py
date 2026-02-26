@@ -3,9 +3,12 @@
 Handles campaign CRUD, launch via agent, and status tracking.
 """
 
+from __future__ import annotations
+
 import json
 import logging
 import sqlite3
+import threading
 import uuid
 from datetime import datetime
 from typing import Any
@@ -18,8 +21,15 @@ logger = logging.getLogger(__name__)
 class CampaignService:
     """Manages web campaigns stored in the database."""
 
-    def __init__(self, db_conn: sqlite3.Connection) -> None:
+    def __init__(
+        self, db_conn: sqlite3.Connection, write_lock: threading.Lock | None = None
+    ) -> None:
         self._conn = db_conn
+        self._write_lock: threading.Lock = write_lock or threading.Lock()
+
+    def _commit(self) -> None:
+        """Commit the current transaction (must be called inside _write_lock)."""
+        self._conn.commit()
 
     def create(
         self,
@@ -36,20 +46,21 @@ class CampaignService:
         campaign_id = uuid.uuid4().hex[:16]
         now = datetime.now().isoformat()
 
-        self._conn.execute(
-            """INSERT INTO web_campaigns
-               (id, name, description, config_json, status, agent_id, created_at)
-               VALUES (?, ?, ?, ?, 'draft', ?, ?)""",
-            (
-                campaign_id,
-                name,
-                description,
-                json.dumps(config_json, default=str),
-                agent_id,
-                now,
-            ),
-        )
-        self._conn.commit()
+        with self._write_lock:
+            self._conn.execute(
+                """INSERT INTO web_campaigns
+                   (id, name, description, config_json, status, agent_id, created_at)
+                   VALUES (?, ?, ?, ?, 'draft', ?, ?)""",
+                (
+                    campaign_id,
+                    name,
+                    description,
+                    json.dumps(config_json, default=str),
+                    agent_id,
+                    now,
+                ),
+            )
+            self._commit()
 
         event_bus.publish("campaign_created", campaign_id, {"name": name})
         return campaign_id
@@ -132,8 +143,9 @@ class CampaignService:
 
         params.append(campaign_id)
         sql = f"UPDATE web_campaigns SET {', '.join(sets)} WHERE id = ?"
-        cursor = self._conn.execute(sql, params)
-        self._conn.commit()
+        with self._write_lock:
+            cursor = self._conn.execute(sql, params)
+            self._commit()
 
         event_bus.publish(
             "campaign_status",
@@ -147,18 +159,20 @@ class CampaignService:
 
     def delete(self, campaign_id: str) -> bool:
         """Delete a campaign."""
-        cursor = self._conn.execute(
-            "DELETE FROM web_campaigns WHERE id = ?", (campaign_id,)
-        )
-        self._conn.commit()
+        with self._write_lock:
+            cursor = self._conn.execute(
+                "DELETE FROM web_campaigns WHERE id = ?", (campaign_id,)
+            )
+            self._commit()
         return cursor.rowcount > 0
 
     def update_config(self, campaign_id: str, config: dict[str, Any]) -> bool:
         """Update campaign configuration (only while in draft status)."""
-        cursor = self._conn.execute(
-            """UPDATE web_campaigns SET config_json = ?
-               WHERE id = ? AND status = 'draft'""",
-            (json.dumps(config, default=str), campaign_id),
-        )
-        self._conn.commit()
+        with self._write_lock:
+            cursor = self._conn.execute(
+                """UPDATE web_campaigns SET config_json = ?
+                   WHERE id = ? AND status = 'draft'""",
+                (json.dumps(config, default=str), campaign_id),
+            )
+            self._commit()
         return cursor.rowcount > 0

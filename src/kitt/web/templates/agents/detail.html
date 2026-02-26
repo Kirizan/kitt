@@ -134,6 +134,144 @@
         </div>
     </div>
 
+    <!-- Storage Info -->
+    <div class="bg-kitt-surface rounded-lg p-5">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-lg font-semibold">Storage</h2>
+            <button type="button"
+                    hx-post="/agents/{{ agent.id }}/cleanup"
+                    hx-confirm="Clean all cached models from this agent's local storage?"
+                    hx-target="#cleanup_feedback"
+                    hx-swap="innerHTML"
+                    class="text-xs bg-red-900/50 hover:bg-red-900/70 text-red-300 px-3 py-1.5 rounded-md transition-colors">
+                Clean Storage
+            </button>
+        </div>
+        <dl class="space-y-3 text-sm"
+            hx-get="/agents/{{ agent.id }}"
+            hx-trigger="every 30s"
+            hx-select="#storage-data"
+            hx-target="#storage-data"
+            hx-swap="outerHTML">
+            <div id="storage-data">
+                <div class="flex justify-between">
+                    <dt class="text-kitt-dim">Status</dt>
+                    <dd class="text-xs">Data updates with each heartbeat</dd>
+                </div>
+            </div>
+        </dl>
+        <div id="cleanup_feedback" class="mt-2"></div>
+    </div>
+
+    <!-- Agent Settings -->
+    <div class="bg-kitt-surface rounded-lg p-6">
+        <h2 class="text-lg font-semibold mb-4">Settings</h2>
+        <dl class="space-y-4 text-sm">
+            <!-- Model Storage Directory -->
+            <div class="space-y-2">
+                <dt class="text-kitt-dim">Model Storage Directory</dt>
+                <div class="flex gap-2">
+                    <input type="text" id="model_storage_dir_input" name="value"
+                           value="{{ settings.get('model_storage_dir', '~/.kitt/models') }}"
+                           placeholder="~/.kitt/models"
+                           class="flex-1 bg-kitt-bg border border-kitt-primary/50 rounded-md px-3 py-1.5 text-xs font-mono focus:outline-none focus:border-kitt-accent">
+                    <button type="button"
+                            hx-post="/agents/{{ agent.id }}/settings"
+                            hx-include="#model_storage_dir_input"
+                            hx-vals='{"key": "model_storage_dir"}'
+                            hx-target="#model_storage_dir_feedback"
+                            hx-swap="innerHTML"
+                            class="bg-kitt-accent hover:bg-kitt-accent/80 text-white px-3 py-1.5 rounded-md text-xs font-medium transition-colors">
+                        Save
+                    </button>
+                </div>
+                <div id="model_storage_dir_feedback"></div>
+            </div>
+
+            <!-- Model Share Source (NFS) -->
+            <div class="space-y-2">
+                <dt class="text-kitt-dim">Model Share Source (NFS)</dt>
+                <div class="flex gap-2">
+                    <input type="text" id="model_share_source_input" name="value"
+                           value="{{ settings.get('model_share_source', '') }}"
+                           placeholder="nas:/volume1/models"
+                           class="flex-1 bg-kitt-bg border border-kitt-primary/50 rounded-md px-3 py-1.5 text-xs font-mono focus:outline-none focus:border-kitt-accent">
+                    <button type="button"
+                            hx-post="/agents/{{ agent.id }}/settings"
+                            hx-include="#model_share_source_input"
+                            hx-vals='{"key": "model_share_source"}'
+                            hx-target="#model_share_source_feedback"
+                            hx-swap="innerHTML"
+                            class="bg-kitt-accent hover:bg-kitt-accent/80 text-white px-3 py-1.5 rounded-md text-xs font-medium transition-colors">
+                        Save
+                    </button>
+                </div>
+                <div id="model_share_source_feedback"></div>
+            </div>
+
+            <!-- Model Share Mount Point -->
+            <div class="space-y-2">
+                <dt class="text-kitt-dim">Model Share Mount Point</dt>
+                <div class="flex gap-2">
+                    <input type="text" id="model_share_mount_input" name="value"
+                           value="{{ settings.get('model_share_mount', '') }}"
+                           placeholder="/mnt/models"
+                           class="flex-1 bg-kitt-bg border border-kitt-primary/50 rounded-md px-3 py-1.5 text-xs font-mono focus:outline-none focus:border-kitt-accent">
+                    <button type="button"
+                            hx-post="/agents/{{ agent.id }}/settings"
+                            hx-include="#model_share_mount_input"
+                            hx-vals='{"key": "model_share_mount"}'
+                            hx-target="#model_share_mount_feedback"
+                            hx-swap="innerHTML"
+                            class="bg-kitt-accent hover:bg-kitt-accent/80 text-white px-3 py-1.5 rounded-md text-xs font-medium transition-colors">
+                        Save
+                    </button>
+                </div>
+                <div id="model_share_mount_feedback"></div>
+            </div>
+
+            <!-- Auto Cleanup toggle -->
+            <div class="flex justify-between items-center">
+                <dt class="text-kitt-dim">Auto Cleanup</dt>
+                <dd class="flex items-center">
+                    {% set cleanup_enabled = settings.get('auto_cleanup', 'true') == 'true' %}
+                    <button type="button"
+                            hx-post="/agents/{{ agent.id }}/settings"
+                            hx-vals='{"key": "auto_cleanup", "value": "{{ 'false' if cleanup_enabled else 'true' }}"}'
+                            hx-swap="outerHTML"
+                            hx-target="closest div"
+                            hx-select="dd"
+                            class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors {{ 'bg-kitt-accent' if cleanup_enabled else 'bg-kitt-primary' }}"
+                            role="switch" aria-checked="{{ 'true' if cleanup_enabled else 'false' }}">
+                        <span class="inline-block h-4 w-4 rounded-full bg-white transition-transform {{ 'translate-x-5' if cleanup_enabled else 'translate-x-0' }}"></span>
+                    </button>
+                    <span class="text-sm ml-2 {{ 'text-green-400' if cleanup_enabled else 'text-kitt-dim' }}">{{ 'Enabled' if cleanup_enabled else 'Disabled' }}</span>
+                </dd>
+            </div>
+
+            <!-- Heartbeat Interval -->
+            <div class="space-y-2">
+                <dt class="text-kitt-dim">Heartbeat Interval (seconds)</dt>
+                <div class="flex gap-2">
+                    <input type="number" id="heartbeat_interval_input" name="value"
+                           value="{{ settings.get('heartbeat_interval_s', '30') }}"
+                           min="10" max="300"
+                           class="w-24 bg-kitt-bg border border-kitt-primary/50 rounded-md px-3 py-1.5 text-xs font-mono focus:outline-none focus:border-kitt-accent">
+                    <button type="button"
+                            hx-post="/agents/{{ agent.id }}/settings"
+                            hx-include="#heartbeat_interval_input"
+                            hx-vals='{"key": "heartbeat_interval_s"}'
+                            hx-target="#heartbeat_interval_feedback"
+                            hx-swap="innerHTML"
+                            class="bg-kitt-accent hover:bg-kitt-accent/80 text-white px-3 py-1.5 rounded-md text-xs font-medium transition-colors">
+                        Save
+                    </button>
+                </div>
+                <div id="heartbeat_interval_feedback"></div>
+            </div>
+        </dl>
+    </div>
+
     <!-- Fingerprint -->
     {% set fp = hw.get('fingerprint') or agent.fingerprint %}
     {% if fp %}

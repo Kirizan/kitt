@@ -47,20 +47,9 @@ def register():
 
     mgr = _get_agent_manager()
 
-    # Look up the agent to check if it has a provisioned token
-    row = mgr._conn.execute(
-        "SELECT id, token_hash, token FROM agents WHERE name = ?", (reg.name,)
-    ).fetchone()
-
-    if row:
-        stored_hash = row["token_hash"] or ""
-        stored_raw = row["token"] or ""
-        # Agent has a token configured — verify it
-        if stored_hash or stored_raw:
-            if not token:
-                return jsonify({"error": "Missing authorization"}), 401
-            if not mgr.verify_token(row["id"], token):
-                return jsonify({"error": "Invalid token for this agent"}), 403
+    ok, error, status = mgr.check_agent_auth_by_name(reg.name, token)
+    if not ok:
+        return jsonify({"error": error}), status
 
     result = mgr.register(reg, token)
     return jsonify(result), 201
@@ -77,23 +66,9 @@ def heartbeat(agent_id):
 
     mgr = _get_agent_manager()
 
-    # Check if agent exists and has a token configured
-    row = mgr._conn.execute(
-        "SELECT token_hash, token FROM agents WHERE id = ?", (agent_id,)
-    ).fetchone()
-
-    if row is None:
-        return jsonify({"error": "Agent not found"}), 404
-
-    stored_hash = row["token_hash"] or ""
-    stored_raw = row["token"] or ""
-
-    # Agent has a token configured — verify it
-    if stored_hash or stored_raw:
-        if not token:
-            return jsonify({"error": "Missing authorization"}), 401
-        if not mgr.verify_token(agent_id, token):
-            return jsonify({"error": "Invalid token for this agent"}), 403
+    ok, error, status = mgr.check_agent_auth(agent_id, token)
+    if not ok:
+        return jsonify({"error": error}), status
 
     data = request.get_json(silent=True) or {}
     hb = AgentHeartbeat(**data)
@@ -154,21 +129,9 @@ def report_result(agent_id):
 
     mgr = _get_agent_manager()
 
-    row = mgr._conn.execute(
-        "SELECT token_hash, token FROM agents WHERE id = ?", (agent_id,)
-    ).fetchone()
-
-    if row is None:
-        return jsonify({"error": "Agent not found"}), 404
-
-    stored_hash = row["token_hash"] or ""
-    stored_raw = row["token"] or ""
-
-    if stored_hash or stored_raw:
-        if not token:
-            return jsonify({"error": "Missing authorization"}), 401
-        if not mgr.verify_token(agent_id, token):
-            return jsonify({"error": "Invalid token for this agent"}), 403
+    ok, error, status = mgr.check_agent_auth(agent_id, token)
+    if not ok:
+        return jsonify({"error": error}), status
 
     data = request.get_json(silent=True)
     if not data:
@@ -180,9 +143,64 @@ def report_result(agent_id):
     result_svc = get_services()["result_service"]
     result_data = data.get("result_data")
     if result_data:
-        result_svc._store.save_result(result_data)
+        result_svc.save_result(result_data)
 
     return jsonify({"accepted": True}), 202
+
+
+@bp.route("/<agent_id>/cleanup", methods=["POST"])
+@require_auth
+def trigger_cleanup(agent_id):
+    """Queue a cleanup_storage command for the agent."""
+    mgr = _get_agent_manager()
+    agent = mgr.get_agent(agent_id)
+    if agent is None:
+        return jsonify({"error": "Agent not found"}), 404
+
+    data = request.get_json(silent=True) or {}
+    model_path = data.get("model_path", "")
+
+    command_id = mgr.queue_cleanup_command(agent_id, model_path)
+    return jsonify({"queued": True, "command_id": command_id}), 202
+
+
+@bp.route("/<agent_id>/settings", methods=["GET"])
+@require_auth
+def get_agent_settings(agent_id):
+    """Get all settings for an agent."""
+    mgr = _get_agent_manager()
+    agent = mgr.get_agent(agent_id)
+    if agent is None:
+        return jsonify({"error": "Agent not found"}), 404
+    settings = mgr.get_agent_settings(agent_id)
+    return jsonify(settings)
+
+
+@bp.route("/<agent_id>/settings", methods=["PUT"])
+@require_auth
+def update_agent_settings(agent_id):
+    """Update agent settings."""
+    mgr = _get_agent_manager()
+    agent = mgr.get_agent(agent_id)
+    if agent is None:
+        return jsonify({"error": "Agent not found"}), 404
+
+    data = request.get_json(silent=True)
+    if not data or not isinstance(data, dict):
+        return jsonify({"error": "Invalid JSON body — expected {key: value}"}), 400
+
+    # Validate heartbeat_interval_s range
+    if "heartbeat_interval_s" in data:
+        try:
+            val = int(data["heartbeat_interval_s"])
+            if not (10 <= val <= 300):
+                return jsonify({"error": "heartbeat_interval_s must be 10-300"}), 400
+        except (ValueError, TypeError):
+            return jsonify({"error": "heartbeat_interval_s must be an integer"}), 400
+
+    if mgr.update_agent_settings(agent_id, data):
+        return jsonify({"updated": True})
+    return jsonify({"error": "No valid settings to update"}), 400
 
 
 @bp.route("/<agent_id>/rotate-token", methods=["POST"])

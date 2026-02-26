@@ -19,6 +19,7 @@ RUN poetry config virtualenvs.create false \
 COPY src/ ./src/
 COPY configs/ ./configs/
 COPY agent-package/ ./agent-package/
+COPY docker/web/Dockerfile ./docker/web/Dockerfile
 COPY README.md ./
 RUN poetry install --only-root
 

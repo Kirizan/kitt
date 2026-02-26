@@ -2,6 +2,8 @@
 
 from flask import Blueprint, flash, redirect, render_template, request, url_for
 
+from kitt.web.auth import csrf_protect
+
 bp = Blueprint("campaigns", __name__, url_prefix="/campaigns")
 
 
@@ -53,6 +55,7 @@ def detail(campaign_id):
 
 
 @bp.route("/<campaign_id>/delete", methods=["POST"])
+@csrf_protect
 def delete(campaign_id):
     """Delete a campaign."""
     from kitt.web.app import get_services

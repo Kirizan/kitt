@@ -3,9 +3,12 @@
 Stores key-value UI settings in the web_settings SQLite table.
 """
 
+from __future__ import annotations
+
 import logging
 import os
 import sqlite3
+import threading
 
 logger = logging.getLogger(__name__)
 
@@ -21,8 +24,15 @@ _DEFAULTS: dict[str, str] = {
 class SettingsService:
     """Read/write web UI settings backed by SQLite."""
 
-    def __init__(self, db_conn: sqlite3.Connection) -> None:
+    def __init__(
+        self, db_conn: sqlite3.Connection, write_lock: threading.Lock | None = None
+    ) -> None:
         self._conn = db_conn
+        self._write_lock: threading.Lock = write_lock or threading.Lock()
+
+    def _commit(self) -> None:
+        """Commit the current transaction (must be called inside _write_lock)."""
+        self._conn.commit()
 
     def get(self, key: str, default: str | None = None) -> str:
         """Get a setting value, falling back to built-in defaults."""
@@ -62,12 +72,13 @@ class SettingsService:
 
     def set(self, key: str, value: str) -> None:
         """Upsert a setting value."""
-        self._conn.execute(
-            "INSERT INTO web_settings (key, value) VALUES (?, ?)"
-            " ON CONFLICT(key) DO UPDATE SET value = excluded.value",
-            (key, value),
-        )
-        self._conn.commit()
+        with self._write_lock:
+            self._conn.execute(
+                "INSERT INTO web_settings (key, value) VALUES (?, ?)"
+                " ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+                (key, value),
+            )
+            self._commit()
 
     def get_all(self) -> dict[str, str]:
         """Return all stored settings merged with defaults."""

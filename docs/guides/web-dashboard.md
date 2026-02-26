@@ -78,6 +78,9 @@ The full dashboard registers API blueprints under `/api/v1/`:
 | `GET /api/v1/results` | List and query benchmark results |
 | `GET /api/v1/agents` | List registered agents |
 | `POST /api/v1/agents/register` | Agent registration |
+| `GET /api/v1/agents/<id>/settings` | Get agent settings |
+| `PUT /api/v1/agents/<id>/settings` | Update agent settings |
+| `POST /api/v1/agents/<id>/cleanup` | Trigger storage cleanup |
 | `GET /api/v1/campaigns` | List campaigns |
 | `POST /api/v1/campaigns` | Create a new campaign |
 | `GET /api/v1/models` | List known models |
@@ -129,6 +132,28 @@ without a restart.
 
 The Devon URL can also be configured inline on the **Devon** page when
 it hasn't been set yet.
+
+### Agent Settings
+
+Per-agent settings are configured on each agent's detail page, not the
+global Settings page. Navigate to **Agents > (agent name)** to find the
+Settings card. These settings are synced to the agent via the heartbeat
+response:
+
+| Setting | Description |
+|---------|-------------|
+| Model Storage Directory | Local directory for model copies |
+| Model Share Source (NFS) | NFS share source (e.g., `nas:/volume1/models`) |
+| Model Share Mount Point | Local mount point for the NFS share |
+| Auto Cleanup | Delete local model copies after benchmarks |
+| Heartbeat Interval | Seconds between heartbeats (10-300) |
+
+### Storage Monitoring
+
+The agent detail page also shows a Storage card with the current
+disk usage from heartbeat data. The "Clean Storage" button queues a
+`cleanup_storage` command that the agent will pick up on its next
+heartbeat, deleting all cached models from local storage.
 
 ## Database
 

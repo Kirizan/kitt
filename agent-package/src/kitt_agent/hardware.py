@@ -141,7 +141,11 @@ def _detect_gpu(ram_gb: int) -> dict[str, Any]:
                 cc_str = ""
                 try:
                     cc_result = subprocess.run(
-                        ["nvidia-smi", "--query-gpu=compute_cap", "--format=csv,noheader"],
+                        [
+                            "nvidia-smi",
+                            "--query-gpu=compute_cap",
+                            "--format=csv,noheader",
+                        ],
                         capture_output=True,
                         text=True,
                         timeout=5,
@@ -248,8 +252,15 @@ def _detect_storage() -> dict[str, str]:
         return result
 
     known_brands = [
-        "Samsung", "WD", "Western Digital", "Intel", "Crucial",
-        "Kingston", "SK hynix", "Seagate", "Micron",
+        "Samsung",
+        "WD",
+        "Western Digital",
+        "Intel",
+        "Crucial",
+        "Kingston",
+        "SK hynix",
+        "Seagate",
+        "Micron",
     ]
 
     # Check NVMe devices

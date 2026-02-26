@@ -11,8 +11,11 @@ import logging
 import os
 import secrets
 import sqlite3
+import threading
 from pathlib import Path
 from typing import Any
+
+import kitt
 
 logger = logging.getLogger(__name__)
 
@@ -114,10 +117,12 @@ def create_app(
     app.config["DB_PATH"] = str(_db_path)
 
     # Get a raw connection for the new v2 tables (agents, campaigns, etc.)
+    # Attach a write lock to prevent concurrent write conflicts across threads.
     db_conn = sqlite3.connect(str(_db_path), check_same_thread=False)
     db_conn.row_factory = sqlite3.Row
     db_conn.execute("PRAGMA journal_mode=WAL")
     db_conn.execute("PRAGMA foreign_keys=ON")
+    db_write_lock = threading.Lock()
 
     # Ensure v2 schema is applied
     from kitt.storage.migrations import (
@@ -141,7 +146,7 @@ def create_app(
     devon_api_key = os.environ.get("DEVON_API_KEY")
     default_model_dir = str(Path.home() / ".kitt" / "models")
 
-    settings_service = SettingsService(db_conn)
+    settings_service = SettingsService(db_conn, db_write_lock)
 
     # Resolve effective values: DB (non-empty) > env var > fallback
     devon_url = settings_service.get_effective("devon_url", "DEVON_URL", "")
@@ -157,8 +162,8 @@ def create_app(
     global _services
     _services = {
         "result_service": ResultService(store),
-        "agent_manager": AgentManager(db_conn),
-        "campaign_service": CampaignService(db_conn),
+        "agent_manager": AgentManager(db_conn, db_write_lock),
+        "campaign_service": CampaignService(db_conn, db_write_lock),
         "model_service": ModelService(devon_url=devon_url, devon_api_key=devon_api_key),
         "settings_service": settings_service,
         "local_model_service": LocalModelService(model_dir),
@@ -217,9 +222,10 @@ def create_app(
                 "devon_tab_visible": settings_service.get_bool(
                     "devon_tab_visible", default=True
                 ),
+                "kitt_version": kitt.__version__,
             }
         except Exception:
-            return {"devon_tab_visible": True}
+            return {"devon_tab_visible": True, "kitt_version": kitt.__version__}
 
     # --- HTMX partial routes ---
     @app.route("/partials/agent_cards")
@@ -258,7 +264,9 @@ def create_app(
     # --- Legacy compat: /api/health ---
     @app.route("/api/health")
     def legacy_health():
-        return jsonify({"status": "ok", "version": "1.1.0"})
+        import kitt
+
+        return jsonify({"status": "ok", "version": kitt.__version__})
 
     # --- Shutdown cleanup ---
     def _shutdown():
@@ -601,7 +609,9 @@ def create_legacy_app(
 
     @app.route("/api/health")
     def health():
-        return jsonify({"status": "ok", "version": "1.1.0"})
+        import kitt
+
+        return jsonify({"status": "ok", "version": kitt.__version__})
 
     return app
 

@@ -129,6 +129,20 @@ MIGRATIONS: list[Migration] = [
         CREATE INDEX idx_quick_test_logs_test ON quick_test_logs(test_id);
         """,
     ),
+    (
+        8,
+        "Add agent_settings key-value table",
+        """
+        CREATE TABLE IF NOT EXISTS agent_settings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            agent_id TEXT NOT NULL REFERENCES agents(id) ON DELETE CASCADE,
+            key TEXT NOT NULL,
+            value TEXT NOT NULL DEFAULT '',
+            UNIQUE(agent_id, key)
+        );
+        CREATE INDEX IF NOT EXISTS idx_agent_settings_agent ON agent_settings(agent_id);
+        """,
+    ),
 ]
 
 
@@ -148,7 +162,32 @@ def _migrate_token_hashes(conn: Any) -> None:
         )
     if rows:
         conn.commit()
-        logger.info(f"Migrated {len(rows)} agent token(s) to hashed storage")
+        logger.info("Migrated %d agent token(s) to hashed storage", len(rows))
+
+
+_DEFAULT_AGENT_SETTINGS = {
+    "model_storage_dir": "~/.kitt/models",
+    "model_share_source": "",
+    "model_share_mount": "",
+    "auto_cleanup": "true",
+    "heartbeat_interval_s": "30",
+    "kitt_image": "",
+}
+
+
+def _insert_default_agent_settings(conn: Any) -> None:
+    """Insert default settings for all existing agents that lack them."""
+    rows = conn.execute("SELECT id FROM agents").fetchall()
+    for row in rows:
+        agent_id = row["id"] if hasattr(row, "keys") else row[0]
+        for key, value in _DEFAULT_AGENT_SETTINGS.items():
+            conn.execute(
+                "INSERT OR IGNORE INTO agent_settings (agent_id, key, value) VALUES (?, ?, ?)",
+                (agent_id, key, value),
+            )
+    if rows:
+        conn.commit()
+        logger.info("Inserted default settings for %d agent(s)", len(rows))
 
 
 def get_current_version_sqlite(conn: Any) -> int:
@@ -183,16 +222,19 @@ def run_migrations_sqlite(conn: Any, current_version: int) -> int:
     applied = 0
     for version, description, sql in MIGRATIONS:
         if version > current_version:
-            logger.info(f"Applying migration v{version}: {description}")
+            logger.info("Applying migration v%d: %s", version, description)
             conn.executescript(sql)
             set_version_sqlite(conn, version)
             applied += 1
             # Hash existing raw tokens after v4 schema change
             if version == 4:
                 _migrate_token_hashes(conn)
+            # Insert default agent settings for all existing agents
+            if version == 8:
+                _insert_default_agent_settings(conn)
 
     if applied:
-        logger.info(f"Applied {applied} migration(s)")
+        logger.info("Applied %d migration(s)", applied)
     return get_current_version_sqlite(conn)
 
 
@@ -232,12 +274,12 @@ def run_migrations_postgres(conn: Any, current_version: int) -> int:
     cursor = conn.cursor()
     for version, description, sql in MIGRATIONS:
         if version > current_version:
-            logger.info(f"Applying migration v{version}: {description}")
+            logger.info("Applying migration v%d: %s", version, description)
             cursor.execute(sql)
             conn.commit()
             set_version_postgres(conn, version)
             applied += 1
 
     if applied:
-        logger.info(f"Applied {applied} migration(s)")
+        logger.info("Applied %d migration(s)", applied)
     return get_current_version_postgres(conn)

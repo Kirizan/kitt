@@ -54,6 +54,16 @@ class AgentProvisionResponse(BaseModel):
     token_prefix: str
 
 
+class AgentSettings(BaseModel):
+    """Per-agent configurable settings, synced via heartbeat."""
+
+    model_storage_dir: str = "~/.kitt/models"
+    model_share_source: str = ""
+    model_share_mount: str = ""
+    auto_cleanup: bool = True
+    heartbeat_interval_s: int = 30
+
+
 class AgentSummary(BaseModel):
     """Summary view of an agent for listings."""
 

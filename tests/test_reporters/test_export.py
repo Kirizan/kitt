@@ -14,7 +14,7 @@ def sample_result():
         "engine": "vllm",
         "suite_name": "quick",
         "timestamp": "2025-01-01T12:00:00",
-        "kitt_version": "1.1.0",
+        "kitt_version": "1.2.1",
         "results": [
             {
                 "test_name": "throughput",
@@ -50,7 +50,7 @@ class TestFlattenResult:
         for row in rows:
             assert row["model"] == "Qwen2.5-7B"
             assert row["engine"] == "vllm"
-            assert row["kitt_version"] == "1.1.0"
+            assert row["kitt_version"] == "1.2.1"
 
     def test_flat_metrics(self, sample_result):
         rows = flatten_result(sample_result)
