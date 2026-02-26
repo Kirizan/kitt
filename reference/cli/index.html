@@ -2419,6 +2419,34 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#engines_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        engines
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="engines">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#setup_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        setup
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#list_3" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2463,7 +2491,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#setup_1" class="md-nav__link">
+  <a href="#setup_2" class="md-nav__link">
     <span class="md-ellipsis">
       
         setup
@@ -4413,10 +4441,71 @@ Prometheus, Grafana, and InfluxDB configured for the given scrape targets.</p>
 </tr>
 </tbody>
 </table>
+<h5 id="engines_1">engines<a class="headerlink" href="#engines_1" title="Permanent link">&para;</a></h5>
+<p>Manage engine images on remote hosts.</p>
+<p><strong>Usage:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-46-1" name="__codelineno-46-1" href="#__codelineno-46-1"></a>kitt remote engines [OPTIONS] COMMAND [ARGS]...
+</code></pre></div>
+<p><strong>Options:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--help</code></td>
+<td>boolean</td>
+<td>Show this message and exit.</td>
+<td><code>False</code></td>
+</tr>
+</tbody>
+</table>
+<h6 id="setup_1">setup<a class="headerlink" href="#setup_1" title="Permanent link">&para;</a></h6>
+<p>Pull or build an engine image on a remote host.</p>
+<p>ENGINE_NAME: Engine to set up (vllm, tgi, llama_cpp, ollama)</p>
+<p><strong>Usage:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-47-1" name="__codelineno-47-1" href="#__codelineno-47-1"></a>kitt remote engines setup [OPTIONS] ENGINE_NAME
+</code></pre></div>
+<p><strong>Options:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--host</code></td>
+<td>text</td>
+<td>Remote host name</td>
+<td><code>Sentinel.UNSET</code></td>
+</tr>
+<tr>
+<td><code>--dry-run</code></td>
+<td>boolean</td>
+<td>Show commands without executing them</td>
+<td><code>False</code></td>
+</tr>
+<tr>
+<td><code>--help</code></td>
+<td>boolean</td>
+<td>Show this message and exit.</td>
+<td><code>False</code></td>
+</tr>
+</tbody>
+</table>
 <h5 id="list_3">list<a class="headerlink" href="#list_3" title="Permanent link">&para;</a></h5>
 <p>List configured remote hosts.</p>
 <p><strong>Usage:</strong></p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-46-1" name="__codelineno-46-1" href="#__codelineno-46-1"></a>kitt remote list [OPTIONS]
+<div class="highlight"><pre><span></span><code><a id="__codelineno-48-1" name="__codelineno-48-1" href="#__codelineno-48-1"></a>kitt remote list [OPTIONS]
 </code></pre></div>
 <p><strong>Options:</strong></p>
 <table>
@@ -4440,7 +4529,7 @@ Prometheus, Grafana, and InfluxDB configured for the given scrape targets.</p>
 <h5 id="logs">logs<a class="headerlink" href="#logs" title="Permanent link">&para;</a></h5>
 <p>View campaign logs from a remote host.</p>
 <p><strong>Usage:</strong></p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-47-1" name="__codelineno-47-1" href="#__codelineno-47-1"></a>kitt remote logs [OPTIONS]
+<div class="highlight"><pre><span></span><code><a id="__codelineno-49-1" name="__codelineno-49-1" href="#__codelineno-49-1"></a>kitt remote logs [OPTIONS]
 </code></pre></div>
 <p><strong>Options:</strong></p>
 <table>
@@ -4476,7 +4565,7 @@ Prometheus, Grafana, and InfluxDB configured for the given scrape targets.</p>
 <h5 id="remove_1">remove<a class="headerlink" href="#remove_1" title="Permanent link">&para;</a></h5>
 <p>Remove a configured remote host.</p>
 <p><strong>Usage:</strong></p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-48-1" name="__codelineno-48-1" href="#__codelineno-48-1"></a>kitt remote remove [OPTIONS] NAME
+<div class="highlight"><pre><span></span><code><a id="__codelineno-50-1" name="__codelineno-50-1" href="#__codelineno-50-1"></a>kitt remote remove [OPTIONS] NAME
 </code></pre></div>
 <p><strong>Options:</strong></p>
 <table>
@@ -4500,7 +4589,7 @@ Prometheus, Grafana, and InfluxDB configured for the given scrape targets.</p>
 <h5 id="run_1">run<a class="headerlink" href="#run_1" title="Permanent link">&para;</a></h5>
 <p>Run a campaign on a remote host.</p>
 <p><strong>Usage:</strong></p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-49-1" name="__codelineno-49-1" href="#__codelineno-49-1"></a>kitt remote run [OPTIONS] CONFIG_PATH
+<div class="highlight"><pre><span></span><code><a id="__codelineno-51-1" name="__codelineno-51-1" href="#__codelineno-51-1"></a>kitt remote run [OPTIONS] CONFIG_PATH
 </code></pre></div>
 <p><strong>Options:</strong></p>
 <table>
@@ -4539,11 +4628,11 @@ Prometheus, Grafana, and InfluxDB configured for the given scrape targets.</p>
 </tr>
 </tbody>
 </table>
-<h5 id="setup_1">setup<a class="headerlink" href="#setup_1" title="Permanent link">&para;</a></h5>
+<h5 id="setup_2">setup<a class="headerlink" href="#setup_2" title="Permanent link">&para;</a></h5>
 <p>Set up a remote host for KITT execution.</p>
 <p>HOST_SPEC: user@hostname or hostname</p>
 <p><strong>Usage:</strong></p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-50-1" name="__codelineno-50-1" href="#__codelineno-50-1"></a>kitt remote setup [OPTIONS] HOST_SPEC
+<div class="highlight"><pre><span></span><code><a id="__codelineno-52-1" name="__codelineno-52-1" href="#__codelineno-52-1"></a>kitt remote setup [OPTIONS] HOST_SPEC
 </code></pre></div>
 <p><strong>Options:</strong></p>
 <table>
@@ -4585,7 +4674,7 @@ Prometheus, Grafana, and InfluxDB configured for the given scrape targets.</p>
 <h5 id="status_3">status<a class="headerlink" href="#status_3" title="Permanent link">&para;</a></h5>
 <p>Check campaign status on a remote host.</p>
 <p><strong>Usage:</strong></p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-51-1" name="__codelineno-51-1" href="#__codelineno-51-1"></a>kitt remote status [OPTIONS]
+<div class="highlight"><pre><span></span><code><a id="__codelineno-53-1" name="__codelineno-53-1" href="#__codelineno-53-1"></a>kitt remote status [OPTIONS]
 </code></pre></div>
 <p><strong>Options:</strong></p>
 <table>
@@ -4615,7 +4704,7 @@ Prometheus, Grafana, and InfluxDB configured for the given scrape targets.</p>
 <h5 id="sync">sync<a class="headerlink" href="#sync" title="Permanent link">&para;</a></h5>
 <p>Sync results from a remote host.</p>
 <p><strong>Usage:</strong></p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-52-1" name="__codelineno-52-1" href="#__codelineno-52-1"></a>kitt remote sync [OPTIONS]
+<div class="highlight"><pre><span></span><code><a id="__codelineno-54-1" name="__codelineno-54-1" href="#__codelineno-54-1"></a>kitt remote sync [OPTIONS]
 </code></pre></div>
 <p><strong>Options:</strong></p>
 <table>
@@ -4651,7 +4740,7 @@ Prometheus, Grafana, and InfluxDB configured for the given scrape targets.</p>
 <h5 id="test">test<a class="headerlink" href="#test" title="Permanent link">&para;</a></h5>
 <p>Test connectivity to a remote host.</p>
 <p><strong>Usage:</strong></p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-53-1" name="__codelineno-53-1" href="#__codelineno-53-1"></a>kitt remote test [OPTIONS] NAME
+<div class="highlight"><pre><span></span><code><a id="__codelineno-55-1" name="__codelineno-55-1" href="#__codelineno-55-1"></a>kitt remote test [OPTIONS] NAME
 </code></pre></div>
 <p><strong>Options:</strong></p>
 <table>
@@ -4675,7 +4764,7 @@ Prometheus, Grafana, and InfluxDB configured for the given scrape targets.</p>
 <h4 id="results">results<a class="headerlink" href="#results" title="Permanent link">&para;</a></h4>
 <p>Manage benchmark results.</p>
 <p><strong>Usage:</strong></p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-54-1" name="__codelineno-54-1" href="#__codelineno-54-1"></a>kitt results [OPTIONS] COMMAND [ARGS]...
+<div class="highlight"><pre><span></span><code><a id="__codelineno-56-1" name="__codelineno-56-1" href="#__codelineno-56-1"></a>kitt results [OPTIONS] COMMAND [ARGS]...
 </code></pre></div>
 <p><strong>Options:</strong></p>
 <table>
@@ -4699,7 +4788,7 @@ Prometheus, Grafana, and InfluxDB configured for the given scrape targets.</p>
 <h5 id="cleanup">cleanup<a class="headerlink" href="#cleanup" title="Permanent link">&para;</a></h5>
 <p>Clean up old Git LFS objects to reduce repository size.</p>
 <p><strong>Usage:</strong></p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-55-1" name="__codelineno-55-1" href="#__codelineno-55-1"></a>kitt results cleanup [OPTIONS]
+<div class="highlight"><pre><span></span><code><a id="__codelineno-57-1" name="__codelineno-57-1" href="#__codelineno-57-1"></a>kitt results cleanup [OPTIONS]
 </code></pre></div>
 <p><strong>Options:</strong></p>
 <table>
@@ -4741,7 +4830,7 @@ Prometheus, Grafana, and InfluxDB configured for the given scrape targets.</p>
 <h5 id="compare_1">compare<a class="headerlink" href="#compare_1" title="Permanent link">&para;</a></h5>
 <p>Compare benchmark results from different runs.</p>
 <p><strong>Usage:</strong></p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-56-1" name="__codelineno-56-1" href="#__codelineno-56-1"></a>kitt results compare [OPTIONS] RUN1 RUN2
+<div class="highlight"><pre><span></span><code><a id="__codelineno-58-1" name="__codelineno-58-1" href="#__codelineno-58-1"></a>kitt results compare [OPTIONS] RUN1 RUN2
 </code></pre></div>
 <p><strong>Options:</strong></p>
 <table>
@@ -4777,7 +4866,7 @@ Prometheus, Grafana, and InfluxDB configured for the given scrape targets.</p>
 <h5 id="import">import<a class="headerlink" href="#import" title="Permanent link">&para;</a></h5>
 <p>Import results from a directory into a KARR repo.</p>
 <p><strong>Usage:</strong></p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-57-1" name="__codelineno-57-1" href="#__codelineno-57-1"></a>kitt results import [OPTIONS] SOURCE
+<div class="highlight"><pre><span></span><code><a id="__codelineno-59-1" name="__codelineno-59-1" href="#__codelineno-59-1"></a>kitt results import [OPTIONS] SOURCE
 </code></pre></div>
 <p><strong>Options:</strong></p>
 <table>
@@ -4807,7 +4896,7 @@ Prometheus, Grafana, and InfluxDB configured for the given scrape targets.</p>
 <h5 id="init_1">init<a class="headerlink" href="#init_1" title="Permanent link">&para;</a></h5>
 <p>Initialize a new KARR results repository.</p>
 <p><strong>Usage:</strong></p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-58-1" name="__codelineno-58-1" href="#__codelineno-58-1"></a>kitt results init [OPTIONS]
+<div class="highlight"><pre><span></span><code><a id="__codelineno-60-1" name="__codelineno-60-1" href="#__codelineno-60-1"></a>kitt results init [OPTIONS]
 </code></pre></div>
 <p><strong>Options:</strong></p>
 <table>
@@ -4837,7 +4926,7 @@ Prometheus, Grafana, and InfluxDB configured for the given scrape targets.</p>
 <h5 id="list_4">list<a class="headerlink" href="#list_4" title="Permanent link">&para;</a></h5>
 <p>List local benchmark results.</p>
 <p><strong>Usage:</strong></p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-59-1" name="__codelineno-59-1" href="#__codelineno-59-1"></a>kitt results list [OPTIONS]
+<div class="highlight"><pre><span></span><code><a id="__codelineno-61-1" name="__codelineno-61-1" href="#__codelineno-61-1"></a>kitt results list [OPTIONS]
 </code></pre></div>
 <p><strong>Options:</strong></p>
 <table>
@@ -4879,7 +4968,7 @@ Prometheus, Grafana, and InfluxDB configured for the given scrape targets.</p>
 <h5 id="submit">submit<a class="headerlink" href="#submit" title="Permanent link">&para;</a></h5>
 <p>Submit results via pull request.</p>
 <p><strong>Usage:</strong></p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-60-1" name="__codelineno-60-1" href="#__codelineno-60-1"></a>kitt results submit [OPTIONS]
+<div class="highlight"><pre><span></span><code><a id="__codelineno-62-1" name="__codelineno-62-1" href="#__codelineno-62-1"></a>kitt results submit [OPTIONS]
 </code></pre></div>
 <p><strong>Options:</strong></p>
 <table>
@@ -4909,7 +4998,7 @@ Prometheus, Grafana, and InfluxDB configured for the given scrape targets.</p>
 <h4 id="run_2">run<a class="headerlink" href="#run_2" title="Permanent link">&para;</a></h4>
 <p>Run benchmarks against a model using a specified engine.</p>
 <p><strong>Usage:</strong></p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-61-1" name="__codelineno-61-1" href="#__codelineno-61-1"></a>kitt run [OPTIONS]
+<div class="highlight"><pre><span></span><code><a id="__codelineno-63-1" name="__codelineno-63-1" href="#__codelineno-63-1"></a>kitt run [OPTIONS]
 </code></pre></div>
 <p><strong>Options:</strong></p>
 <table>
@@ -4971,6 +5060,12 @@ Prometheus, Grafana, and InfluxDB configured for the given scrape targets.</p>
 <td><code>False</code></td>
 </tr>
 <tr>
+<td><code>--auto-pull</code></td>
+<td>boolean</td>
+<td>Automatically pull/build engine image if not available</td>
+<td><code>False</code></td>
+</tr>
+<tr>
 <td><code>--help</code></td>
 <td>boolean</td>
 <td>Show this message and exit.</td>
@@ -4981,7 +5076,7 @@ Prometheus, Grafana, and InfluxDB configured for the given scrape targets.</p>
 <h4 id="stack">stack<a class="headerlink" href="#stack" title="Permanent link">&para;</a></h4>
 <p>Generate and manage composable Docker deployment stacks.</p>
 <p><strong>Usage:</strong></p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-62-1" name="__codelineno-62-1" href="#__codelineno-62-1"></a>kitt stack [OPTIONS] COMMAND [ARGS]...
+<div class="highlight"><pre><span></span><code><a id="__codelineno-64-1" name="__codelineno-64-1" href="#__codelineno-64-1"></a>kitt stack [OPTIONS] COMMAND [ARGS]...
 </code></pre></div>
 <p><strong>Options:</strong></p>
 <table>
@@ -5007,7 +5102,7 @@ Prometheus, Grafana, and InfluxDB configured for the given scrape targets.</p>
 <p>Creates a docker-compose stack at ~/.kitt/stacks/<NAME>/ with the
 selected components.</p>
 <p><strong>Usage:</strong></p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-63-1" name="__codelineno-63-1" href="#__codelineno-63-1"></a>kitt stack generate [OPTIONS] NAME
+<div class="highlight"><pre><span></span><code><a id="__codelineno-65-1" name="__codelineno-65-1" href="#__codelineno-65-1"></a>kitt stack generate [OPTIONS] NAME
 </code></pre></div>
 <p><strong>Options:</strong></p>
 <table>
@@ -5121,7 +5216,7 @@ selected components.</p>
 <h5 id="list_5">list<a class="headerlink" href="#list_5" title="Permanent link">&para;</a></h5>
 <p>List all generated stacks.</p>
 <p><strong>Usage:</strong></p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-64-1" name="__codelineno-64-1" href="#__codelineno-64-1"></a>kitt stack list [OPTIONS]
+<div class="highlight"><pre><span></span><code><a id="__codelineno-66-1" name="__codelineno-66-1" href="#__codelineno-66-1"></a>kitt stack list [OPTIONS]
 </code></pre></div>
 <p><strong>Options:</strong></p>
 <table>
@@ -5145,7 +5240,7 @@ selected components.</p>
 <h5 id="remove_2">remove<a class="headerlink" href="#remove_2" title="Permanent link">&para;</a></h5>
 <p>Remove a stack configuration.</p>
 <p><strong>Usage:</strong></p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-65-1" name="__codelineno-65-1" href="#__codelineno-65-1"></a>kitt stack remove [OPTIONS] NAME
+<div class="highlight"><pre><span></span><code><a id="__codelineno-67-1" name="__codelineno-67-1" href="#__codelineno-67-1"></a>kitt stack remove [OPTIONS] NAME
 </code></pre></div>
 <p><strong>Options:</strong></p>
 <table>
@@ -5175,7 +5270,7 @@ selected components.</p>
 <h5 id="start_3">start<a class="headerlink" href="#start_3" title="Permanent link">&para;</a></h5>
 <p>Start a generated stack.</p>
 <p><strong>Usage:</strong></p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-66-1" name="__codelineno-66-1" href="#__codelineno-66-1"></a>kitt stack start [OPTIONS]
+<div class="highlight"><pre><span></span><code><a id="__codelineno-68-1" name="__codelineno-68-1" href="#__codelineno-68-1"></a>kitt stack start [OPTIONS]
 </code></pre></div>
 <p><strong>Options:</strong></p>
 <table>
@@ -5205,7 +5300,7 @@ selected components.</p>
 <h5 id="status_4">status<a class="headerlink" href="#status_4" title="Permanent link">&para;</a></h5>
 <p>Show stack status.</p>
 <p><strong>Usage:</strong></p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-67-1" name="__codelineno-67-1" href="#__codelineno-67-1"></a>kitt stack status [OPTIONS]
+<div class="highlight"><pre><span></span><code><a id="__codelineno-69-1" name="__codelineno-69-1" href="#__codelineno-69-1"></a>kitt stack status [OPTIONS]
 </code></pre></div>
 <p><strong>Options:</strong></p>
 <table>
@@ -5235,7 +5330,7 @@ selected components.</p>
 <h5 id="stop_2">stop<a class="headerlink" href="#stop_2" title="Permanent link">&para;</a></h5>
 <p>Stop a running stack.</p>
 <p><strong>Usage:</strong></p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-68-1" name="__codelineno-68-1" href="#__codelineno-68-1"></a>kitt stack stop [OPTIONS]
+<div class="highlight"><pre><span></span><code><a id="__codelineno-70-1" name="__codelineno-70-1" href="#__codelineno-70-1"></a>kitt stack stop [OPTIONS]
 </code></pre></div>
 <p><strong>Options:</strong></p>
 <table>
@@ -5265,7 +5360,7 @@ selected components.</p>
 <h4 id="storage">storage<a class="headerlink" href="#storage" title="Permanent link">&para;</a></h4>
 <p>Manage the KITT result storage backend.</p>
 <p><strong>Usage:</strong></p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-69-1" name="__codelineno-69-1" href="#__codelineno-69-1"></a>kitt storage [OPTIONS] COMMAND [ARGS]...
+<div class="highlight"><pre><span></span><code><a id="__codelineno-71-1" name="__codelineno-71-1" href="#__codelineno-71-1"></a>kitt storage [OPTIONS] COMMAND [ARGS]...
 </code></pre></div>
 <p><strong>Options:</strong></p>
 <table>
@@ -5289,7 +5384,7 @@ selected components.</p>
 <h5 id="export">export<a class="headerlink" href="#export" title="Permanent link">&para;</a></h5>
 <p>Export a result from the database to a JSON file.</p>
 <p><strong>Usage:</strong></p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-70-1" name="__codelineno-70-1" href="#__codelineno-70-1"></a>kitt storage export [OPTIONS] RESULT_ID
+<div class="highlight"><pre><span></span><code><a id="__codelineno-72-1" name="__codelineno-72-1" href="#__codelineno-72-1"></a>kitt storage export [OPTIONS] RESULT_ID
 </code></pre></div>
 <p><strong>Options:</strong></p>
 <table>
@@ -5325,7 +5420,7 @@ selected components.</p>
 <h5 id="import_1">import<a class="headerlink" href="#import_1" title="Permanent link">&para;</a></h5>
 <p>Import results from a directory or JSON file into the database.</p>
 <p><strong>Usage:</strong></p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-71-1" name="__codelineno-71-1" href="#__codelineno-71-1"></a>kitt storage import [OPTIONS] SOURCE
+<div class="highlight"><pre><span></span><code><a id="__codelineno-73-1" name="__codelineno-73-1" href="#__codelineno-73-1"></a>kitt storage import [OPTIONS] SOURCE
 </code></pre></div>
 <p><strong>Options:</strong></p>
 <table>
@@ -5355,7 +5450,7 @@ selected components.</p>
 <h5 id="init_2">init<a class="headerlink" href="#init_2" title="Permanent link">&para;</a></h5>
 <p>Initialize the SQLite storage database.</p>
 <p><strong>Usage:</strong></p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-72-1" name="__codelineno-72-1" href="#__codelineno-72-1"></a>kitt storage init [OPTIONS]
+<div class="highlight"><pre><span></span><code><a id="__codelineno-74-1" name="__codelineno-74-1" href="#__codelineno-74-1"></a>kitt storage init [OPTIONS]
 </code></pre></div>
 <p><strong>Options:</strong></p>
 <table>
@@ -5385,7 +5480,7 @@ selected components.</p>
 <h5 id="list_6">list<a class="headerlink" href="#list_6" title="Permanent link">&para;</a></h5>
 <p>List results stored in the database.</p>
 <p><strong>Usage:</strong></p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-73-1" name="__codelineno-73-1" href="#__codelineno-73-1"></a>kitt storage list [OPTIONS]
+<div class="highlight"><pre><span></span><code><a id="__codelineno-75-1" name="__codelineno-75-1" href="#__codelineno-75-1"></a>kitt storage list [OPTIONS]
 </code></pre></div>
 <p><strong>Options:</strong></p>
 <table>
@@ -5433,7 +5528,7 @@ selected components.</p>
 <h5 id="migrate">migrate<a class="headerlink" href="#migrate" title="Permanent link">&para;</a></h5>
 <p>Run pending database migrations.</p>
 <p><strong>Usage:</strong></p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-74-1" name="__codelineno-74-1" href="#__codelineno-74-1"></a>kitt storage migrate [OPTIONS]
+<div class="highlight"><pre><span></span><code><a id="__codelineno-76-1" name="__codelineno-76-1" href="#__codelineno-76-1"></a>kitt storage migrate [OPTIONS]
 </code></pre></div>
 <p><strong>Options:</strong></p>
 <table>
@@ -5463,7 +5558,7 @@ selected components.</p>
 <h5 id="stats">stats<a class="headerlink" href="#stats" title="Permanent link">&para;</a></h5>
 <p>Show storage statistics.</p>
 <p><strong>Usage:</strong></p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-75-1" name="__codelineno-75-1" href="#__codelineno-75-1"></a>kitt storage stats [OPTIONS]
+<div class="highlight"><pre><span></span><code><a id="__codelineno-77-1" name="__codelineno-77-1" href="#__codelineno-77-1"></a>kitt storage stats [OPTIONS]
 </code></pre></div>
 <p><strong>Options:</strong></p>
 <table>
@@ -5493,7 +5588,7 @@ selected components.</p>
 <h4 id="test_1">test<a class="headerlink" href="#test_1" title="Permanent link">&para;</a></h4>
 <p>Manage benchmarks and test definitions.</p>
 <p><strong>Usage:</strong></p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-76-1" name="__codelineno-76-1" href="#__codelineno-76-1"></a>kitt test [OPTIONS] COMMAND [ARGS]...
+<div class="highlight"><pre><span></span><code><a id="__codelineno-78-1" name="__codelineno-78-1" href="#__codelineno-78-1"></a>kitt test [OPTIONS] COMMAND [ARGS]...
 </code></pre></div>
 <p><strong>Options:</strong></p>
 <table>
@@ -5517,7 +5612,7 @@ selected components.</p>
 <h5 id="list_7">list<a class="headerlink" href="#list_7" title="Permanent link">&para;</a></h5>
 <p>List available benchmarks.</p>
 <p><strong>Usage:</strong></p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-77-1" name="__codelineno-77-1" href="#__codelineno-77-1"></a>kitt test list [OPTIONS]
+<div class="highlight"><pre><span></span><code><a id="__codelineno-79-1" name="__codelineno-79-1" href="#__codelineno-79-1"></a>kitt test list [OPTIONS]
 </code></pre></div>
 <p><strong>Options:</strong></p>
 <table>
@@ -5547,7 +5642,7 @@ selected components.</p>
 <h5 id="new">new<a class="headerlink" href="#new" title="Permanent link">&para;</a></h5>
 <p>Create a new benchmark definition from template.</p>
 <p><strong>Usage:</strong></p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-78-1" name="__codelineno-78-1" href="#__codelineno-78-1"></a>kitt test new [OPTIONS] NAME
+<div class="highlight"><pre><span></span><code><a id="__codelineno-80-1" name="__codelineno-80-1" href="#__codelineno-80-1"></a>kitt test new [OPTIONS] NAME
 </code></pre></div>
 <p><strong>Options:</strong></p>
 <table>
@@ -5577,7 +5672,7 @@ selected components.</p>
 <h4 id="web">web<a class="headerlink" href="#web" title="Permanent link">&para;</a></h4>
 <p>Launch web dashboard for viewing results.</p>
 <p><strong>Usage:</strong></p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-79-1" name="__codelineno-79-1" href="#__codelineno-79-1"></a>kitt web [OPTIONS]
+<div class="highlight"><pre><span></span><code><a id="__codelineno-81-1" name="__codelineno-81-1" href="#__codelineno-81-1"></a>kitt web [OPTIONS]
 </code></pre></div>
 <p><strong>Options:</strong></p>
 <table>
