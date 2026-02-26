@@ -137,6 +137,51 @@ def remove(name):
         console.print(f"[red]Host not found: {name}[/red]")
 
 
+@remote.group("engines")
+def remote_engines():
+    """Manage engine images on remote hosts."""
+
+
+@remote_engines.command("setup")
+@click.argument("engine_name")
+@click.option("--host", required=True, help="Remote host name")
+@click.option("--dry-run", is_flag=True, help="Show commands without executing them")
+def remote_engines_setup(engine_name, host, dry_run):
+    """Pull or build an engine image on a remote host.
+
+    ENGINE_NAME: Engine to set up (vllm, tgi, llama_cpp, ollama)
+    """
+    from kitt.remote.host_config import HostManager
+    from kitt.remote.setup import RemoteSetup
+    from kitt.remote.ssh_connection import SSHConnection
+
+    mgr = HostManager()
+    host_config = mgr.get(host)
+    if not host_config:
+        console.print(f"[red]Host not found: {host}[/red]")
+        raise SystemExit(1)
+
+    conn = SSHConnection(
+        host=host_config.hostname,
+        user=host_config.user or None,
+        ssh_key=host_config.ssh_key or None,
+        port=host_config.port,
+    )
+
+    setup_tool = RemoteSetup(conn)
+
+    action = "Dry run:" if dry_run else "Setting up"
+    console.print(f"[bold]{action} engine '{engine_name}' on '{host}'...[/bold]")
+
+    results = setup_tool.setup_engines([engine_name], dry_run=dry_run)
+
+    if results.get(engine_name):
+        console.print(f"[green]Engine '{engine_name}' ready on '{host}'.[/green]")
+    else:
+        console.print(f"[red]Engine setup failed for '{engine_name}' on '{host}'.[/red]")
+        raise SystemExit(1)
+
+
 @remote.command("run")
 @click.argument("config_path", type=click.Path(exists=True))
 @click.option("--host", required=True, help="Remote host name")
