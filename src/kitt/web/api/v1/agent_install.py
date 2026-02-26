@@ -70,8 +70,7 @@ fi
 
 # Run prerequisite checks
 echo "==> Running prerequisite checks"
-"$VENV_DIR/bin/kitt-agent" preflight --server "$KITT_SERVER" --port "$AGENT_PORT"
-if [ $? -ne 0 ]; then
+if ! "$VENV_DIR/bin/kitt-agent" preflight --server "$KITT_SERVER" --port "$AGENT_PORT"; then
     echo "ERROR: Prerequisite checks failed. Fix the issues above and re-run."
     exit 1
 fi

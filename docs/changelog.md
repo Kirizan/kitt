@@ -11,7 +11,7 @@ All notable changes to KITT are documented on this page.
 - Fixed architecture mismatch in agent Docker image selection — now checks image arch against host arch before use, falling back to locally-built `kitt:latest` when the registry image is the wrong platform
 - Fixed `_report()` using agent name instead of agent ID in URL, causing 404 on result submission
 - Fixed Docker entrypoint override for benchmark containers — added `--entrypoint kitt` since the KITT image has `ENTRYPOINT ["kitt", "web"]`
-- Fixed Docker CLI package name in Dockerfiles — `docker.io` on Debian bookworm ARM64 only installs daemon, changed to `docker-cli`
+- Reverted Docker CLI package name in Dockerfiles back to `docker.io` — `docker-cli` does not exist in Debian bookworm repos
 - Updated hardcoded `kitt_version` references from `1.1.0` to `1.2.1`
 - Fixed `_check_auth()` timing attack — replaced `==` with `hmac.compare_digest` for constant-time token comparison
 - Fixed thread safety — write lock now wraps entire SQLite transactions (execute + commit), not just the commit
@@ -46,6 +46,11 @@ All notable changes to KITT are documented on this page.
 - Removed dead `docker/agent/Dockerfile` reference in stack generator
 - Fixed remaining f-string logger calls in `migrations.py` and `agent_install.py`
 - Updated stale `kitt_version` in test fixtures from `1.1.0` to `1.2.1`
+- Reverted `docker-cli` back to `docker.io` in Dockerfiles — `docker-cli` does not exist in Debian bookworm repos
+- Added `save_result()` method to `ResultService` — `report_result` endpoint no longer accesses private `_store` directly
+- Fixed `docs/reference/api.md` auth columns for `PATCH` and `DELETE` agent endpoints — were incorrectly listed as unauthenticated
+- Fixed `docs/concepts/architecture.md` result reporting URL from `{name}` to `{id}`
+- Fixed install script preflight check — `if [ $? -ne 0 ]` was dead code under `set -euo pipefail`, replaced with `if ! command` pattern
 
 ## 1.2.0
 

@@ -143,7 +143,7 @@ def report_result(agent_id):
     result_svc = get_services()["result_service"]
     result_data = data.get("result_data")
     if result_data:
-        result_svc._store.save_result(result_data)
+        result_svc.save_result(result_data)
 
     return jsonify({"accepted": True}), 202
 

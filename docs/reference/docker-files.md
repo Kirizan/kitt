@@ -18,7 +18,7 @@ FROM python:3.12-slim
 
 # System dependencies for psutil/pynvml compilation and Docker CLI
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    gcc python3-dev docker-cli \
+    gcc python3-dev docker.io \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -36,7 +36,7 @@ ENTRYPOINT ["poetry", "run", "kitt"]
 
 Key points:
 
-- **`docker-cli`** is installed inside the container so KITT can call the
+- **`docker.io`** is installed inside the container so KITT can call the
   Docker CLI to manage inference engine containers.
 - **`gcc` and `python3-dev`** are needed to compile native extensions for
   `psutil` and `pynvml`.

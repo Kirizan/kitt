@@ -2,7 +2,7 @@ FROM python:3.12-slim
 
 # System deps for Docker CLI (used by engines)
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    gcc python3-dev docker-cli curl \
+    gcc python3-dev docker.io curl \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

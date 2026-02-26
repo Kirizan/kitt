@@ -107,7 +107,7 @@ The server sends JSON commands to the agent's `/api/commands` endpoint:
 | `check_docker` | _(none)_ | Verify Docker is available |
 | `cleanup_storage` | model_path (optional) | Delete specific or all cached models |
 
-The agent reports results back to the server at `/api/v1/agents/{name}/results`.
+The agent reports results back to the server at `/api/v1/agents/{id}/results`.
 
 ### Model storage workflow
 

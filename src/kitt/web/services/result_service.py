@@ -98,6 +98,10 @@ class ResultService:
                 results.append(r)
         return results
 
+    def save_result(self, result_data: dict[str, Any]) -> None:
+        """Persist a result received from an agent."""
+        self._store.save_result(result_data)
+
     def import_directory(self, directory: Path) -> int:
         """Import results from a directory tree."""
         if hasattr(self._store, "import_directory"):
