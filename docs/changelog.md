@@ -51,6 +51,10 @@ All notable changes to KITT are documented on this page.
 - Fixed `docs/reference/api.md` auth columns for `PATCH` and `DELETE` agent endpoints — were incorrectly listed as unauthenticated
 - Fixed `docs/concepts/architecture.md` result reporting URL from `{name}` to `{id}`
 - Fixed install script preflight check — `if [ $? -ne 0 ]` was dead code under `set -euo pipefail`, replaced with `if ! command` pattern
+- Fixed Docker container leak on health check timeout — container is now stopped before reporting failure
+- Removed unused `--foreground` flag from `kitt agent start` proxy command
+- Fixed all `docs/reference/api.md` auth columns to match actual `@require_auth` decorators (results, campaigns, models sections)
+- Updated README thin agent architecture description to reflect model resolution, Docker benchmark execution, and heartbeat command dispatch
 
 ## 1.2.0
 

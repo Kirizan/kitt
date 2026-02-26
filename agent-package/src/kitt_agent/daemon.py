@@ -161,7 +161,8 @@ def create_agent_app(
                 on_log(f"Waiting for health: {spec.health_url}")
                 healthy = DockerOps.wait_for_healthy(spec.health_url)
                 if not healthy:
-                    on_log("Health check timed out")
+                    on_log("Health check timed out — stopping container")
+                    DockerOps.stop_container(container_id)
                     update_status("failed", error="Health check timeout")
                     _report(
                         server_url,

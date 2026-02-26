@@ -69,8 +69,7 @@ def init(server, token, name, port):
 @agent.command()
 @click.option("--config", "config_path", type=click.Path(), help="Path to agent.yaml")
 @click.option("--insecure", is_flag=True, help="Disable TLS verification")
-@click.option("--foreground", is_flag=True, help="Run in foreground (no daemonize)")
-def start(config_path, insecure, foreground):
+def start(config_path, insecure):
     """Start the KITT agent daemon.
 
     Proxies to: kitt-agent start

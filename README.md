@@ -189,12 +189,14 @@ The agent is a lightweight daemon (`kitt-agent`) that:
 
 - Registers with the KITT server and sends periodic heartbeats
 - Authenticates with its unique per-agent token
-- Receives Docker commands (pull image, run container, stop container) from the server
+- Receives commands via heartbeat dispatch (run benchmark, stop container, cleanup storage)
+- Resolves models from NFS shares, copies to local storage, runs benchmarks, and cleans up
+- Runs benchmarks inside a locally-built KITT Docker container (falls back to local CLI)
 - Streams container logs back via SSE
 - Reports full hardware fingerprint during registration (GPU, CPU, RAM, storage, CUDA, driver, environment type, compute capability)
 - Handles unified memory architectures (e.g. DGX Spark GB10) where dedicated VRAM is shared with system RAM
 - Self-updates from the server via `kitt-agent update`
-- Does **not** include the full KITT benchmarking suite — all orchestration happens server-side
+- Does **not** install the full KITT Python package — benchmarks run inside a Docker container built from the KITT source
 
 ## Development
 
