@@ -2257,19 +2257,19 @@ endpoints all require authentication.</p>
 <tr>
 <td>DELETE</td>
 <td><code>/api/v1/results/&lt;id&gt;</code></td>
-<td>No</td>
+<td>Yes</td>
 <td>Delete a result</td>
 </tr>
 <tr>
 <td>GET</td>
 <td><code>/api/v1/results/aggregate</code></td>
-<td>No</td>
+<td>Yes</td>
 <td>Aggregate results (query: <code>group_by</code>, <code>metric</code>)</td>
 </tr>
 <tr>
 <td>POST</td>
 <td><code>/api/v1/results/compare</code></td>
-<td>No</td>
+<td>Yes</td>
 <td>Compare results (body: <code>{"ids": [...]}</code>)</td>
 </tr>
 </tbody>
@@ -2307,7 +2307,7 @@ endpoints all require authentication.</p>
 <td>POST</td>
 <td><code>/api/v1/agents/&lt;id&gt;/heartbeat</code></td>
 <td>Yes</td>
-<td>Agent heartbeat</td>
+<td>Agent heartbeat (response includes <code>settings</code>)</td>
 </tr>
 <tr>
 <td>POST</td>
@@ -2318,14 +2318,62 @@ endpoints all require authentication.</p>
 <tr>
 <td>PATCH</td>
 <td><code>/api/v1/agents/&lt;id&gt;</code></td>
-<td>No</td>
+<td>Yes</td>
 <td>Update agent fields</td>
 </tr>
 <tr>
 <td>DELETE</td>
 <td><code>/api/v1/agents/&lt;id&gt;</code></td>
-<td>No</td>
+<td>Yes</td>
 <td>Remove an agent</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/agents/&lt;id&gt;/settings</code></td>
+<td>Yes</td>
+<td>Get agent settings</td>
+</tr>
+<tr>
+<td>PUT</td>
+<td><code>/api/v1/agents/&lt;id&gt;/settings</code></td>
+<td>Yes</td>
+<td>Update agent settings (body: <code>{"key": "value", ...}</code>)</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/api/v1/agents/&lt;id&gt;/cleanup</code></td>
+<td>Yes</td>
+<td>Queue storage cleanup command</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/agent/install.sh</code></td>
+<td>No</td>
+<td>Agent bootstrap install script</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/agent/package</code></td>
+<td>No</td>
+<td>Agent package tarball</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/agent/package/sha256</code></td>
+<td>No</td>
+<td>SHA-256 of agent package</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/agent/build-context</code></td>
+<td>No</td>
+<td>Docker build context tarball</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/agent/build-context/sha256</code></td>
+<td>No</td>
+<td>SHA-256 of build context</td>
 </tr>
 </tbody>
 </table>
@@ -2349,7 +2397,7 @@ endpoints all require authentication.</p>
 <tr>
 <td>POST</td>
 <td><code>/api/v1/campaigns/</code></td>
-<td>No</td>
+<td>Yes</td>
 <td>Create a campaign</td>
 </tr>
 <tr>
@@ -2361,25 +2409,25 @@ endpoints all require authentication.</p>
 <tr>
 <td>DELETE</td>
 <td><code>/api/v1/campaigns/&lt;id&gt;</code></td>
-<td>No</td>
+<td>Yes</td>
 <td>Delete a campaign</td>
 </tr>
 <tr>
 <td>POST</td>
 <td><code>/api/v1/campaigns/&lt;id&gt;/launch</code></td>
-<td>No</td>
+<td>Yes</td>
 <td>Launch a campaign</td>
 </tr>
 <tr>
 <td>POST</td>
 <td><code>/api/v1/campaigns/&lt;id&gt;/cancel</code></td>
-<td>No</td>
+<td>Yes</td>
 <td>Cancel a running campaign</td>
 </tr>
 <tr>
 <td>PUT</td>
 <td><code>/api/v1/campaigns/&lt;id&gt;/config</code></td>
-<td>No</td>
+<td>Yes</td>
 <td>Update campaign config (draft only)</td>
 </tr>
 </tbody>
@@ -2410,13 +2458,13 @@ endpoints all require authentication.</p>
 <tr>
 <td>POST</td>
 <td><code>/api/v1/models/download</code></td>
-<td>No</td>
+<td>Yes</td>
 <td>Download a model (body: <code>{"repo_id": "..."}</code>)</td>
 </tr>
 <tr>
 <td>DELETE</td>
 <td><code>/api/v1/models/&lt;repo_id&gt;</code></td>
-<td>No</td>
+<td>Yes</td>
 <td>Remove a local model</td>
 </tr>
 </tbody>

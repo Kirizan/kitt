@@ -1552,6 +1552,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#multi-architecture-support" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Multi-architecture support
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#additional-dockerfiles" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2025,6 +2036,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#multi-architecture-support" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Multi-architecture support
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#additional-dockerfiles" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2152,6 +2174,12 @@ KITT relies on.</p>
 <li>The entry point runs <code>poetry run kitt</code>, so any CLI command can be passed
   as arguments (e.g. <code>docker run kitt run -m /model -e vllm</code>).</li>
 </ul>
+<h3 id="multi-architecture-support">Multi-architecture support<a class="headerlink" href="#multi-architecture-support" title="Permanent link">&para;</a></h3>
+<p>The base image <code>python:3.12-slim</code> supports both amd64 and arm64, so the
+Dockerfile is architecture-agnostic. Agents build the image locally via
+<code>kitt-agent build</code>, producing a native image for the host architecture.
+This avoids cross-architecture issues when the server (amd64) and agents
+(e.g. ARM64 NVIDIA Grace Blackwell) differ.</p>
 <h3 id="additional-dockerfiles">Additional Dockerfiles<a class="headerlink" href="#additional-dockerfiles" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
@@ -2162,12 +2190,8 @@ KITT relies on.</p>
 </thead>
 <tbody>
 <tr>
-<td><code>docker/agent/Dockerfile</code></td>
-<td>Standalone agent daemon image</td>
-</tr>
-<tr>
 <td><code>docker/web/Dockerfile</code></td>
-<td>Web dashboard image</td>
+<td>Web dashboard image (also used by <code>kitt-agent build</code>)</td>
 </tr>
 <tr>
 <td><code>docker/llama_cpp/Dockerfile.spark</code></td>

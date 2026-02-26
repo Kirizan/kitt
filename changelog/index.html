@@ -1861,6 +1861,28 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#121" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.2.1
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#120" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.2.0
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#110" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1917,6 +1939,28 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#121" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.2.1
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#120" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.2.0
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#110" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1960,6 +2004,84 @@
 
 <h1 id="changelog">Changelog<a class="headerlink" href="#changelog" title="Permanent link">&para;</a></h1>
 <p>All notable changes to KITT are documented on this page.</p>
+<h2 id="121">1.2.1<a class="headerlink" href="#121" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Fixed agent benchmark results never reaching the server — <code>_execute_test()</code> now reads <code>metrics.json</code> from the output directory and forwards it as <code>result_data</code> in <code>_report()</code></li>
+<li>Fixed <code>PermissionError</code> when <code>kitt run</code> defaults to relative <code>kitt-results/</code> inside a Docker container — agent now passes <code>-o</code> with a writable temp directory to <code>kitt run</code></li>
+<li>Changed default output directory for <code>kitt run</code> from relative <code>kitt-results/</code> to <code>~/.kitt/results/</code> for robustness across environments</li>
+<li>Temp output directories (<code>/tmp/kitt-results-*</code>) are cleaned up after agent benchmarks complete</li>
+<li>Fixed architecture mismatch in agent Docker image selection — now checks image arch against host arch before use, falling back to locally-built <code>kitt:latest</code> when the registry image is the wrong platform</li>
+<li>Fixed <code>_report()</code> using agent name instead of agent ID in URL, causing 404 on result submission</li>
+<li>Fixed Docker entrypoint override for benchmark containers — added <code>--entrypoint kitt</code> since the KITT image has <code>ENTRYPOINT ["kitt", "web"]</code></li>
+<li>Reverted Docker CLI package name in Dockerfiles back to <code>docker.io</code> — <code>docker-cli</code> does not exist in Debian bookworm repos</li>
+<li>Updated hardcoded <code>kitt_version</code> references from <code>1.1.0</code> to <code>1.2.1</code></li>
+<li>Fixed <code>_check_auth()</code> timing attack — replaced <code>==</code> with <code>hmac.compare_digest</code> for constant-time token comparison</li>
+<li>Fixed thread safety — write lock now wraps entire SQLite transactions (execute + commit), not just the commit</li>
+<li>Fixed <code>_find_on_share()</code> path traversal — resolved candidates are validated against the share mount root</li>
+<li>Fixed result detail 404 — <code>query()</code> and <code>get_result()</code> now include the database ID in returned results</li>
+<li>Fixed <code>kitt --version</code> reporting wrong version — now reads from <code>kitt.__version__</code> dynamically</li>
+<li>Fixed cleanup button in agent detail page targeting the wrong endpoint (API instead of blueprint)</li>
+<li>Added <code>@require_auth</code> to <code>GET /api/v1/agents/&lt;id&gt;/settings</code> endpoint</li>
+<li>Added <code>kitt_image</code> to migration v8 defaults for consistency with <code>AgentManager._DEFAULT_SETTINGS</code></li>
+<li>Added CSRF protection (<code>@csrf_protect</code>) to all state-changing web blueprint endpoints</li>
+<li>Added SHA-256 integrity verification for agent package downloads and build context</li>
+<li>Added Docker environment variable redaction in container start logs</li>
+<li>Added rotating file logging to agent (<code>~/.kitt/logs/agent.log</code>, 5MB per file, 3 backups)</li>
+<li>Fixed preflight server reachability check — tries TLS verification first, falls back to insecure for self-signed certs</li>
+<li>Fixed preflight <code>URLError</code>-wrapped SSL errors bypassing the insecure fallback</li>
+<li>Removed unused <code>verify</code> and <code>client_cert</code> parameters from <code>_report()</code> function</li>
+<li>Fixed cleanup endpoints bypassing <code>_write_lock</code> — extracted <code>AgentManager.queue_cleanup_command()</code> method</li>
+<li>Fixed <code>register()</code> TOCTOU race — moved SELECT inside write lock to prevent concurrent duplicate inserts</li>
+<li>Fixed <code>_find_on_share()</code> glob results not validated against share root (symlink traversal)</li>
+<li>Fixed <code>_find_on_share()</code> path validation to use <code>relative_to()</code> instead of <code>str.startswith()</code> for robustness</li>
+<li>Fixed <code>csrf_protect</code> Bearer token exemption — now validates the token before bypassing CSRF check</li>
+<li>Fixed hardcoded <code>kitt_version</code> in <code>run.py</code> and <code>json_reporter.py</code> — now uses <code>kitt.__version__</code> dynamically</li>
+<li>Fixed HTMX storage polling in agent detail page targeting JSON endpoint instead of HTML page</li>
+<li>Fixed <code>tarfile.extractall(filter="data")</code> incompatibility with Python 3.10 — guarded with version check</li>
+<li>Removed obsolete <code>docker/agent/Dockerfile</code> referencing deleted full agent</li>
+<li>Fixed <code>docker-cli</code> references in documentation (<code>docs/reference/docker-files.md</code>)</li>
+<li>Replaced f-string logger calls with lazy <code>%s</code> formatting across agent package and server</li>
+<li>Refactored API token verification — extracted <code>check_agent_auth()</code> and <code>check_agent_auth_by_name()</code> methods on <code>AgentManager</code>, removing raw <code>_conn</code> access from API endpoints</li>
+<li>Fixed <code>tarfile.extractall(filter="data")</code> guard to use <code>try/except TypeError</code> instead of version check, correctly handling Python 3.11.4+ backport</li>
+<li>Fixed <code>docs/reference/api.md</code> auth column for <code>GET /api/v1/agents/&lt;id&gt;/settings</code> — was incorrectly listed as unauthenticated</li>
+<li>Removed stale <code>docker/agent/Dockerfile</code> row from <code>docs/reference/docker-files.md</code></li>
+<li>Removed dead <code>docker/agent/Dockerfile</code> reference in stack generator</li>
+<li>Fixed remaining f-string logger calls in <code>migrations.py</code> and <code>agent_install.py</code></li>
+<li>Updated stale <code>kitt_version</code> in test fixtures from <code>1.1.0</code> to <code>1.2.1</code></li>
+<li>Reverted <code>docker-cli</code> back to <code>docker.io</code> in Dockerfiles — <code>docker-cli</code> does not exist in Debian bookworm repos</li>
+<li>Added <code>save_result()</code> method to <code>ResultService</code> — <code>report_result</code> endpoint no longer accesses private <code>_store</code> directly</li>
+<li>Fixed <code>docs/reference/api.md</code> auth columns for <code>PATCH</code> and <code>DELETE</code> agent endpoints — were incorrectly listed as unauthenticated</li>
+<li>Fixed <code>docs/concepts/architecture.md</code> result reporting URL from <code>{name}</code> to <code>{id}</code></li>
+<li>Fixed install script preflight check — <code>if [ $? -ne 0 ]</code> was dead code under <code>set -euo pipefail</code>, replaced with <code>if ! command</code> pattern</li>
+<li>Fixed Docker container leak on health check timeout — container is now stopped before reporting failure</li>
+<li>Removed unused <code>--foreground</code> flag from <code>kitt agent start</code> proxy command</li>
+<li>Fixed all <code>docs/reference/api.md</code> auth columns to match actual <code>@require_auth</code> decorators (results, campaigns, models sections)</li>
+<li>Updated README thin agent architecture description to reflect model resolution, Docker benchmark execution, and heartbeat command dispatch</li>
+</ul>
+<h2 id="120">1.2.0<a class="headerlink" href="#120" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Agent model workflow: copy models from NFS share to local storage, benchmark, cleanup</li>
+<li>Per-agent settings configurable from the web UI (model storage, share mount, cleanup, heartbeat interval)</li>
+<li>Agent settings synced to agents via heartbeat response</li>
+<li>NFS share mounting support with fstab and explicit mount fallback</li>
+<li>Preflight prerequisite checks (<code>kitt-agent preflight</code>) — Docker, GPU, drivers, NFS, disk space, connectivity</li>
+<li>Install script runs preflight before completing installation</li>
+<li>Heartbeat throttling during benchmarks (auto-increases interval to 60s minimum)</li>
+<li><code>cleanup_storage</code> command for remote model cleanup via heartbeat dispatch</li>
+<li>Storage usage reporting in heartbeat payload</li>
+<li>Removed full agent (<code>src/kitt/agent/</code>) — thin agent (<code>agent-package/</code>) is now the only agent</li>
+<li><code>kitt agent</code> CLI commands now proxy to <code>kitt-agent</code> binary</li>
+<li>Agent settings REST API endpoints (<code>GET</code>/<code>PUT /api/v1/agents/&lt;id&gt;/settings</code>)</li>
+<li>Storage cleanup REST API (<code>POST /api/v1/agents/&lt;id&gt;/cleanup</code>)</li>
+<li>DB migration v8: <code>agent_settings</code> key-value table per agent</li>
+<li>Daemon refactored — consolidated duplicated run methods into shared helpers</li>
+<li>Version policy: every PR must increment version going forward</li>
+<li><code>kitt-agent build</code> command for native-arch Docker image building</li>
+<li>Docker container is the preferred benchmark execution method (local CLI is fallback)</li>
+<li>Build context API endpoint (<code>/api/v1/agent/build-context</code>)</li>
+<li>Install script auto-builds Docker image during agent installation</li>
+<li>Preflight check for KITT Docker image availability</li>
+</ul>
 <h2 id="110">1.1.0<a class="headerlink" href="#110" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Added composable Docker deployment stacks (<code>kitt stack</code>)</li>

@@ -959,6 +959,34 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#model-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Model Workflow
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Model Workflow">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#nfs-share-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        NFS share configuration
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#initializing-the-agent" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -970,10 +998,43 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#preflight-checks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Preflight Checks
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#building-the-docker-image" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Building the Docker Image
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#starting-the-agent" class="md-nav__link">
     <span class="md-ellipsis">
       
         Starting the Agent
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#agent-settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Agent Settings
       
     </span>
   </a>
@@ -2034,6 +2095,34 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#model-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Model Workflow
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Model Workflow">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#nfs-share-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        NFS share configuration
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#initializing-the-agent" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2045,10 +2134,43 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#preflight-checks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Preflight Checks
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#building-the-docker-image" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Building the Docker Image
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#starting-the-agent" class="md-nav__link">
     <span class="md-ellipsis">
       
         Starting the Agent
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#agent-settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Agent Settings
       
     </span>
   </a>
@@ -2171,22 +2293,48 @@ execute it.</p>
 <hr />
 <h2 id="how-it-works">How It Works<a class="headerlink" href="#how-it-works" title="Permanent link">&para;</a></h2>
 <p>The agent is a lightweight Flask application that listens for commands over
-HTTPS. When the server sends a <code>run_test</code> command, the agent starts a benchmark
-in a background thread and streams logs back via Server-Sent Events (SSE). A
-heartbeat thread runs alongside the daemon, reporting status and GPU utilization
-to the server at a configurable interval (default 30 seconds).</p>
+HTTPS. When the server sends a <code>run_test</code> command, the agent resolves the
+model to local storage, starts a benchmark in a background thread, and streams
+logs back via Server-Sent Events (SSE). A heartbeat thread runs alongside the
+daemon, reporting status and GPU utilization to the server at a configurable
+interval (default 30 seconds). Settings configured on the server are synced
+to the agent via the heartbeat response.</p>
+<hr />
+<h2 id="model-workflow">Model Workflow<a class="headerlink" href="#model-workflow" title="Permanent link">&para;</a></h2>
+<p>When a benchmark is dispatched, the agent resolves the model path through the
+<code>ModelStorageManager</code>:</p>
+<ol>
+<li><strong>Check local storage</strong> — if the model is already under the configured
+   <code>model_storage_dir</code>, use it directly.</li>
+<li><strong>Mount NFS share</strong> — if <code>model_share_mount</code> is configured, ensure it is
+   mounted (via fstab or explicit <code>sudo mount -t nfs</code>).</li>
+<li><strong>Copy from share</strong> — copy the model from the share to local storage using
+   <code>shutil.copytree</code>.</li>
+<li><strong>Run benchmark</strong> — execute the benchmark in a Docker container (falls back
+   to local <code>kitt run</code> if the image is not available).</li>
+<li><strong>Cleanup</strong> — if <code>auto_cleanup</code> is enabled, delete the local copy after the
+   benchmark completes.</li>
+</ol>
+<p>This ensures benchmarks always run against a local copy, avoiding NFS latency
+during inference.</p>
+<h3 id="nfs-share-configuration">NFS share configuration<a class="headerlink" href="#nfs-share-configuration" title="Permanent link">&para;</a></h3>
+<p>Set the share source and mount point via the web UI (<strong>Agents &gt; Detail &gt;
+Settings</strong>) or during initialization:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>kitt-agent<span class="w"> </span>init<span class="w"> </span>--server<span class="w"> </span>https://server:8080<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">    </span>--model-dir<span class="w"> </span>/data/models<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">    </span>--share-source<span class="w"> </span>nas:/volume1/models<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">    </span>--share-mount<span class="w"> </span>/mnt/models
+</code></pre></div>
+<p>For passwordless mounts, add an entry to <code>/etc/fstab</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>nas:/volume1/models  /mnt/models  nfs  defaults,nofail  0  0
+</code></pre></div>
 <hr />
 <h2 id="initializing-the-agent">Initializing the Agent<a class="headerlink" href="#initializing-the-agent" title="Permanent link">&para;</a></h2>
 <p>Before starting the agent you must register it with a KITT server:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>kitt-agent<span class="w"> </span>init<span class="w"> </span>--server<span class="w"> </span>https://server:8080
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>kitt-agent<span class="w"> </span>init<span class="w"> </span>--server<span class="w"> </span>https://server:8080
 </code></pre></div>
-<p>This command:</p>
-<ol>
-<li>Writes <code>~/.kitt/agent.yaml</code> with the server URL, token, and agent name.</li>
-<li>If the server uses HTTPS, generates an agent TLS certificate signed by the
-   server CA (requires <code>ca.pem</code> in <code>~/.kitt/certs/</code>).</li>
-</ol>
-<p>Optional flags:</p>
+<p>This command writes <code>~/.kitt/agent.yaml</code> with the server URL, token, agent
+name, and optional model storage paths.</p>
 <table>
 <thead>
 <tr>
@@ -2211,11 +2359,131 @@ to the server at a configurable interval (default 30 seconds).</p>
 <td>8090</td>
 <td>Port the agent listens on</td>
 </tr>
+<tr>
+<td><code>--model-dir</code></td>
+<td><code>~/.kitt/models</code></td>
+<td>Local model storage directory</td>
+</tr>
+<tr>
+<td><code>--share-source</code></td>
+<td><em>(empty)</em></td>
+<td>NFS share source (e.g., <code>nas:/volume1/models</code>)</td>
+</tr>
+<tr>
+<td><code>--share-mount</code></td>
+<td><em>(empty)</em></td>
+<td>Local mount point for NFS share</td>
+</tr>
 </tbody>
 </table>
 <hr />
+<h2 id="preflight-checks">Preflight Checks<a class="headerlink" href="#preflight-checks" title="Permanent link">&para;</a></h2>
+<p>Run prerequisite checks before starting:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>kitt-agent<span class="w"> </span>preflight<span class="w"> </span>--server<span class="w"> </span>https://server:8080<span class="w"> </span>--port<span class="w"> </span><span class="m">8090</span>
+</code></pre></div>
+<p>Checks performed:</p>
+<table>
+<thead>
+<tr>
+<th>Check</th>
+<th>Required</th>
+<th>How</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Python &gt;= 3.10</td>
+<td>Yes</td>
+<td><code>sys.version_info</code></td>
+</tr>
+<tr>
+<td>Docker available</td>
+<td>Yes</td>
+<td><code>docker info</code> subprocess</td>
+</tr>
+<tr>
+<td>Docker GPU access</td>
+<td>Yes</td>
+<td><code>docker run --gpus all nvidia/cuda:...</code></td>
+</tr>
+<tr>
+<td>KITT Docker image</td>
+<td>No</td>
+<td><code>docker image inspect kitt:latest</code></td>
+</tr>
+<tr>
+<td>NVIDIA drivers</td>
+<td>Yes</td>
+<td><code>nvidia-smi</code> subprocess</td>
+</tr>
+<tr>
+<td>NFS utilities</td>
+<td>No</td>
+<td>Check for <code>mount.nfs</code> in PATH</td>
+</tr>
+<tr>
+<td>Disk space (&gt;= 50GB)</td>
+<td>No</td>
+<td><code>shutil.disk_usage</code> on model dir</td>
+</tr>
+<tr>
+<td>Server reachable</td>
+<td>Yes</td>
+<td>HTTP GET to <code>/api/v1/health</code></td>
+</tr>
+<tr>
+<td>Port available</td>
+<td>No</td>
+<td><code>socket.bind</code> on agent port</td>
+</tr>
+</tbody>
+</table>
+<p>Required checks that fail cause exit code 1.</p>
+<p>The install script runs preflight automatically. You can also use the
+<code>--preflight</code> flag on start:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>kitt-agent<span class="w"> </span>start<span class="w"> </span>--preflight
+</code></pre></div>
+<hr />
+<h2 id="building-the-docker-image">Building the Docker Image<a class="headerlink" href="#building-the-docker-image" title="Permanent link">&para;</a></h2>
+<p>The agent runs benchmarks inside a Docker container built from the KITT
+source. Each agent builds the image locally so it is native to the host
+architecture (amd64 or arm64). The install script does this automatically,
+but you can also build or rebuild manually:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>kitt-agent<span class="w"> </span>build
+</code></pre></div>
+<p>The command downloads the build context tarball from the server, verifies
+its SHA-256 digest, and runs <code>docker build</code> locally. The resulting image is
+tagged as <code>kitt:latest</code> (and with any custom tag from <code>kitt_image</code> in agent
+settings).</p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--server</code></td>
+<td>KITT server URL (reads from <code>agent.yaml</code> if not set)</td>
+</tr>
+<tr>
+<td><code>--tag</code></td>
+<td>Override the image tag</td>
+</tr>
+<tr>
+<td><code>--no-cache</code></td>
+<td>Build without Docker cache</td>
+</tr>
+</tbody>
+</table>
+<p>Rebuild the image after updating the agent to pick up new KITT changes:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>kitt-agent<span class="w"> </span>update
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>kitt-agent<span class="w"> </span>build
+</code></pre></div>
+<hr />
 <h2 id="starting-the-agent">Starting the Agent<a class="headerlink" href="#starting-the-agent" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>kitt<span class="w"> </span>agent<span class="w"> </span>start
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>kitt-agent<span class="w"> </span>start
 </code></pre></div>
 <p>On startup the agent:</p>
 <ol>
@@ -2223,68 +2491,123 @@ to the server at a configurable interval (default 30 seconds).</p>
 <li>Detects hardware — GPU (with unified memory fallback for architectures like
    DGX Spark GB10), CPU, RAM, storage, CUDA version, driver version, environment
    type, and compute capability.</li>
+<li>Initializes <code>ModelStorageManager</code> from config.</li>
 <li>Registers with the server via <code>POST /api/v1/agents/register</code>, sending a full
    hardware fingerprint and detailed hardware info.</li>
-<li>Starts a <code>HeartbeatThread</code> that sends periodic status, GPU utilization, and
-   memory usage to the server.</li>
+<li>Starts a <code>HeartbeatThread</code> that sends periodic status, GPU utilization,
+   memory usage, and storage availability to the server.</li>
 <li>Launches the Flask app on the configured port with optional TLS.</li>
 </ol>
-<p>Use <code>--foreground</code> to keep the process in the foreground (useful for debugging).
-Use <code>--insecure</code> to skip TLS verification during development.</p>
+<p>Use <code>--insecure</code> to skip TLS verification during development.</p>
+<hr />
+<h2 id="agent-settings">Agent Settings<a class="headerlink" href="#agent-settings" title="Permanent link">&para;</a></h2>
+<p>Settings are stored on the server in the <code>agent_settings</code> table and synced to
+the agent via the heartbeat response. Edit them from the web UI on the agent
+detail page or via the REST API.</p>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>model_storage_dir</code></td>
+<td><code>~/.kitt/models</code></td>
+<td>Local directory for model copies</td>
+</tr>
+<tr>
+<td><code>model_share_source</code></td>
+<td><em>(empty)</em></td>
+<td>NFS share source</td>
+</tr>
+<tr>
+<td><code>model_share_mount</code></td>
+<td><em>(empty)</em></td>
+<td>Local mount point for NFS share</td>
+</tr>
+<tr>
+<td><code>auto_cleanup</code></td>
+<td><code>true</code></td>
+<td>Delete local model copies after benchmarks</td>
+</tr>
+<tr>
+<td><code>heartbeat_interval_s</code></td>
+<td><code>30</code></td>
+<td>Seconds between heartbeats (10-300)</td>
+</tr>
+<tr>
+<td><code>kitt_image</code></td>
+<td><em>(empty)</em></td>
+<td>Docker image tag for benchmark containers</td>
+</tr>
+</tbody>
+</table>
 <hr />
 <h2 id="mtls-communication">mTLS Communication<a class="headerlink" href="#mtls-communication" title="Permanent link">&para;</a></h2>
 <p>When the server uses HTTPS, agent-server communication is secured with mutual
-TLS. During <code>kitt agent init</code> KITT generates a client certificate and stores the
+TLS. During <code>kitt-agent init</code> KITT generates a client certificate and stores the
 paths in <code>agent.yaml</code> under the <code>tls</code> key:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nt">tls</span><span class="p">:</span>
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span><span class="nt">cert</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/home/user/.kitt/certs/agent.pem</span>
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">  </span><span class="nt">key</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/home/user/.kitt/certs/agent-key.pem</span>
-<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">  </span><span class="nt">ca</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/home/user/.kitt/certs/ca.pem</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="nt">tls</span><span class="p">:</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="w">  </span><span class="nt">cert</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/home/user/.kitt/certs/agent.pem</span>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="w">  </span><span class="nt">key</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/home/user/.kitt/certs/agent-key.pem</span>
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="w">  </span><span class="nt">ca</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/home/user/.kitt/certs/ca.pem</span>
 </code></pre></div>
 <p>Both the heartbeat and the registration request present the client certificate.
 The server validates it against the same CA.</p>
 <hr />
 <h2 id="systemd-service">Systemd Service<a class="headerlink" href="#systemd-service" title="Permanent link">&para;</a></h2>
 <p>For production deployments, install the agent as a systemd service:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>~/.kitt/agent-venv/bin/kitt-agent<span class="w"> </span>service<span class="w"> </span>install
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>~/.kitt/agent-venv/bin/kitt-agent<span class="w"> </span>service<span class="w"> </span>install
 </code></pre></div>
 <p>This generates a systemd unit file, installs it via <code>sudo</code>, and starts the
 service. The agent will survive reboots and restart automatically on failure.</p>
 <p>Manage the service:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>kitt-agent<span class="w"> </span>service<span class="w"> </span>status<span class="w">      </span><span class="c1"># check service status</span>
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>kitt-agent<span class="w"> </span>service<span class="w"> </span>uninstall<span class="w">   </span><span class="c1"># stop, disable, and remove the service</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>kitt-agent<span class="w"> </span>service<span class="w"> </span>status<span class="w">      </span><span class="c1"># check service status</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>kitt-agent<span class="w"> </span>service<span class="w"> </span>uninstall<span class="w">   </span><span class="c1"># stop, disable, and remove the service</span>
 </code></pre></div>
 <hr />
 <h2 id="updating-the-agent">Updating the Agent<a class="headerlink" href="#updating-the-agent" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>kitt-agent<span class="w"> </span>update<span class="w">              </span><span class="c1"># download and install latest from server</span>
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>kitt-agent<span class="w"> </span>update<span class="w"> </span>--restart<span class="w">    </span><span class="c1"># update and restart in one step</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>kitt-agent<span class="w"> </span>update<span class="w">              </span><span class="c1"># download and install latest from server</span>
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>kitt-agent<span class="w"> </span>update<span class="w"> </span>--restart<span class="w">    </span><span class="c1"># update and restart in one step</span>
 </code></pre></div>
 <p>The <code>update</code> command downloads the latest agent package from the KITT server
 (<code>/api/v1/agent/package</code>) and reinstalls it into the agent's virtual environment.
 Use <code>--restart</code> to automatically stop the running agent and start the new version.</p>
+<p>After updating, rebuild the Docker image to pick up new KITT changes:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>kitt-agent<span class="w"> </span>build
+</code></pre></div>
 <p>If the agent is managed by systemd, restart the service after updating:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>kitt-agent<span class="w"> </span>update
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>sudo<span class="w"> </span>systemctl<span class="w"> </span>restart<span class="w"> </span>kitt-agent
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>kitt-agent<span class="w"> </span>update
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>kitt-agent<span class="w"> </span>build
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>sudo<span class="w"> </span>systemctl<span class="w"> </span>restart<span class="w"> </span>kitt-agent
 </code></pre></div>
 <hr />
 <h2 id="heartbeat-and-command-dispatch">Heartbeat and Command Dispatch<a class="headerlink" href="#heartbeat-and-command-dispatch" title="Permanent link">&para;</a></h2>
 <p>The <code>HeartbeatThread</code> sends a JSON payload to
-<code>/api/v1/agents/&lt;agent_id&gt;/heartbeat</code> every 30 seconds (configurable by the
-server response at registration). The payload includes:</p>
+<code>/api/v1/agents/&lt;agent_id&gt;/heartbeat</code> at the configured interval. The payload
+includes:</p>
 <ul>
 <li>Agent status (<code>idle</code>, <code>running</code>, <code>error</code>)</li>
 <li>Current task identifier</li>
 <li>GPU utilization percentage (via pynvml)</li>
 <li>GPU memory used in GB</li>
+<li>Storage free space in GB</li>
 <li>Agent uptime</li>
 </ul>
-<p>The heartbeat response may include a <code>commands</code> list containing pending
-jobs (e.g. quick tests queued from the web UI). The agent processes each
-command automatically — for <code>run_test</code> commands it starts the benchmark
-executor and streams log lines back to the server via
-<code>POST /api/v1/quicktest/&lt;test_id&gt;/logs</code>. Status transitions are reported
-via <code>POST /api/v1/quicktest/&lt;test_id&gt;/status</code> so the web UI can display
-real-time progress through SSE.</p>
+<p>During active benchmarks, the heartbeat interval is automatically increased to
+at least 60 seconds to reduce overhead.</p>
+<p>The heartbeat response includes:</p>
+<ul>
+<li><code>commands</code> — pending jobs (e.g., quick tests queued from the web UI)</li>
+<li><code>settings</code> — current agent settings for sync</li>
+</ul>
+<p>The agent processes each command automatically — for <code>run_test</code> commands it
+resolves the model, starts the benchmark, and streams log lines back to the
+server via <code>POST /api/v1/quicktest/&lt;test_id&gt;/logs</code>. Status transitions are
+reported via <code>POST /api/v1/quicktest/&lt;test_id&gt;/status</code>.</p>
 <hr />
 <h2 id="log-streaming">Log Streaming<a class="headerlink" href="#log-streaming" title="Permanent link">&para;</a></h2>
 <p>When a benchmark runs, the agent captures output through a <code>LogStreamer</code> and
@@ -2292,7 +2615,7 @@ exposes it as an SSE endpoint at <code>/api/logs/&lt;command_id&gt;</code>. The 
 authorized client can subscribe to this stream for real-time log output.</p>
 <hr />
 <h2 id="checking-status">Checking Status<a class="headerlink" href="#checking-status" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>kitt<span class="w"> </span>agent<span class="w"> </span>status
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>kitt-agent<span class="w"> </span>status
 </code></pre></div>
 <p>This reads <code>~/.kitt/agent.yaml</code> and probes the local agent at
 <code>http://127.0.0.1:&lt;port&gt;/api/status</code> to report whether the daemon is running
@@ -2300,20 +2623,19 @@ and whether a benchmark is currently active.</p>
 <hr />
 <h2 id="managing-tests">Managing Tests<a class="headerlink" href="#managing-tests" title="Permanent link">&para;</a></h2>
 <p>List tests dispatched to this agent:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>kitt-agent<span class="w"> </span><span class="nb">test</span><span class="w"> </span>list<span class="w">                    </span><span class="c1"># show all tests for this agent</span>
-<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>kitt-agent<span class="w"> </span><span class="nb">test</span><span class="w"> </span>list<span class="w"> </span>--status<span class="w"> </span>running<span class="w">   </span><span class="c1"># filter by status</span>
-<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>kitt-agent<span class="w"> </span><span class="nb">test</span><span class="w"> </span>list<span class="w"> </span>--limit<span class="w"> </span><span class="m">5</span><span class="w">          </span><span class="c1"># limit results</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>kitt-agent<span class="w"> </span><span class="nb">test</span><span class="w"> </span>list<span class="w">                    </span><span class="c1"># show all tests for this agent</span>
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>kitt-agent<span class="w"> </span><span class="nb">test</span><span class="w"> </span>list<span class="w"> </span>--status<span class="w"> </span>running<span class="w">   </span><span class="c1"># filter by status</span>
+<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>kitt-agent<span class="w"> </span><span class="nb">test</span><span class="w"> </span>list<span class="w"> </span>--limit<span class="w"> </span><span class="m">5</span><span class="w">          </span><span class="c1"># limit results</span>
 </code></pre></div>
 <p>Stop a running or queued test:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>kitt-agent<span class="w"> </span><span class="nb">test</span><span class="w"> </span>stop<span class="w"> </span>&lt;test_id&gt;
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>kitt-agent<span class="w"> </span><span class="nb">test</span><span class="w"> </span>stop<span class="w"> </span>&lt;test_id&gt;
 </code></pre></div>
 <p>The <code>stop</code> command marks the test as failed on the server with an
 "Cancelled by user" error and sends a cancel signal to the local daemon
-to kill the running process. If the test is already completed or failed,
-the command prints a message and exits without changes.</p>
+to kill the running process.</p>
 <hr />
 <h2 id="stopping-the-agent">Stopping the Agent<a class="headerlink" href="#stopping-the-agent" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>kitt<span class="w"> </span>agent<span class="w"> </span>stop
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>kitt-agent<span class="w"> </span>stop
 </code></pre></div>
 <p>Sends <code>SIGTERM</code> to the agent process using the PID stored in
 <code>~/.kitt/agent.pid</code>.</p>

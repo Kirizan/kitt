@@ -966,6 +966,34 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Settings">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#agent-settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Agent Settings
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#storage-monitoring" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Storage Monitoring
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -2064,6 +2092,34 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Settings">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#agent-settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Agent Settings
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#storage-monitoring" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Storage Monitoring
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -2218,6 +2274,18 @@ campaigns, or the REST API beyond basic result listing.</p>
 <td>Agent registration</td>
 </tr>
 <tr>
+<td><code>GET /api/v1/agents/&lt;id&gt;/settings</code></td>
+<td>Get agent settings</td>
+</tr>
+<tr>
+<td><code>PUT /api/v1/agents/&lt;id&gt;/settings</code></td>
+<td>Update agent settings</td>
+</tr>
+<tr>
+<td><code>POST /api/v1/agents/&lt;id&gt;/cleanup</code></td>
+<td>Trigger storage cleanup</td>
+</tr>
+<tr>
 <td><code>GET /api/v1/campaigns</code></td>
 <td>List campaigns</td>
 </tr>
@@ -2295,6 +2363,46 @@ environment variable or default. Changes take effect immediately
 without a restart.</p>
 <p>The Devon URL can also be configured inline on the <strong>Devon</strong> page when
 it hasn't been set yet.</p>
+<h3 id="agent-settings">Agent Settings<a class="headerlink" href="#agent-settings" title="Permanent link">&para;</a></h3>
+<p>Per-agent settings are configured on each agent's detail page, not the
+global Settings page. Navigate to <strong>Agents &gt; (agent name)</strong> to find the
+Settings card. These settings are synced to the agent via the heartbeat
+response:</p>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Model Storage Directory</td>
+<td>Local directory for model copies</td>
+</tr>
+<tr>
+<td>Model Share Source (NFS)</td>
+<td>NFS share source (e.g., <code>nas:/volume1/models</code>)</td>
+</tr>
+<tr>
+<td>Model Share Mount Point</td>
+<td>Local mount point for the NFS share</td>
+</tr>
+<tr>
+<td>Auto Cleanup</td>
+<td>Delete local model copies after benchmarks</td>
+</tr>
+<tr>
+<td>Heartbeat Interval</td>
+<td>Seconds between heartbeats (10-300)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="storage-monitoring">Storage Monitoring<a class="headerlink" href="#storage-monitoring" title="Permanent link">&para;</a></h3>
+<p>The agent detail page also shows a Storage card with the current
+disk usage from heartbeat data. The "Clean Storage" button queues a
+<code>cleanup_storage</code> command that the agent will pick up on its next
+heartbeat, deleting all cached models from local storage.</p>
 <h2 id="database">Database<a class="headerlink" href="#database" title="Permanent link">&para;</a></h2>
 <p>The full dashboard uses SQLite stored at <code>~/.kitt/kitt.db</code>. Schema
 migrations run automatically on startup. The database tracks agents,

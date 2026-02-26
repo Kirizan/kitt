@@ -1611,6 +1611,39 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#web_settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        web_settings
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#quick_test_logs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        quick_test_logs
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#agent_settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        agent_settings
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2156,6 +2189,39 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#web_settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        web_settings
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#quick_test_logs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        quick_test_logs
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#agent_settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        agent_settings
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2208,7 +2274,7 @@
 KARR uses a relational database to store benchmark results, agent state, campaign
 progress, and event logs. The schema is versioned and managed through an
 automatic migration system.</p>
-<p><strong>Current schema version:</strong> 2</p>
+<p><strong>Current schema version:</strong> 8</p>
 <h2 id="migration-system">Migration System<a class="headerlink" href="#migration-system" title="Permanent link">&para;</a></h2>
 <p>The <code>schema_version</code> table tracks which migrations have been applied:</p>
 <table>
@@ -2542,7 +2608,19 @@ forward-only; downgrades are not supported.</p>
 <td><code>token</code></td>
 <td>TEXT</td>
 <td></td>
-<td>Authentication token</td>
+<td>Legacy raw token (migrated to hash)</td>
+</tr>
+<tr>
+<td><code>token_hash</code></td>
+<td>TEXT</td>
+<td></td>
+<td>SHA-256 hash of authentication token (v4)</td>
+</tr>
+<tr>
+<td><code>token_prefix</code></td>
+<td>TEXT</td>
+<td></td>
+<td>First 8 chars of raw token for display (v4)</td>
 </tr>
 <tr>
 <td><code>status</code></td>
@@ -2593,6 +2671,12 @@ forward-only; downgrades are not supported.</p>
 <td>KITT version running on the agent</td>
 </tr>
 <tr>
+<td><code>hardware_details</code></td>
+<td>TEXT</td>
+<td></td>
+<td>Detailed hardware JSON blob (v5)</td>
+</tr>
+<tr>
 <td><code>last_heartbeat</code></td>
 <td>TEXT</td>
 <td></td>
@@ -2614,7 +2698,7 @@ forward-only; downgrades are not supported.</p>
 <td><code>tags</code></td>
 <td>TEXT</td>
 <td></td>
-<td>Comma-separated tags for filtering</td>
+<td>JSON array of tags for filtering</td>
 </tr>
 </tbody>
 </table>
@@ -2771,6 +2855,12 @@ forward-only; downgrades are not supported.</p>
 <td>Current status</td>
 </tr>
 <tr>
+<td><code>command_id</code></td>
+<td>TEXT</td>
+<td></td>
+<td>Command ID for heartbeat dispatch (v6)</td>
+</tr>
+<tr>
 <td><code>created_at</code></td>
 <td>TEXT</td>
 <td></td>
@@ -2843,6 +2933,108 @@ forward-only; downgrades are not supported.</p>
 <td>TEXT</td>
 <td></td>
 <td>ISO-8601 event timestamp</td>
+</tr>
+</tbody>
+</table>
+<h3 id="web_settings">web_settings<a class="headerlink" href="#web_settings" title="Permanent link">&para;</a></h3>
+<p>Server-wide key-value settings (v3).</p>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Type</th>
+<th>Constraints</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>key</code></td>
+<td>TEXT</td>
+<td>PRIMARY KEY</td>
+<td>Setting key</td>
+</tr>
+<tr>
+<td><code>value</code></td>
+<td>TEXT</td>
+<td></td>
+<td>Setting value</td>
+</tr>
+</tbody>
+</table>
+<h3 id="quick_test_logs">quick_test_logs<a class="headerlink" href="#quick_test_logs" title="Permanent link">&para;</a></h3>
+<p>Persistent log storage for quick test output (v7).</p>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Type</th>
+<th>Constraints</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code></td>
+<td>INTEGER</td>
+<td>PRIMARY KEY AUTOINCREMENT</td>
+<td>Row identifier</td>
+</tr>
+<tr>
+<td><code>test_id</code></td>
+<td>TEXT</td>
+<td>FOREIGN KEY -&gt; quick_tests(id)</td>
+<td>Parent quick test</td>
+</tr>
+<tr>
+<td><code>line</code></td>
+<td>TEXT</td>
+<td></td>
+<td>Log line content</td>
+</tr>
+<tr>
+<td><code>created_at</code></td>
+<td>TEXT</td>
+<td></td>
+<td>ISO-8601 timestamp</td>
+</tr>
+</tbody>
+</table>
+<h3 id="agent_settings">agent_settings<a class="headerlink" href="#agent_settings" title="Permanent link">&para;</a></h3>
+<p>Per-agent configurable settings, synced to agents via heartbeat (v8).</p>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Type</th>
+<th>Constraints</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code></td>
+<td>INTEGER</td>
+<td>PRIMARY KEY AUTOINCREMENT</td>
+<td>Row identifier</td>
+</tr>
+<tr>
+<td><code>agent_id</code></td>
+<td>TEXT</td>
+<td>FOREIGN KEY -&gt; agents(id) ON DELETE CASCADE</td>
+<td>Parent agent</td>
+</tr>
+<tr>
+<td><code>key</code></td>
+<td>TEXT</td>
+<td>UNIQUE(agent_id, key)</td>
+<td>Setting key</td>
+</tr>
+<tr>
+<td><code>value</code></td>
+<td>TEXT</td>
+<td></td>
+<td>Setting value</td>
 </tr>
 </tbody>
 </table>
