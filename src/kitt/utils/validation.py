@@ -38,7 +38,9 @@ def detect_model_format(path: str) -> str | None:
 
     if p.is_dir():
         children = list(p.iterdir())
-        has_safetensors = any(f.suffix == ".safetensors" for f in children if f.is_file())
+        has_safetensors = any(
+            f.suffix == ".safetensors" for f in children if f.is_file()
+        )
         has_pytorch = any(
             f.name in ("pytorch_model.bin", "model.bin") or f.suffix in (".pt", ".pth")
             for f in children

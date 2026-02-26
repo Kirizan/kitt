@@ -1,7 +1,5 @@
 """Tests for model format detection and validation utilities."""
 
-from pathlib import Path
-
 from kitt.utils.validation import (
     detect_model_format,
     validate_model_format,

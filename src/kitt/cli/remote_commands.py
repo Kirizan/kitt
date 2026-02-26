@@ -178,7 +178,9 @@ def remote_engines_setup(engine_name, host, dry_run):
     if results.get(engine_name):
         console.print(f"[green]Engine '{engine_name}' ready on '{host}'.[/green]")
     else:
-        console.print(f"[red]Engine setup failed for '{engine_name}' on '{host}'.[/red]")
+        console.print(
+            f"[red]Engine setup failed for '{engine_name}' on '{host}'.[/red]"
+        )
         raise SystemExit(1)
 
 

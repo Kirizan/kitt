@@ -2,7 +2,10 @@
 
 import json
 
-from kitt.web.services.local_model_service import LocalModelService, _detect_formats_from_path
+from kitt.web.services.local_model_service import (
+    LocalModelService,
+    _detect_formats_from_path,
+)
 
 
 class TestReadManifestFormats:

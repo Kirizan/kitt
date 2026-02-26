@@ -194,9 +194,7 @@ def resolve_image(engine_name: str, default_image: str) -> str:
     user_overrides = _load_user_overrides()
     user_image = user_overrides.get(engine_name)
     if user_image and isinstance(user_image, str):
-        logger.info(
-            "Using user-configured image for %s: %s", engine_name, user_image
-        )
+        logger.info("Using user-configured image for %s: %s", engine_name, user_image)
         return user_image
 
     # 2. Hardware-aware overrides
@@ -207,7 +205,10 @@ def resolve_image(engine_name: str, default_image: str) -> str:
             if cc >= min_cc:
                 logger.info(
                     "GPU cc %s.%s matched override for %s: %s",
-                    cc[0], cc[1], engine_name, image,
+                    cc[0],
+                    cc[1],
+                    engine_name,
+                    image,
                 )
                 return image
 

@@ -2,7 +2,6 @@
 
 import json
 import sqlite3
-import threading
 
 import pytest
 
@@ -92,7 +91,6 @@ def agent_mgr(db_conn):
 def app(db_conn, agent_mgr):
     """Create a minimal Flask app with agent API blueprint."""
     from kitt.web.api.v1.agents import bp
-    from kitt.web.services.event_bus import event_bus
 
     flask_app = Flask(__name__)
     flask_app.config["TESTING"] = True
@@ -102,7 +100,9 @@ def app(db_conn, agent_mgr):
     _services = {
         "agent_manager": agent_mgr,
         "db_conn": db_conn,
-        "result_service": type("FakeResultService", (), {"save_result": lambda self, d: None})(),
+        "result_service": type(
+            "FakeResultService", (), {"save_result": lambda self, d: None}
+        )(),
     }
 
     import kitt.web.app
