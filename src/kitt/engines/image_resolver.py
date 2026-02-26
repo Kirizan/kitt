@@ -131,11 +131,11 @@ def _detect_cc() -> tuple[int, int] | None:
 
         _cc_cache = detect_gpu_compute_capability()
     except Exception as e:
-        logger.debug(f"Compute capability detection failed: {e}")
+        logger.debug("Compute capability detection failed: %s", e)
         _cc_cache = None
 
     if _cc_cache:
-        logger.info(f"GPU compute capability: {_cc_cache[0]}.{_cc_cache[1]}")
+        logger.info("GPU compute capability: %s.%s", _cc_cache[0], _cc_cache[1])
     return _cc_cache
 
 
@@ -206,7 +206,8 @@ def resolve_image(engine_name: str, default_image: str) -> str:
         for min_cc, image in overrides:
             if cc >= min_cc:
                 logger.info(
-                    f"GPU cc {cc[0]}.{cc[1]} matched override for {engine_name}: {image}"
+                    "GPU cc %s.%s matched override for %s: %s",
+                    cc[0], cc[1], engine_name, image,
                 )
                 return image
 

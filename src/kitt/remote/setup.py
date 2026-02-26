@@ -127,9 +127,11 @@ class RemoteSetup:
         Returns:
             Dict mapping engine name to success bool.
         """
+        import shlex
+
         results: dict[str, bool] = {}
         for engine_name in engines:
-            cmd = f"kitt engines setup {engine_name}"
+            cmd = f"kitt engines setup {shlex.quote(engine_name)}"
             if dry_run:
                 cmd += " --dry-run"
             logger.info("Setting up engine '%s' on %s", engine_name, self.conn.target)

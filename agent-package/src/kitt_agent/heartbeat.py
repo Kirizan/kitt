@@ -45,6 +45,7 @@ class HeartbeatThread(threading.Thread):
         self._register_fn = register_fn
         self._on_agent_id_change = on_agent_id_change
         self._stop_event = threading.Event()
+        self._retrying = False
         self._start_time = time.monotonic()
         self._status = "idle"
         self._current_task = ""
@@ -174,19 +175,23 @@ class HeartbeatThread(threading.Thread):
             with urllib.request.urlopen(req, context=ctx, timeout=10) as response:
                 resp = json.loads(response.read().decode("utf-8"))
         except HTTPError as e:
-            if e.code == 404 and self._register_fn:
-                # Agent not found — attempt re-registration
-                logger.warning(
-                    "Heartbeat 404 for agent_id=%s — attempting re-registration",
-                    self.agent_id,
-                )
-                new_id = self._register_fn()
-                if new_id:
-                    self.agent_id = new_id
-                    if self._on_agent_id_change:
-                        self._on_agent_id_change(new_id)
-                    # Retry with the new agent_id
-                    return self._send_heartbeat()
+            if e.code == 404 and self._register_fn and not self._retrying:
+                # Agent not found — attempt re-registration (once)
+                self._retrying = True
+                try:
+                    logger.warning(
+                        "Heartbeat 404 for agent_id=%s — attempting re-registration",
+                        self.agent_id,
+                    )
+                    new_id = self._register_fn()
+                    if new_id:
+                        self.agent_id = new_id
+                        if self._on_agent_id_change:
+                            self._on_agent_id_change(new_id)
+                        # Retry with the new agent_id
+                        return self._send_heartbeat()
+                finally:
+                    self._retrying = False
             raise
 
         # Sync canonical agent_id from server response
