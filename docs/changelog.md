@@ -9,6 +9,9 @@ All notable changes to KITT are documented on this page.
 - Changed default output directory for `kitt run` from relative `kitt-results/` to `~/.kitt/results/` for robustness across environments
 - Temp output directories (`/tmp/kitt-results-*`) are cleaned up after agent benchmarks complete
 - Fixed architecture mismatch in agent Docker image selection — now checks image arch against host arch before use, falling back to locally-built `kitt:latest` when the registry image is the wrong platform
+- Fixed `_report()` using agent name instead of agent ID in URL, causing 404 on result submission
+- Fixed Docker entrypoint override for benchmark containers — added `--entrypoint kitt` since the KITT image has `ENTRYPOINT ["kitt", "web"]`
+- Fixed Docker CLI package name in Dockerfiles — `docker.io` on Debian bookworm ARM64 only installs daemon, changed to `docker-cli`
 - Updated hardcoded `kitt_version` references from `1.1.0` to `1.2.1`
 
 ## 1.2.0
