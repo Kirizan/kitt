@@ -89,6 +89,17 @@ class InferenceEngine(ABC):
         return resolve_image(cls.name(), cls.default_image())
 
     @classmethod
+    def validate_model(cls, model_path: str) -> str | None:
+        """Check if a model's format is compatible with this engine.
+
+        Returns:
+            Error string if the model is incompatible, None if OK.
+        """
+        from kitt.utils.validation import validate_model_format
+
+        return validate_model_format(model_path, cls.supported_formats())
+
+    @classmethod
     def is_available(cls) -> bool:
         """Check if Docker is available and the engine's image is pulled."""
         from .docker_manager import DockerManager

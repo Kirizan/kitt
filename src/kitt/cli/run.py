@@ -95,6 +95,12 @@ def run(model, engine, suite, output, skip_warmup, runs, config, store_karr):
             console.print(f"  Fix: {diag.guidance}")
         raise SystemExit(1)
 
+    # Preflight: validate model format compatibility
+    format_error = engine_cls.validate_model(model)
+    if format_error:
+        console.print(f"[red]Model/engine mismatch:[/red] {format_error}")
+        raise SystemExit(1)
+
     console.print("[bold]KITT Benchmark Runner[/bold]")
     console.print(f"  Model:  {model}")
     console.print(f"  Engine: {engine}")
