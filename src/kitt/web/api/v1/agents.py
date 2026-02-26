@@ -47,20 +47,9 @@ def register():
 
     mgr = _get_agent_manager()
 
-    # Look up the agent to check if it has a provisioned token
-    row = mgr._conn.execute(
-        "SELECT id, token_hash, token FROM agents WHERE name = ?", (reg.name,)
-    ).fetchone()
-
-    if row:
-        stored_hash = row["token_hash"] or ""
-        stored_raw = row["token"] or ""
-        # Agent has a token configured — verify it
-        if stored_hash or stored_raw:
-            if not token:
-                return jsonify({"error": "Missing authorization"}), 401
-            if not mgr.verify_token(row["id"], token):
-                return jsonify({"error": "Invalid token for this agent"}), 403
+    ok, error, status = mgr.check_agent_auth_by_name(reg.name, token)
+    if not ok:
+        return jsonify({"error": error}), status
 
     result = mgr.register(reg, token)
     return jsonify(result), 201
@@ -77,23 +66,9 @@ def heartbeat(agent_id):
 
     mgr = _get_agent_manager()
 
-    # Check if agent exists and has a token configured
-    row = mgr._conn.execute(
-        "SELECT token_hash, token FROM agents WHERE id = ?", (agent_id,)
-    ).fetchone()
-
-    if row is None:
-        return jsonify({"error": "Agent not found"}), 404
-
-    stored_hash = row["token_hash"] or ""
-    stored_raw = row["token"] or ""
-
-    # Agent has a token configured — verify it
-    if stored_hash or stored_raw:
-        if not token:
-            return jsonify({"error": "Missing authorization"}), 401
-        if not mgr.verify_token(agent_id, token):
-            return jsonify({"error": "Invalid token for this agent"}), 403
+    ok, error, status = mgr.check_agent_auth(agent_id, token)
+    if not ok:
+        return jsonify({"error": error}), status
 
     data = request.get_json(silent=True) or {}
     hb = AgentHeartbeat(**data)
@@ -154,21 +129,9 @@ def report_result(agent_id):
 
     mgr = _get_agent_manager()
 
-    row = mgr._conn.execute(
-        "SELECT token_hash, token FROM agents WHERE id = ?", (agent_id,)
-    ).fetchone()
-
-    if row is None:
-        return jsonify({"error": "Agent not found"}), 404
-
-    stored_hash = row["token_hash"] or ""
-    stored_raw = row["token"] or ""
-
-    if stored_hash or stored_raw:
-        if not token:
-            return jsonify({"error": "Missing authorization"}), 401
-        if not mgr.verify_token(agent_id, token):
-            return jsonify({"error": "Invalid token for this agent"}), 403
+    ok, error, status = mgr.check_agent_auth(agent_id, token)
+    if not ok:
+        return jsonify({"error": error}), status
 
     data = request.get_json(silent=True)
     if not data:

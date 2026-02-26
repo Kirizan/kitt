@@ -55,7 +55,6 @@ This avoids cross-architecture issues when the server (amd64) and agents
 
 | File | Purpose |
 |------|---------|
-| `docker/agent/Dockerfile` | Standalone agent daemon image |
 | `docker/web/Dockerfile` | Web dashboard image (also used by `kitt-agent build`) |
 | `docker/llama_cpp/Dockerfile.spark` | llama.cpp build for DGX Spark |
 | `docker/tgi/Dockerfile.spark` | TGI build for DGX Spark |

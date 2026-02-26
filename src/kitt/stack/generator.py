@@ -332,11 +332,6 @@ class StackGenerator:
             if src:
                 shutil.copy2(src, stack_dir / "Dockerfile.web")
 
-        if self.config.agent:
-            src = _find_dockerfile("docker/agent/Dockerfile")
-            if src:
-                shutil.copy2(src, stack_dir / "Dockerfile.agent")
-
     def _generate_monitoring_configs(self, stack_dir: Path) -> None:
         """Generate Prometheus and Grafana configs for monitoring component."""
         # Prometheus config

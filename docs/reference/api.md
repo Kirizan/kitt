@@ -59,7 +59,7 @@ endpoints all require authentication.
 | POST | `/api/v1/agents/<id>/results` | Yes | Report benchmark result |
 | PATCH | `/api/v1/agents/<id>` | No | Update agent fields |
 | DELETE | `/api/v1/agents/<id>` | No | Remove an agent |
-| GET | `/api/v1/agents/<id>/settings` | No | Get agent settings |
+| GET | `/api/v1/agents/<id>/settings` | Yes | Get agent settings |
 | PUT | `/api/v1/agents/<id>/settings` | Yes | Update agent settings (body: `{"key": "value", ...}`) |
 | POST | `/api/v1/agents/<id>/cleanup` | Yes | Queue storage cleanup command |
 | GET | `/api/v1/agent/install.sh` | No | Agent bootstrap install script |

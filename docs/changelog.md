@@ -39,6 +39,13 @@ All notable changes to KITT are documented on this page.
 - Removed obsolete `docker/agent/Dockerfile` referencing deleted full agent
 - Fixed `docker-cli` references in documentation (`docs/reference/docker-files.md`)
 - Replaced f-string logger calls with lazy `%s` formatting across agent package and server
+- Refactored API token verification — extracted `check_agent_auth()` and `check_agent_auth_by_name()` methods on `AgentManager`, removing raw `_conn` access from API endpoints
+- Fixed `tarfile.extractall(filter="data")` guard to use `try/except TypeError` instead of version check, correctly handling Python 3.11.4+ backport
+- Fixed `docs/reference/api.md` auth column for `GET /api/v1/agents/<id>/settings` — was incorrectly listed as unauthenticated
+- Removed stale `docker/agent/Dockerfile` row from `docs/reference/docker-files.md`
+- Removed dead `docker/agent/Dockerfile` reference in stack generator
+- Fixed remaining f-string logger calls in `migrations.py` and `agent_install.py`
+- Updated stale `kitt_version` in test fixtures from `1.1.0` to `1.2.1`
 
 ## 1.2.0
 

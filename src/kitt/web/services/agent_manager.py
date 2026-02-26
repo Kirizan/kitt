@@ -314,6 +314,62 @@ class AgentManager:
         # Fall back to legacy raw token comparison
         return hmac.compare_digest(token, stored_raw)
 
+    def check_agent_auth(
+        self, agent_id: str, token: str
+    ) -> tuple[bool, str | None, int]:
+        """Check whether the agent exists and verify its token.
+
+        Encapsulates the lookup + token verification pattern so API
+        endpoints don't need to query _conn directly.
+
+        Returns:
+            (ok, error_message, http_status) — ok is True when the
+            request should proceed.  On failure, error_message and
+            http_status describe the problem.
+        """
+        row = self._conn.execute(
+            "SELECT id, token_hash, token FROM agents WHERE id = ?", (agent_id,)
+        ).fetchone()
+        if row is None:
+            return False, "Agent not found", 404
+
+        stored_hash = row["token_hash"] or ""
+        stored_raw = row["token"] or ""
+
+        if stored_hash or stored_raw:
+            if not token:
+                return False, "Missing authorization", 401
+            if not self.verify_token(agent_id, token):
+                return False, "Invalid token for this agent", 403
+
+        return True, None, 0
+
+    def check_agent_auth_by_name(
+        self, name: str, token: str
+    ) -> tuple[bool, str | None, int]:
+        """Same as check_agent_auth but looks up the agent by name.
+
+        Used by the register endpoint where only the agent name is known.
+        Returns (ok, error_message, http_status).
+        """
+        row = self._conn.execute(
+            "SELECT id, token_hash, token FROM agents WHERE name = ?", (name,)
+        ).fetchone()
+        if row is None:
+            # Agent doesn't exist yet — no token to check
+            return True, None, 0
+
+        stored_hash = row["token_hash"] or ""
+        stored_raw = row["token"] or ""
+
+        if stored_hash or stored_raw:
+            if not token:
+                return False, "Missing authorization", 401
+            if not self.verify_token(row["id"], token):
+                return False, "Invalid token for this agent", 403
+
+        return True, None, 0
+
     def rotate_token(self, agent_id: str) -> dict[str, Any] | None:
         """Generate a new token for an existing agent.
 

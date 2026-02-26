@@ -162,7 +162,7 @@ def _migrate_token_hashes(conn: Any) -> None:
         )
     if rows:
         conn.commit()
-        logger.info(f"Migrated {len(rows)} agent token(s) to hashed storage")
+        logger.info("Migrated %d agent token(s) to hashed storage", len(rows))
 
 
 _DEFAULT_AGENT_SETTINGS = {
@@ -187,7 +187,7 @@ def _insert_default_agent_settings(conn: Any) -> None:
             )
     if rows:
         conn.commit()
-        logger.info(f"Inserted default settings for {len(rows)} agent(s)")
+        logger.info("Inserted default settings for %d agent(s)", len(rows))
 
 
 def get_current_version_sqlite(conn: Any) -> int:
@@ -222,7 +222,7 @@ def run_migrations_sqlite(conn: Any, current_version: int) -> int:
     applied = 0
     for version, description, sql in MIGRATIONS:
         if version > current_version:
-            logger.info(f"Applying migration v{version}: {description}")
+            logger.info("Applying migration v%d: %s", version, description)
             conn.executescript(sql)
             set_version_sqlite(conn, version)
             applied += 1
@@ -234,7 +234,7 @@ def run_migrations_sqlite(conn: Any, current_version: int) -> int:
                 _insert_default_agent_settings(conn)
 
     if applied:
-        logger.info(f"Applied {applied} migration(s)")
+        logger.info("Applied %d migration(s)", applied)
     return get_current_version_sqlite(conn)
 
 
@@ -274,12 +274,12 @@ def run_migrations_postgres(conn: Any, current_version: int) -> int:
     cursor = conn.cursor()
     for version, description, sql in MIGRATIONS:
         if version > current_version:
-            logger.info(f"Applying migration v{version}: {description}")
+            logger.info("Applying migration v%d: %s", version, description)
             cursor.execute(sql)
             conn.commit()
             set_version_postgres(conn, version)
             applied += 1
 
     if applied:
-        logger.info(f"Applied {applied} migration(s)")
+        logger.info("Applied %d migration(s)", applied)
     return get_current_version_postgres(conn)

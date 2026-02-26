@@ -215,7 +215,7 @@ def _get_or_build_context() -> Path | None:
 
         project_root = AGENT_PACKAGE_DIR.parent
         if not project_root.exists():
-            logger.error(f"Project root not found: {project_root}")
+            logger.error("Project root not found: %s", project_root)
             return None
 
         # Directories/files to include in the build context
@@ -271,11 +271,11 @@ def _get_or_build_context() -> Path | None:
                             )
 
             _context_cache["path"] = dest
-            logger.info(f"Build context created: {dest}")
+            logger.info("Build context created: %s", dest)
             return dest
 
         except Exception as e:
-            logger.error(f"Failed to build Docker context: {e}")
+            logger.error("Failed to build Docker context: %s", e)
             return None
 
 
@@ -286,7 +286,7 @@ def _get_or_build_package() -> Path | None:
             return _sdist_cache["path"]
 
         if not AGENT_PACKAGE_DIR.exists():
-            logger.error(f"Agent package directory not found: {AGENT_PACKAGE_DIR}")
+            logger.error("Agent package directory not found: %s", AGENT_PACKAGE_DIR)
             return None
 
         try:
@@ -299,7 +299,7 @@ def _get_or_build_package() -> Path | None:
                     timeout=60,
                 )
                 if result.returncode != 0:
-                    logger.error(f"Agent package build failed: {result.stderr}")
+                    logger.error("Agent package build failed: %s", result.stderr)
                     return None
 
                 tarballs = list(Path(tmpdir).glob("*.tar.gz"))
@@ -316,9 +316,9 @@ def _get_or_build_package() -> Path | None:
 
                 shutil.copy2(tarballs[0], dest)
                 _sdist_cache["path"] = dest
-                logger.info(f"Agent package built: {dest}")
+                logger.info("Agent package built: %s", dest)
                 return dest
 
         except Exception as e:
-            logger.error(f"Failed to build agent package: {e}")
+            logger.error("Failed to build agent package: %s", e)
             return None

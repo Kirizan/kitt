@@ -123,9 +123,9 @@ def build(server, tag, no_cache):
     try:
         with tarfile.open(str(tmp_path), "r:gz") as tar:
             # filter="data" prevents tar path traversal (Python 3.12+/3.11.4+)
-            if sys.version_info >= (3, 12):
+            try:
                 tar.extractall(str(extract_dir), filter="data")
-            else:
+            except TypeError:
                 tar.extractall(str(extract_dir))
     except Exception as e:
         tmp_path.unlink(missing_ok=True)

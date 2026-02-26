@@ -19,7 +19,7 @@ def app(tmp_path):
     results_dir.mkdir(parents=True)
 
     metrics = {
-        "kitt_version": "1.1.0",
+        "kitt_version": "1.2.1",
         "suite_name": "quick",
         "timestamp": "2025-01-01T12:00:00",
         "engine": "ollama",
@@ -116,7 +116,7 @@ def multi_app(tmp_path):
         results_dir.mkdir(parents=True)
 
         metrics = {
-            "kitt_version": "1.1.0",
+            "kitt_version": "1.2.1",
             "suite_name": "quick",
             "timestamp": "2025-01-01T12:00:00",
             "engine": engine,
