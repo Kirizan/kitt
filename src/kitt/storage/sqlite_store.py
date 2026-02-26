@@ -134,11 +134,13 @@ class SQLiteStore(ResultStore):
     def get_result(self, result_id: str) -> dict[str, Any] | None:
         conn = self._get_conn()
         row = conn.execute(
-            "SELECT raw_json FROM runs WHERE id = ?", (result_id,)
+            "SELECT id, raw_json FROM runs WHERE id = ?", (result_id,)
         ).fetchone()
         if row is None:
             return None
-        return json.loads(row["raw_json"])
+        data = json.loads(row["raw_json"])
+        data["id"] = row["id"]
+        return data
 
     def query(
         self,
@@ -148,7 +150,7 @@ class SQLiteStore(ResultStore):
         offset: int = 0,
     ) -> list[dict[str, Any]]:
         conn = self._get_conn()
-        sql = "SELECT raw_json FROM runs"
+        sql = "SELECT id, raw_json FROM runs"
         params: list[Any] = []
 
         if filters:
@@ -198,7 +200,12 @@ class SQLiteStore(ResultStore):
             params.append(offset)
 
         rows = conn.execute(sql, params).fetchall()
-        return [json.loads(row["raw_json"]) for row in rows]
+        results = []
+        for row in rows:
+            data = json.loads(row["raw_json"])
+            data["id"] = row["id"]
+            results.append(data)
+        return results
 
     def list_results(self) -> list[dict[str, Any]]:
         conn = self._get_conn()
