@@ -14,9 +14,11 @@ End-to-end testing suite for LLM inference engines. Measures quality consistency
 - **[KARR results storage](https://kirizan.github.io/kitt/concepts/karr/)** — Kitt's AI Results Repository. SQLite (default) or PostgreSQL with queryable schema and full JSON round-tripping
 - **Docker deployment stacks** — composable `docker-compose` stacks via `kitt stack`
 - **Devon integration** — embedded [Devon](https://github.com/kirizan/devon) web UI via server-side reverse proxy, with automatic fallback to local Devon
+- **Model format validation** — preflight checks prevent launching containers with incompatible model formats (e.g. safetensors on llama.cpp)
 - **Web dashboard & REST API** — browse results, manage agents, and configure settings with TLS and per-agent token auth
-- **Local model browser** — scan and display models from a local directory
+- **Local model browser** — scan and display models from a local directory, with engine compatibility filtering in the quick test form
 - **Remote agents** — deploy thin agents to GPU servers via `curl | bash`; agents copy models from NFS shares, run benchmarks locally, and clean up. Per-agent settings are configurable from the web UI and synced via heartbeat
+- **Configurable engine images** — override default Docker images per engine via `~/.kitt/engines.yaml`
 - **Monitoring** — Prometheus + Grafana + InfluxDB stack generation
 - **Custom benchmarks** — define evaluations with YAML configuration files
 
@@ -62,11 +64,25 @@ kitt fingerprint                  # detect hardware
 kitt engines setup vllm           # pull engine Docker image
 kitt engines list                 # check engine status
 kitt run -m /models/llama-7b -e vllm -s standard -o ./results
+kitt run -m /models/model.gguf -e llama_cpp --auto-pull  # auto-pull engine image if missing
 kitt storage init                 # initialize results database
 kitt storage list                 # browse stored runs
 kitt storage stats                # summary statistics
 kitt web                         # launch web dashboard
 ```
+
+### Model format validation
+
+KITT validates model format compatibility before launching containers. Each engine declares the formats it supports:
+
+| Engine | Supported Formats |
+|--------|------------------|
+| vLLM | safetensors, pytorch |
+| TGI | safetensors, pytorch |
+| llama.cpp | gguf |
+| Ollama | gguf |
+
+If you attempt to run a safetensors model with llama.cpp (or a GGUF model with vLLM), KITT exits with a clear error before any container starts. The web UI quick test form also filters models by engine compatibility.
 
 ### Environment variables
 
@@ -98,6 +114,39 @@ Agent authentication uses **per-agent tokens** provisioned during installation �
 | `DEVON_URL` | Devon server URL — proxied server-side for the Devon tab | _(none)_ |
 | `DEVON_API_KEY` | API key injected server-side when proxying Devon requests | _(none)_ |
 | `KITT_AUTH_TOKEN` | Bearer token for web dashboard API authentication | _(none)_ |
+
+## Engine Image Configuration
+
+### Overriding default images
+
+Create `~/.kitt/engines.yaml` to override the default Docker images for any engine:
+
+```yaml
+image_overrides:
+  vllm: "vllm/vllm-openai:latest"
+  llama_cpp: "ghcr.io/ggml-org/llama.cpp:server-cuda"
+```
+
+User overrides take the highest priority, followed by KITT's hardware-aware image selection, then the engine's built-in default.
+
+### Auto-pull
+
+The `--auto-pull` flag on `kitt run` automatically pulls (or builds) the engine image if it's not available locally:
+
+```bash
+kitt run -m /models/llama-7b -e vllm --auto-pull
+```
+
+When running tests via a remote agent, `--auto-pull` is passed automatically.
+
+### Remote engine setup
+
+Set up engine images on a remote host via SSH:
+
+```bash
+kitt remote engines setup vllm --host spark.local
+kitt remote engines setup llama_cpp --host spark.local --dry-run
+```
 
 ## Remote Devon Integration
 
@@ -163,6 +212,14 @@ The update command downloads the latest agent package from the KITT server and r
 ```
 
 This generates a systemd unit file, installs it, and starts the service. The agent will survive reboots and restart automatically on failure. Use `kitt-agent service uninstall` to remove it.
+
+### Agent resilience
+
+Agents automatically recover from transient server issues:
+
+- If a heartbeat receives HTTP 404 (e.g. after server restart or database reset), the agent re-registers and syncs its canonical agent ID
+- The server falls back to hostname-based lookup when an agent ID is not found, so heartbeats and results are not lost during recovery
+- Engine images are auto-pulled during remote test execution, so agents don't fail on missing images
 
 ### Per-agent authentication
 
