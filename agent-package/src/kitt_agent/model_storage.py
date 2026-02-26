@@ -147,8 +147,7 @@ class ModelStorageManager:
 
         Tries (in order):
         1. Relative path from the model_path (strip leading /data/models or similar)
-        2. Last two path components (e.g., Qwen/Qwen3.5-27B)
-        3. Recursive glob for the final directory name
+        2. Recursive glob for the final directory name
         """
         if not self.share_mount or not self.share_mount.exists():
             return None
@@ -160,7 +159,9 @@ class ModelStorageManager:
         share_root = self.share_mount.resolve()
         for i in range(len(parts)):
             candidate = (self.share_mount / Path(*parts[i:])).resolve()
-            if not str(candidate).startswith(str(share_root)):
+            try:
+                candidate.relative_to(share_root)
+            except ValueError:
                 continue  # path traversal — skip
             if candidate.exists():
                 logger.debug("Found model on share at %s (from part %d)", candidate, i)
@@ -170,6 +171,12 @@ class ModelStorageManager:
         model_name = parts[-1] if parts else ""
         if model_name:
             for match in self.share_mount.glob(f"**/{model_name}"):
+                # Validate glob result stays under share root (symlinks may escape)
+                try:
+                    match.resolve().relative_to(share_root)
+                except ValueError:
+                    logger.debug("Glob match %s escapes share root — skipping", match)
+                    continue
                 logger.debug("Found model on share via glob: %s", match)
                 return match
 

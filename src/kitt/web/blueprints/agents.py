@@ -92,8 +92,6 @@ def update_settings(agent_id):
 @csrf_protect
 def cleanup_storage(agent_id):
     """HTMX endpoint: queue cleanup_storage command for agent."""
-    import uuid
-
     from kitt.web.app import get_services
 
     agent_mgr = get_services()["agent_manager"]
@@ -101,15 +99,7 @@ def cleanup_storage(agent_id):
     if agent is None:
         return Markup('<span class="text-xs text-red-400">Agent not found</span>')
 
-    command_id = uuid.uuid4().hex[:16]
-    agent_mgr._conn.execute(
-        """INSERT INTO quick_tests
-           (id, agent_id, model_path, engine_name, benchmark_name,
-            suite_name, status, command_id)
-           VALUES (?, ?, '__cleanup__', 'cleanup', 'cleanup_storage', 'quick', 'queued', ?)""",
-        (command_id, agent_id, command_id),
-    )
-    agent_mgr._commit()
+    agent_mgr.queue_cleanup_command(agent_id)
 
     return Markup('<span class="text-xs text-green-400">Cleanup command queued</span>')
 

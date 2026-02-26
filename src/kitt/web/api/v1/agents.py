@@ -197,22 +197,7 @@ def trigger_cleanup(agent_id):
     data = request.get_json(silent=True) or {}
     model_path = data.get("model_path", "")
 
-    # Queue the cleanup command via quick_tests mechanism
-    # The heartbeat will deliver it as a command
-    import uuid
-
-    command_id = uuid.uuid4().hex[:16]
-    # Store as a pending command — we piggyback on the heartbeat dispatch
-    # by inserting a special quick_test entry
-    mgr._conn.execute(
-        """INSERT INTO quick_tests
-           (id, agent_id, model_path, engine_name, benchmark_name,
-            suite_name, status, command_id)
-           VALUES (?, ?, ?, 'cleanup', 'cleanup_storage', 'quick', 'queued', ?)""",
-        (command_id, agent_id, model_path or "__cleanup__", command_id),
-    )
-    mgr._commit()
-
+    command_id = mgr.queue_cleanup_command(agent_id, model_path)
     return jsonify({"queued": True, "command_id": command_id}), 202
 
 

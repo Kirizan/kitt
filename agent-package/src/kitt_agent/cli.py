@@ -122,7 +122,11 @@ def build(server, tag, no_cache):
     extract_dir = Path(tempfile.mkdtemp(prefix="kitt-build-"))
     try:
         with tarfile.open(str(tmp_path), "r:gz") as tar:
-            tar.extractall(str(extract_dir), filter="data")
+            # filter="data" prevents tar path traversal (Python 3.12+/3.11.4+)
+            if sys.version_info >= (3, 12):
+                tar.extractall(str(extract_dir), filter="data")
+            else:
+                tar.extractall(str(extract_dir))
     except Exception as e:
         tmp_path.unlink(missing_ok=True)
         click.echo(f"Failed to extract build context: {e}")

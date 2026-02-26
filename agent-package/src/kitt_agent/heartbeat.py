@@ -55,7 +55,7 @@ class HeartbeatThread(threading.Thread):
                         try:
                             self.on_command(cmd)
                         except Exception as e:
-                            logger.error(f"Command handler failed: {e}")
+                            logger.error("Command handler failed: %s", e)
                 # Sync settings from server
                 if self.on_settings and resp and "settings" in resp:
                     try:
@@ -72,9 +72,9 @@ class HeartbeatThread(threading.Thread):
                                 else:
                                     self._active_interval_s = new_interval
                     except Exception as e:
-                        logger.warning(f"Settings sync failed: {e}")
+                        logger.warning("Settings sync failed: %s", e)
             except Exception as e:
-                logger.warning(f"Heartbeat failed: {e}")
+                logger.warning("Heartbeat failed: %s", e)
             self._stop_event.wait(self._active_interval_s)
 
     def stop(self) -> None:

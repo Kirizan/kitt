@@ -68,7 +68,7 @@ class AgentManager:
                     "UPDATE agents SET token_hash = ?, token_prefix = ?, port = ? WHERE id = ?",
                     (token_hash, token_prefix, port, agent_id),
                 )
-                logger.info(f"Rotated token for existing agent: {name} ({agent_id})")
+                logger.info("Rotated token for existing agent: %s (%s)", name, agent_id)
             else:
                 agent_id = uuid.uuid4().hex[:16]
                 self._conn.execute(
@@ -78,7 +78,7 @@ class AgentManager:
                        VALUES (?, ?, ?, ?, '', ?, ?, 'provisioned', ?)""",
                     (agent_id, name, name, port, token_hash, token_prefix, now),
                 )
-                logger.info(f"Provisioned new agent: {name} ({agent_id})")
+                logger.info("Provisioned new agent: %s (%s)", name, agent_id)
 
             self._commit()
         self._ensure_default_settings(agent_id)
@@ -94,15 +94,14 @@ class AgentManager:
         Returns:
             Dict with agent_id and heartbeat_interval_s.
         """
-        # Check if agent with this name already exists
-        row = self._conn.execute(
-            "SELECT id FROM agents WHERE name = ?", (reg.name,)
-        ).fetchone()
-
         now = datetime.now().isoformat()
         token_hash = self._hash_token(token) if token else ""
 
         with self._write_lock:
+            # Check inside lock to prevent TOCTOU race on concurrent registrations
+            row = self._conn.execute(
+                "SELECT id FROM agents WHERE name = ?", (reg.name,)
+            ).fetchone()
             if row:
                 agent_id = row["id"]
                 self._conn.execute(
@@ -337,7 +336,7 @@ class AgentManager:
                 (token_hash, token_prefix, agent_id),
             )
             self._commit()
-        logger.info(f"Rotated token for agent {agent_id}")
+        logger.info("Rotated token for agent %s", agent_id)
 
         return {"token": raw_token, "token_prefix": token_prefix}
 
@@ -388,6 +387,24 @@ class AgentManager:
                 )
             self._commit()
         return True
+
+    def queue_cleanup_command(self, agent_id: str, model_path: str = "") -> str:
+        """Queue a cleanup_storage command for dispatch via heartbeat.
+
+        Returns:
+            The command ID for the queued cleanup.
+        """
+        command_id = uuid.uuid4().hex[:16]
+        with self._write_lock:
+            self._conn.execute(
+                """INSERT INTO quick_tests
+                   (id, agent_id, model_path, engine_name, benchmark_name,
+                    suite_name, status, command_id)
+                   VALUES (?, ?, ?, 'cleanup', 'cleanup_storage', 'quick', 'queued', ?)""",
+                (command_id, agent_id, model_path or "__cleanup__", command_id),
+            )
+            self._commit()
+        return command_id
 
     def _check_stale_agents(self) -> None:
         """Mark agents as offline if heartbeat is stale."""

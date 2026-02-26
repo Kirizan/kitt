@@ -6,6 +6,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from kitt import __version__
 from kitt.hardware.fingerprint import SystemInfo
 from kitt.runners.suite import SuiteResult
 
@@ -35,7 +36,7 @@ def suite_result_to_dict(
         Dictionary suitable for JSON serialization.
     """
     data: dict[str, Any] = {
-        "kitt_version": "1.2.1",
+        "kitt_version": __version__,
         "suite_name": suite_result.suite_name,
         "timestamp": suite_result.timestamp.isoformat(),
         "engine": engine_name,

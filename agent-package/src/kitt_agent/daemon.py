@@ -608,4 +608,4 @@ def _report(
         with urllib.request.urlopen(req, context=ctx, timeout=30) as response:
             response.read()
     except Exception as e:
-        logger.error(f"Failed to report result: {e}")
+        logger.error("Failed to report result: %s", e)

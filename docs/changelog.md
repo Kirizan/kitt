@@ -26,7 +26,19 @@ All notable changes to KITT are documented on this page.
 - Added Docker environment variable redaction in container start logs
 - Added rotating file logging to agent (`~/.kitt/logs/agent.log`, 5MB per file, 3 backups)
 - Fixed preflight server reachability check — tries TLS verification first, falls back to insecure for self-signed certs
+- Fixed preflight `URLError`-wrapped SSL errors bypassing the insecure fallback
 - Removed unused `verify` and `client_cert` parameters from `_report()` function
+- Fixed cleanup endpoints bypassing `_write_lock` — extracted `AgentManager.queue_cleanup_command()` method
+- Fixed `register()` TOCTOU race — moved SELECT inside write lock to prevent concurrent duplicate inserts
+- Fixed `_find_on_share()` glob results not validated against share root (symlink traversal)
+- Fixed `_find_on_share()` path validation to use `relative_to()` instead of `str.startswith()` for robustness
+- Fixed `csrf_protect` Bearer token exemption — now validates the token before bypassing CSRF check
+- Fixed hardcoded `kitt_version` in `run.py` and `json_reporter.py` — now uses `kitt.__version__` dynamically
+- Fixed HTMX storage polling in agent detail page targeting JSON endpoint instead of HTML page
+- Fixed `tarfile.extractall(filter="data")` incompatibility with Python 3.10 — guarded with version check
+- Removed obsolete `docker/agent/Dockerfile` referencing deleted full agent
+- Fixed `docker-cli` references in documentation (`docs/reference/docker-files.md`)
+- Replaced f-string logger calls with lazy `%s` formatting across agent package and server
 
 ## 1.2.0
 

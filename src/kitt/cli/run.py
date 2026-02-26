@@ -10,6 +10,8 @@ import click
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn
 
+from kitt import __version__
+
 console = Console()
 logger = logging.getLogger(__name__)
 
@@ -214,7 +216,7 @@ def run(model, engine, suite, output, skip_warmup, runs, config, store_karr):
         "skip_warmup": skip_warmup,
         "runs_override": runs,
         "timestamp": timestamp,
-        "kitt_version": "1.2.1",
+        "kitt_version": __version__,
     }
     with open(output_dir / "config.json", "w") as f:
         json.dump(run_config, f, indent=2)

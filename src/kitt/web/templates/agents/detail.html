@@ -148,7 +148,7 @@
             </button>
         </div>
         <dl class="space-y-3 text-sm"
-            hx-get="/api/v1/agents/{{ agent.id }}"
+            hx-get="/agents/{{ agent.id }}"
             hx-trigger="every 30s"
             hx-select="#storage-data"
             hx-target="#storage-data"

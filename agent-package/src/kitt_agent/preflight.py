@@ -4,6 +4,7 @@ import shutil
 import socket
 import subprocess
 import sys
+import urllib.error
 import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
@@ -229,6 +230,16 @@ def check_server_reachable(server_url: str) -> CheckResult:
                 passed=False,
                 required=True,
                 message=f"{server_url} — SSL error",
+            )
+        except urllib.error.URLError as e:
+            # URLError can wrap an SSL error on some platforms
+            if verify and isinstance(e.reason, ssl.SSLError):
+                continue  # retry without verification
+            return CheckResult(
+                name="Server reachable",
+                passed=False,
+                required=True,
+                message=f"{server_url} — {e}",
             )
         except Exception as e:
             return CheckResult(

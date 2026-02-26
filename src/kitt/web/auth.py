@@ -46,10 +46,17 @@ def csrf_protect(f):
 
     @wraps(f)
     def decorated(*args, **kwargs):
-        # Bearer-authenticated requests are exempt (programmatic clients)
+        # Bearer-authenticated requests are exempt (programmatic clients),
+        # but the token must be valid to prevent CSRF bypass with a fake header.
         auth_header = request.headers.get("Authorization", "")
         if auth_header.startswith("Bearer "):
-            return f(*args, **kwargs)
+            configured_token = current_app.config.get("AUTH_TOKEN", "")
+            provided_token = auth_header[7:]
+            if configured_token and hmac.compare_digest(
+                provided_token, configured_token
+            ):
+                return f(*args, **kwargs)
+            # Invalid token — fall through to Origin/Referer check
 
         origin = request.headers.get("Origin", "")
         referer = request.headers.get("Referer", "")
@@ -66,7 +73,9 @@ def csrf_protect(f):
             request_host = parsed.netloc
 
         if request_host != server_host:
-            logger.warning(f"CSRF rejected: origin={request_host} server={server_host}")
+            logger.warning(
+                "CSRF rejected: origin=%s server=%s", request_host, server_host
+            )
             return "CSRF validation failed: origin mismatch", 403
 
         return f(*args, **kwargs)
