@@ -157,19 +157,21 @@ class ModelStorageManager:
 
         # Strategy 1: Try stripping common prefixes to get the relative path
         # e.g., /data/models/huggingface/Qwen/Qwen3.5-27B → huggingface/Qwen/Qwen3.5-27B
+        share_root = self.share_mount.resolve()
         for i in range(len(parts)):
-            candidate = self.share_mount / Path(*parts[i:])
+            candidate = (self.share_mount / Path(*parts[i:])).resolve()
+            if not str(candidate).startswith(str(share_root)):
+                continue  # path traversal — skip
             if candidate.exists():
                 logger.debug("Found model on share at %s (from part %d)", candidate, i)
                 return candidate
 
-        # Strategy 2: Recursive glob for the final directory name
+        # Strategy 2: Recursive glob for the final directory name (cap at first match)
         model_name = parts[-1] if parts else ""
         if model_name:
-            matches = list(self.share_mount.glob(f"**/{model_name}"))
-            if matches:
-                logger.debug("Found model on share via glob: %s", matches[0])
-                return matches[0]
+            for match in self.share_mount.glob(f"**/{model_name}"):
+                logger.debug("Found model on share via glob: %s", match)
+                return match
 
         return None
 

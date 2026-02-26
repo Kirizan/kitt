@@ -217,6 +217,7 @@ def trigger_cleanup(agent_id):
 
 
 @bp.route("/<agent_id>/settings", methods=["GET"])
+@require_auth
 def get_agent_settings(agent_id):
     """Get all settings for an agent."""
     mgr = _get_agent_manager()

@@ -31,9 +31,8 @@ class SettingsService:
         self._write_lock: threading.Lock = write_lock or threading.Lock()
 
     def _commit(self) -> None:
-        """Thread-safe commit."""
-        with self._write_lock:
-            self._conn.commit()
+        """Commit the current transaction (must be called inside _write_lock)."""
+        self._conn.commit()
 
     def get(self, key: str, default: str | None = None) -> str:
         """Get a setting value, falling back to built-in defaults."""
@@ -73,12 +72,13 @@ class SettingsService:
 
     def set(self, key: str, value: str) -> None:
         """Upsert a setting value."""
-        self._conn.execute(
-            "INSERT INTO web_settings (key, value) VALUES (?, ?)"
-            " ON CONFLICT(key) DO UPDATE SET value = excluded.value",
-            (key, value),
-        )
-        self._commit()
+        with self._write_lock:
+            self._conn.execute(
+                "INSERT INTO web_settings (key, value) VALUES (?, ?)"
+                " ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+                (key, value),
+            )
+            self._commit()
 
     def get_all(self) -> dict[str, str]:
         """Return all stored settings merged with defaults."""

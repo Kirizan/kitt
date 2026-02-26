@@ -139,7 +139,7 @@
         <div class="flex items-center justify-between mb-4">
             <h2 class="text-lg font-semibold">Storage</h2>
             <button type="button"
-                    hx-post="/api/v1/agents/{{ agent.id }}/cleanup"
+                    hx-post="/agents/{{ agent.id }}/cleanup"
                     hx-confirm="Clean all cached models from this agent's local storage?"
                     hx-target="#cleanup_feedback"
                     hx-swap="innerHTML"

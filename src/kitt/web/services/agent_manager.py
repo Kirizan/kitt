@@ -36,9 +36,8 @@ class AgentManager:
         self._write_lock: threading.Lock = write_lock or threading.Lock()
 
     def _commit(self) -> None:
-        """Thread-safe commit — serializes write flushes."""
-        with self._write_lock:
-            self._conn.commit()
+        """Commit the current transaction (must be called inside _write_lock)."""
+        self._conn.commit()
 
     @staticmethod
     def _hash_token(token: str) -> str:
@@ -58,29 +57,30 @@ class AgentManager:
         token_prefix = raw_token[:8]
         now = datetime.now().isoformat()
 
-        row = self._conn.execute(
-            "SELECT id FROM agents WHERE name = ?", (name,)
-        ).fetchone()
+        with self._write_lock:
+            row = self._conn.execute(
+                "SELECT id FROM agents WHERE name = ?", (name,)
+            ).fetchone()
 
-        if row:
-            agent_id = row["id"]
-            self._conn.execute(
-                "UPDATE agents SET token_hash = ?, token_prefix = ?, port = ? WHERE id = ?",
-                (token_hash, token_prefix, port, agent_id),
-            )
-            logger.info(f"Rotated token for existing agent: {name} ({agent_id})")
-        else:
-            agent_id = uuid.uuid4().hex[:16]
-            self._conn.execute(
-                """INSERT INTO agents
-                   (id, name, hostname, port, token, token_hash, token_prefix,
-                    status, registered_at)
-                   VALUES (?, ?, ?, ?, '', ?, ?, 'provisioned', ?)""",
-                (agent_id, name, name, port, token_hash, token_prefix, now),
-            )
-            logger.info(f"Provisioned new agent: {name} ({agent_id})")
+            if row:
+                agent_id = row["id"]
+                self._conn.execute(
+                    "UPDATE agents SET token_hash = ?, token_prefix = ?, port = ? WHERE id = ?",
+                    (token_hash, token_prefix, port, agent_id),
+                )
+                logger.info(f"Rotated token for existing agent: {name} ({agent_id})")
+            else:
+                agent_id = uuid.uuid4().hex[:16]
+                self._conn.execute(
+                    """INSERT INTO agents
+                       (id, name, hostname, port, token, token_hash, token_prefix,
+                        status, registered_at)
+                       VALUES (?, ?, ?, ?, '', ?, ?, 'provisioned', ?)""",
+                    (agent_id, name, name, port, token_hash, token_prefix, now),
+                )
+                logger.info(f"Provisioned new agent: {name} ({agent_id})")
 
-        self._commit()
+            self._commit()
         self._ensure_default_settings(agent_id)
         return {
             "agent_id": agent_id,
@@ -102,62 +102,63 @@ class AgentManager:
         now = datetime.now().isoformat()
         token_hash = self._hash_token(token) if token else ""
 
-        if row:
-            agent_id = row["id"]
-            self._conn.execute(
-                """UPDATE agents SET
-                    hostname = ?, port = ?, status = 'online',
-                    gpu_info = ?, gpu_count = ?, cpu_info = ?, ram_gb = ?,
-                    environment_type = ?, fingerprint = ?, kitt_version = ?,
-                    hardware_details = ?,
-                    last_heartbeat = ?
-                   WHERE id = ?""",
-                (
-                    reg.hostname,
-                    reg.port,
-                    reg.gpu_info,
-                    reg.gpu_count,
-                    reg.cpu_info,
-                    reg.ram_gb,
-                    reg.environment_type,
-                    reg.fingerprint,
-                    reg.kitt_version,
-                    reg.hardware_details,
-                    now,
-                    agent_id,
-                ),
-            )
-        else:
-            agent_id = uuid.uuid4().hex[:16]
-            self._conn.execute(
-                """INSERT INTO agents
-                   (id, name, hostname, port, token, token_hash, token_prefix,
-                    status, gpu_info, gpu_count,
-                    cpu_info, ram_gb, environment_type, fingerprint, kitt_version,
-                    hardware_details,
-                    last_heartbeat, registered_at)
-                   VALUES (?, ?, ?, ?, '', ?, ?, 'online', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                (
-                    agent_id,
-                    reg.name,
-                    reg.hostname,
-                    reg.port,
-                    token_hash,
-                    token[:8] if token else "",
-                    reg.gpu_info,
-                    reg.gpu_count,
-                    reg.cpu_info,
-                    reg.ram_gb,
-                    reg.environment_type,
-                    reg.fingerprint,
-                    reg.kitt_version,
-                    reg.hardware_details,
-                    now,
-                    now,
-                ),
-            )
+        with self._write_lock:
+            if row:
+                agent_id = row["id"]
+                self._conn.execute(
+                    """UPDATE agents SET
+                        hostname = ?, port = ?, status = 'online',
+                        gpu_info = ?, gpu_count = ?, cpu_info = ?, ram_gb = ?,
+                        environment_type = ?, fingerprint = ?, kitt_version = ?,
+                        hardware_details = ?,
+                        last_heartbeat = ?
+                       WHERE id = ?""",
+                    (
+                        reg.hostname,
+                        reg.port,
+                        reg.gpu_info,
+                        reg.gpu_count,
+                        reg.cpu_info,
+                        reg.ram_gb,
+                        reg.environment_type,
+                        reg.fingerprint,
+                        reg.kitt_version,
+                        reg.hardware_details,
+                        now,
+                        agent_id,
+                    ),
+                )
+            else:
+                agent_id = uuid.uuid4().hex[:16]
+                self._conn.execute(
+                    """INSERT INTO agents
+                       (id, name, hostname, port, token, token_hash, token_prefix,
+                        status, gpu_info, gpu_count,
+                        cpu_info, ram_gb, environment_type, fingerprint, kitt_version,
+                        hardware_details,
+                        last_heartbeat, registered_at)
+                       VALUES (?, ?, ?, ?, '', ?, ?, 'online', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    (
+                        agent_id,
+                        reg.name,
+                        reg.hostname,
+                        reg.port,
+                        token_hash,
+                        token[:8] if token else "",
+                        reg.gpu_info,
+                        reg.gpu_count,
+                        reg.cpu_info,
+                        reg.ram_gb,
+                        reg.environment_type,
+                        reg.fingerprint,
+                        reg.kitt_version,
+                        reg.hardware_details,
+                        now,
+                        now,
+                    ),
+                )
 
-        self._commit()
+            self._commit()
         self._ensure_default_settings(agent_id)
         event_bus.publish(
             "agent_status",
@@ -180,64 +181,65 @@ class AgentManager:
             Dict with ack and any pending commands.
         """
         now = datetime.now().isoformat()
-        self._conn.execute(
-            """UPDATE agents SET
-                status = ?, last_heartbeat = ?
-               WHERE id = ?""",
-            (hb.status or "idle", now, agent_id),
-        )
-        self._commit()
-
-        # Check for queued quick_tests assigned to this agent
-        commands: list[dict[str, Any]] = []
-        rows = self._conn.execute(
-            """SELECT id, command_id, model_path, engine_name, benchmark_name,
-                      suite_name
-               FROM quick_tests
-               WHERE agent_id = ? AND status = 'queued'
-               ORDER BY created_at
-               LIMIT 1""",
-            (agent_id,),
-        ).fetchall()
-
-        for row in rows:
-            test_id = row["id"]
-            # Determine command type: cleanup rows use engine_name='cleanup'
-            if row["engine_name"] == "cleanup":
-                cmd_type = "cleanup_storage"
-            else:
-                cmd_type = "run_test"
-            commands.append(
-                {
-                    "command_id": row["command_id"],
-                    "test_id": test_id,
-                    "type": cmd_type,
-                    "payload": {
-                        "model_path": row["model_path"],
-                        "engine_name": row["engine_name"],
-                        "benchmark_name": row["benchmark_name"],
-                        "suite_name": row["suite_name"],
-                    },
-                }
-            )
-            # Mark as dispatched
+        with self._write_lock:
             self._conn.execute(
-                "UPDATE quick_tests SET status = 'dispatched' WHERE id = ?",
-                (test_id,),
+                """UPDATE agents SET
+                    status = ?, last_heartbeat = ?
+                   WHERE id = ?""",
+                (hb.status or "idle", now, agent_id),
             )
-            event_bus.publish(
-                "status",
-                test_id,
-                {"status": "dispatched", "test_id": test_id},
-            )
-
-        if commands:
             self._commit()
-            logger.info(
-                "Dispatched %d command(s) to agent %s via heartbeat",
-                len(commands),
-                agent_id,
-            )
+
+            # Check for queued quick_tests assigned to this agent
+            commands: list[dict[str, Any]] = []
+            rows = self._conn.execute(
+                """SELECT id, command_id, model_path, engine_name, benchmark_name,
+                          suite_name
+                   FROM quick_tests
+                   WHERE agent_id = ? AND status = 'queued'
+                   ORDER BY created_at
+                   LIMIT 1""",
+                (agent_id,),
+            ).fetchall()
+
+            for row in rows:
+                test_id = row["id"]
+                # Determine command type: cleanup rows use engine_name='cleanup'
+                if row["engine_name"] == "cleanup":
+                    cmd_type = "cleanup_storage"
+                else:
+                    cmd_type = "run_test"
+                commands.append(
+                    {
+                        "command_id": row["command_id"],
+                        "test_id": test_id,
+                        "type": cmd_type,
+                        "payload": {
+                            "model_path": row["model_path"],
+                            "engine_name": row["engine_name"],
+                            "benchmark_name": row["benchmark_name"],
+                            "suite_name": row["suite_name"],
+                        },
+                    }
+                )
+                # Mark as dispatched
+                self._conn.execute(
+                    "UPDATE quick_tests SET status = 'dispatched' WHERE id = ?",
+                    (test_id,),
+                )
+                event_bus.publish(
+                    "status",
+                    test_id,
+                    {"status": "dispatched", "test_id": test_id},
+                )
+
+            if commands:
+                self._commit()
+                logger.info(
+                    "Dispatched %d command(s) to agent %s via heartbeat",
+                    len(commands),
+                    agent_id,
+                )
 
         settings = self.get_agent_settings(agent_id)
         return {"ack": True, "commands": commands, "settings": settings}
@@ -266,8 +268,9 @@ class AgentManager:
 
     def delete_agent(self, agent_id: str) -> bool:
         """Remove an agent registration."""
-        cursor = self._conn.execute("DELETE FROM agents WHERE id = ?", (agent_id,))
-        self._commit()
+        with self._write_lock:
+            cursor = self._conn.execute("DELETE FROM agents WHERE id = ?", (agent_id,))
+            self._commit()
         return cursor.rowcount > 0
 
     def update_agent(self, agent_id: str, updates: dict[str, Any]) -> bool:
@@ -279,8 +282,9 @@ class AgentManager:
 
         clauses = ", ".join(f"{k} = ?" for k in to_set)
         values = list(to_set.values()) + [agent_id]
-        self._conn.execute(f"UPDATE agents SET {clauses} WHERE id = ?", values)
-        self._commit()
+        with self._write_lock:
+            self._conn.execute(f"UPDATE agents SET {clauses} WHERE id = ?", values)
+            self._commit()
         return True
 
     def verify_token(self, agent_id: str, token: str) -> bool:
@@ -327,11 +331,12 @@ class AgentManager:
         token_hash = self._hash_token(raw_token)
         token_prefix = raw_token[:8]
 
-        self._conn.execute(
-            "UPDATE agents SET token_hash = ?, token_prefix = ?, token = '' WHERE id = ?",
-            (token_hash, token_prefix, agent_id),
-        )
-        self._commit()
+        with self._write_lock:
+            self._conn.execute(
+                "UPDATE agents SET token_hash = ?, token_prefix = ?, token = '' WHERE id = ?",
+                (token_hash, token_prefix, agent_id),
+            )
+            self._commit()
         logger.info(f"Rotated token for agent {agent_id}")
 
         return {"token": raw_token, "token_prefix": token_prefix}
@@ -349,12 +354,13 @@ class AgentManager:
 
     def _ensure_default_settings(self, agent_id: str) -> None:
         """Insert default settings for an agent if they don't exist."""
-        for key, value in self._DEFAULT_SETTINGS.items():
-            self._conn.execute(
-                "INSERT OR IGNORE INTO agent_settings (agent_id, key, value) VALUES (?, ?, ?)",
-                (agent_id, key, value),
-            )
-        self._commit()
+        with self._write_lock:
+            for key, value in self._DEFAULT_SETTINGS.items():
+                self._conn.execute(
+                    "INSERT OR IGNORE INTO agent_settings (agent_id, key, value) VALUES (?, ?, ?)",
+                    (agent_id, key, value),
+                )
+            self._commit()
 
     def get_agent_settings(self, agent_id: str) -> dict[str, str]:
         """Get all settings for an agent as a flat dict."""
@@ -372,34 +378,36 @@ class AgentManager:
         if not filtered:
             return False
 
-        for key, value in filtered.items():
-            self._conn.execute(
-                """INSERT INTO agent_settings (agent_id, key, value)
-                   VALUES (?, ?, ?)
-                   ON CONFLICT(agent_id, key) DO UPDATE SET value = excluded.value""",
-                (agent_id, key, value),
-            )
-        self._commit()
+        with self._write_lock:
+            for key, value in filtered.items():
+                self._conn.execute(
+                    """INSERT INTO agent_settings (agent_id, key, value)
+                       VALUES (?, ?, ?)
+                       ON CONFLICT(agent_id, key) DO UPDATE SET value = excluded.value""",
+                    (agent_id, key, value),
+                )
+            self._commit()
         return True
 
     def _check_stale_agents(self) -> None:
         """Mark agents as offline if heartbeat is stale."""
-        rows = self._conn.execute(
-            "SELECT id, last_heartbeat FROM agents WHERE status != 'offline'"
-        ).fetchall()
+        with self._write_lock:
+            rows = self._conn.execute(
+                "SELECT id, last_heartbeat FROM agents WHERE status != 'offline'"
+            ).fetchall()
 
-        now = time.time()
-        for row in rows:
-            if row["last_heartbeat"]:
-                try:
-                    hb_time = datetime.fromisoformat(row["last_heartbeat"])
-                    age = now - hb_time.timestamp()
-                    if age > HEARTBEAT_TIMEOUT_S:
-                        self._conn.execute(
-                            "UPDATE agents SET status = 'offline' WHERE id = ?",
-                            (row["id"],),
-                        )
-                except (ValueError, OSError):
-                    pass
+            now = time.time()
+            for row in rows:
+                if row["last_heartbeat"]:
+                    try:
+                        hb_time = datetime.fromisoformat(row["last_heartbeat"])
+                        age = now - hb_time.timestamp()
+                        if age > HEARTBEAT_TIMEOUT_S:
+                            self._conn.execute(
+                                "UPDATE agents SET status = 'offline' WHERE id = ?",
+                                (row["id"],),
+                            )
+                    except (ValueError, OSError):
+                        pass
 
-        self._commit()
+            self._commit()

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hmac
 import json
 import logging
 import shutil as _shutil
@@ -240,7 +241,8 @@ def create_agent_app(
         import shutil
         import sys
 
-        kitt_image = _kitt_image_ref[0]
+        with _lock:
+            kitt_image = _kitt_image_ref[0]
         use_docker = DockerOps.image_exists(kitt_image)
 
         # Verify architecture matches the host (avoid exec format errors)
@@ -249,8 +251,7 @@ def create_agent_app(
             img_arch = DockerOps.image_arch(kitt_image)
             if host_arch and img_arch and host_arch != img_arch:
                 on_log(
-                    f"Image {kitt_image} is {img_arch}, "
-                    f"host is {host_arch} — skipping"
+                    f"Image {kitt_image} is {img_arch}, host is {host_arch} — skipping"
                 )
                 use_docker = False
 
@@ -456,7 +457,7 @@ def create_agent_app(
 
     def _check_auth():
         auth = request.headers.get("Authorization", "")
-        return auth == f"Bearer {token}"
+        return hmac.compare_digest(auth, f"Bearer {token}")
 
     @app.route("/api/commands", methods=["POST"])
     def receive_command():
@@ -555,7 +556,8 @@ def create_agent_app(
     def set_kitt_image(image: str) -> None:
         """Update the KITT Docker image used for benchmarks."""
         if image:
-            _kitt_image_ref[0] = image
+            with _lock:
+                _kitt_image_ref[0] = image
 
     app.set_kitt_image = set_kitt_image  # type: ignore[attr-defined]
 
@@ -569,8 +571,6 @@ def _report(
     command_id: str,
     result: dict[str, Any],
     insecure: bool = False,
-    verify: str | bool = True,
-    client_cert: tuple[str, str] | None = None,
     result_data: dict[str, Any] | None = None,
 ) -> None:
     """Report a result back to the server."""
@@ -600,13 +600,9 @@ def _report(
     ctx = None
     if server_url.startswith("https"):
         ctx = ssl.create_default_context()
-        if isinstance(verify, str):
-            ctx.load_verify_locations(verify)
-        elif not verify or insecure:
+        if insecure:
             ctx.check_hostname = False
             ctx.verify_mode = ssl.CERT_NONE
-        if client_cert:
-            ctx.load_cert_chain(client_cert[0], client_cert[1])
 
     try:
         with urllib.request.urlopen(req, context=ctx, timeout=30) as response:

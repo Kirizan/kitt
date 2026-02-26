@@ -200,28 +200,50 @@ def check_server_reachable(server_url: str) -> CheckResult:
             message="No server URL provided",
         )
     url = f"{server_url.rstrip('/')}/api/v1/health"
-    try:
-        import ssl
+    import ssl
 
-        ctx = ssl.create_default_context()
-        ctx.check_hostname = False
-        ctx.verify_mode = ssl.CERT_NONE
-        req = urllib.request.Request(url, method="GET")
-        with urllib.request.urlopen(req, context=ctx, timeout=10) as resp:
-            ok = resp.status == 200
+    req = urllib.request.Request(url, method="GET")
+    # Try with TLS verification first, fall back to insecure for self-signed certs
+    for verify in (True, False):
+        try:
+            ctx = ssl.create_default_context()
+            if not verify:
+                ctx.check_hostname = False
+                ctx.verify_mode = ssl.CERT_NONE
+            with urllib.request.urlopen(req, context=ctx, timeout=10) as resp:
+                ok = resp.status == 200
+                suffix = " (self-signed)" if not verify else ""
+                return CheckResult(
+                    name="Server reachable",
+                    passed=ok,
+                    required=True,
+                    message=f"{server_url} — OK{suffix}"
+                    if ok
+                    else f"HTTP {resp.status}",
+                )
+        except ssl.SSLError:
+            if verify:
+                continue  # retry without verification
             return CheckResult(
                 name="Server reachable",
-                passed=ok,
+                passed=False,
                 required=True,
-                message=f"{server_url} — OK" if ok else f"HTTP {resp.status}",
+                message=f"{server_url} — SSL error",
             )
-    except Exception as e:
-        return CheckResult(
-            name="Server reachable",
-            passed=False,
-            required=True,
-            message=f"{server_url} — {e}",
-        )
+        except Exception as e:
+            return CheckResult(
+                name="Server reachable",
+                passed=False,
+                required=True,
+                message=f"{server_url} — {e}",
+            )
+    # Should not reach here, but handle gracefully
+    return CheckResult(
+        name="Server reachable",
+        passed=False,
+        required=True,
+        message=f"{server_url} — connection failed",
+    )
 
 
 def check_kitt_image(image: str = "kitt:latest") -> CheckResult:

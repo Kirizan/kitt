@@ -171,6 +171,7 @@ _DEFAULT_AGENT_SETTINGS = {
     "model_share_mount": "",
     "auto_cleanup": "true",
     "heartbeat_interval_s": "30",
+    "kitt_image": "",
 }
 
 

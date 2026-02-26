@@ -3,11 +3,13 @@
 import click
 from rich.console import Console
 
+from kitt import __version__
+
 console = Console()
 
 
 @click.group()
-@click.version_option(version="1.2.0", prog_name="KITT")
+@click.version_option(version=__version__, prog_name="KITT")
 def cli():
     """KITT - Kirizan's Inference Testing Tools
 

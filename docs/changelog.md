@@ -13,6 +13,20 @@ All notable changes to KITT are documented on this page.
 - Fixed Docker entrypoint override for benchmark containers — added `--entrypoint kitt` since the KITT image has `ENTRYPOINT ["kitt", "web"]`
 - Fixed Docker CLI package name in Dockerfiles — `docker.io` on Debian bookworm ARM64 only installs daemon, changed to `docker-cli`
 - Updated hardcoded `kitt_version` references from `1.1.0` to `1.2.1`
+- Fixed `_check_auth()` timing attack — replaced `==` with `hmac.compare_digest` for constant-time token comparison
+- Fixed thread safety — write lock now wraps entire SQLite transactions (execute + commit), not just the commit
+- Fixed `_find_on_share()` path traversal — resolved candidates are validated against the share mount root
+- Fixed result detail 404 — `query()` and `get_result()` now include the database ID in returned results
+- Fixed `kitt --version` reporting wrong version — now reads from `kitt.__version__` dynamically
+- Fixed cleanup button in agent detail page targeting the wrong endpoint (API instead of blueprint)
+- Added `@require_auth` to `GET /api/v1/agents/<id>/settings` endpoint
+- Added `kitt_image` to migration v8 defaults for consistency with `AgentManager._DEFAULT_SETTINGS`
+- Added CSRF protection (`@csrf_protect`) to all state-changing web blueprint endpoints
+- Added SHA-256 integrity verification for agent package downloads and build context
+- Added Docker environment variable redaction in container start logs
+- Added rotating file logging to agent (`~/.kitt/logs/agent.log`, 5MB per file, 3 backups)
+- Fixed preflight server reachability check — tries TLS verification first, falls back to insecure for self-signed certs
+- Removed unused `verify` and `client_cert` parameters from `_report()` function
 
 ## 1.2.0
 
