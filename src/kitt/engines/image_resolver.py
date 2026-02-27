@@ -94,6 +94,10 @@ _IMAGE_OVERRIDES: dict[str, list[tuple[tuple[int, int], str]]] = {
     # vLLM: Standard images use Triton which requires ptxas for the target arch.
     # Blackwell (sm_100+, sm_120, sm_121a) is not supported in standard vLLM.
     # NGC containers include proper Blackwell support.
+    # NOTE: Update this tag when newer NGC releases are available. Check
+    # https://catalog.ngc.nvidia.com/orgs/nvidia/containers/vllm for the
+    # latest tag. Newer models (e.g. Qwen 3.5 / qwen3_5) may require a
+    # more recent Transformers version than is bundled in older NGC images.
     "vllm": [
         ((10, 0), "nvcr.io/nvidia/vllm:26.01-py3"),
     ],

@@ -11,6 +11,21 @@ from dataclasses import dataclass, field
 
 logger = logging.getLogger(__name__)
 
+# Docker and the kernel use different names for the same architectures.
+# Normalize to Docker conventions (amd64, arm64) for consistent comparison.
+_ARCH_ALIASES: dict[str, str] = {
+    "x86_64": "amd64",
+    "aarch64": "arm64",
+}
+
+
+def normalize_arch(arch: str) -> str:
+    """Normalize a CPU architecture string to Docker conventions.
+
+    Maps kernel names (x86_64, aarch64) to Docker names (amd64, arm64).
+    """
+    return _ARCH_ALIASES.get(arch, arch)
+
 
 @dataclass
 class ContainerSpec:
@@ -68,7 +83,7 @@ class DockerOps:
 
     @staticmethod
     def image_arch(image: str) -> str:
-        """Return the architecture of a local Docker image (e.g. 'amd64', 'arm64')."""
+        """Return the normalized architecture of a local Docker image (e.g. 'amd64', 'arm64')."""
         try:
             result = subprocess.run(
                 ["docker", "image", "inspect", "--format", "{{.Architecture}}", image],
@@ -76,13 +91,14 @@ class DockerOps:
                 text=True,
                 timeout=10,
             )
-            return result.stdout.strip() if result.returncode == 0 else ""
+            raw = result.stdout.strip() if result.returncode == 0 else ""
+            return normalize_arch(raw) if raw else ""
         except (FileNotFoundError, subprocess.TimeoutExpired):
             return ""
 
     @staticmethod
     def host_arch() -> str:
-        """Return the host architecture as Docker reports it."""
+        """Return the normalized host architecture as Docker reports it (e.g. 'amd64', 'arm64')."""
         try:
             result = subprocess.run(
                 ["docker", "info", "--format", "{{.Architecture}}"],
@@ -90,7 +106,8 @@ class DockerOps:
                 text=True,
                 timeout=10,
             )
-            return result.stdout.strip() if result.returncode == 0 else ""
+            raw = result.stdout.strip() if result.returncode == 0 else ""
+            return normalize_arch(raw) if raw else ""
         except (FileNotFoundError, subprocess.TimeoutExpired):
             return ""
 
