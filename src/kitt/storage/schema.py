@@ -1,7 +1,7 @@
 """Shared database schema definitions for KITT storage backends."""
 
 # SQLite schema — version-tracked for migrations.
-SCHEMA_VERSION = 8
+SCHEMA_VERSION = 9
 
 SQLITE_SCHEMA = """
 CREATE TABLE IF NOT EXISTS schema_version (
@@ -145,7 +145,8 @@ CREATE TABLE IF NOT EXISTS agents (
     last_heartbeat TEXT DEFAULT '',
     registered_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     notes TEXT DEFAULT '',
-    tags TEXT DEFAULT '[]'
+    tags TEXT DEFAULT '[]',
+    cpu_arch TEXT DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS web_campaigns (
