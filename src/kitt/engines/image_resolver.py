@@ -84,6 +84,9 @@ _BUILD_RECIPES: dict[str, BuildRecipe] = {
         dockerfile="docker/llama_cpp/Dockerfile.arm64",
         target="server",
     ),
+    "kitt/vllm:arm64": BuildRecipe(
+        dockerfile="docker/vllm/Dockerfile.arm64",
+    ),
     # TGI: Dockerfile exists but image is non-functional on DGX Spark.
     # TGI requires custom CUDA kernels (dropout_layer_norm, flash_attn,
     # flashinfer, vllm._custom_ops) that have no aarch64+sm_121 builds.
@@ -121,8 +124,12 @@ _IMAGE_OVERRIDES: dict[str, list[tuple[str | None, tuple[int, int], str]]] = {
     # NGC containers include proper Blackwell support.
     # NOTE: Update this tag when newer NGC releases are available. Check
     # https://catalog.ngc.nvidia.com/orgs/nvidia/containers/vllm for the
-    # latest tag. Newer models (e.g. Qwen 3.5 / qwen3_5) may require a
-    # more recent Transformers version than is bundled in older NGC images.
+    # latest tag.  Newer models (e.g. Qwen3.5 qwen3_5) require both a newer
+    # Transformers AND a vLLM version with the model arch implementation.
+    # A KITT-managed Dockerfile at docker/vllm/Dockerfile.arm64 can patch
+    # Transformers, but the vLLM inference impl must come from upstream.
+    # Uncomment the arm64 override when NGC ships Qwen3.5 support:
+    # ("arm64", (10, 0), "kitt/vllm:arm64"),
     "vllm": [
         (None, (10, 0), "nvcr.io/nvidia/vllm:26.01-py3"),
     ],

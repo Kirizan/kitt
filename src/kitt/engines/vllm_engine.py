@@ -47,8 +47,9 @@ class VLLMEngine(InferenceEngine):
     def health_endpoint(cls) -> str:
         return "/health"
 
-    # NGC images use a wrapper entrypoint and need explicit 'vllm serve'
-    _NGC_PREFIX = "nvcr.io/"
+    # NGC and KITT-managed NGC-derived images use a wrapper entrypoint
+    # and need explicit 'vllm serve' instead of bare --model flags.
+    _NGC_PREFIXES = ("nvcr.io/", "kitt/vllm:")
 
     def initialize(self, model_path: str, config: dict[str, Any]) -> None:
         """Start vLLM container and wait for healthy."""
@@ -61,9 +62,9 @@ class VLLMEngine(InferenceEngine):
         port = config.get("port", self.default_port())
         image = config.get("image", self.resolved_image())
 
-        # NGC images use a wrapper entrypoint; prepend 'vllm serve'
-        # and pass the model as a positional arg instead of --model.
-        if image.startswith(self._NGC_PREFIX):
+        # NGC images (and KITT-managed images derived from NGC) use a wrapper
+        # entrypoint; prepend 'vllm serve' and pass model as a positional arg.
+        if image.startswith(self._NGC_PREFIXES):
             cmd_args = [
                 "vllm",
                 "serve",

@@ -51,18 +51,58 @@ class OllamaEngine(InferenceEngine):
     def health_endpoint(cls) -> str:
         return "/api/tags"
 
+    @staticmethod
+    def _is_local_gguf(model_path: str) -> bool:
+        """Check if model_path points to a local GGUF file or directory."""
+        from pathlib import Path
+
+        p = Path(model_path)
+        if p.is_file() and p.suffix == ".gguf":
+            return True
+        if p.is_dir() and any(p.glob("*.gguf")):
+            return True
+        return False
+
+    @staticmethod
+    def _resolve_gguf_path(model_path: str) -> str:
+        """Resolve a GGUF model path to the first .gguf file."""
+        from pathlib import Path
+
+        p = Path(model_path).resolve()
+        if p.is_dir():
+            gguf_files = sorted(p.glob("*.gguf"))
+            if not gguf_files:
+                raise FileNotFoundError(f"No .gguf files found in {p}")
+            return str(gguf_files[0])
+        return str(p)
+
     def initialize(self, model_path: str, config: dict[str, Any]) -> None:
-        """Start Ollama container, wait for healthy, and pull the model."""
+        """Start Ollama container, wait for healthy, and load the model.
+
+        Supports both Ollama registry model names (e.g. 'llama3:8b') and
+        local GGUF files/directories.  For local GGUF files, creates a
+        Modelfile and imports the model via ``ollama create``.
+        """
+        from pathlib import Path
+
         from .docker_manager import ContainerConfig, DockerManager
 
-        self._model_name = model_path
+        local_gguf = self._is_local_gguf(model_path)
         port = config.get("port", self.default_port())
+
+        volumes = dict(config.get("volumes", {}))
+        if local_gguf:
+            gguf_file = self._resolve_gguf_path(model_path)
+            gguf_dir = str(Path(gguf_file).parent)
+            gguf_basename = Path(gguf_file).name
+            # Mount the model directory into the container
+            volumes[gguf_dir] = "/models"
 
         container_cfg = ContainerConfig(
             image=config.get("image", self.resolved_image()),
             port=port,
             container_port=self.container_port(),
-            volumes=config.get("volumes", {}),
+            volumes=volumes,
             env=config.get("env", {}),
             extra_args=config.get("extra_args", []),
             command_args=[],
@@ -76,11 +116,27 @@ class OllamaEngine(InferenceEngine):
         )
         self._base_url = f"http://localhost:{port}"
 
-        # Pull the model inside the container
-        logger.info(f"Pulling model '{self._model_name}' in Ollama container...")
-        DockerManager.exec_in_container(
-            self._container_id, ["ollama", "pull", self._model_name]
-        )
+        if local_gguf:
+            # Import local GGUF via Modelfile
+            container_model_path = f"/models/{gguf_basename}"
+            self._model_name = "kitt-local-model"
+            modelfile_content = f"FROM {container_model_path}\n"
+            logger.info("Importing local GGUF '%s' into Ollama...", gguf_basename)
+            DockerManager.exec_in_container(
+                self._container_id,
+                ["sh", "-c", f"echo '{modelfile_content}' > /tmp/Modelfile"],
+            )
+            DockerManager.exec_in_container(
+                self._container_id,
+                ["ollama", "create", self._model_name, "-f", "/tmp/Modelfile"],
+            )
+        else:
+            # Pull from Ollama registry
+            self._model_name = model_path
+            logger.info("Pulling model '%s' in Ollama container...", self._model_name)
+            DockerManager.exec_in_container(
+                self._container_id, ["ollama", "pull", self._model_name]
+            )
 
     def generate(
         self,

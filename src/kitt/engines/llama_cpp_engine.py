@@ -47,12 +47,33 @@ class LlamaCppEngine(InferenceEngine):
     def health_endpoint(cls) -> str:
         return "/health"
 
+    @staticmethod
+    def _resolve_gguf_path(model_path: str) -> tuple[str, str]:
+        """Resolve a model path to the actual GGUF file and its mount directory.
+
+        If model_path is a directory, finds the first .gguf file inside it
+        (preferring the first split shard for multi-part files).
+        If model_path is a file, uses it directly.
+
+        Returns:
+            (gguf_file_abs, mount_dir) — absolute path to the GGUF file and
+            the directory to mount as /models/.
+        """
+        p = Path(model_path).resolve()
+        if p.is_dir():
+            gguf_files = sorted(p.glob("*.gguf"))
+            if not gguf_files:
+                raise FileNotFoundError(f"No .gguf files found in {p}")
+            gguf_file = gguf_files[0]
+            return str(gguf_file), str(p)
+        return str(p), str(p.parent)
+
     def initialize(self, model_path: str, config: dict[str, Any]) -> None:
         """Start llama.cpp server container and wait for healthy."""
         from .docker_manager import ContainerConfig, DockerManager
 
-        model_abs = str(Path(model_path).resolve())
-        model_basename = Path(model_path).name
+        gguf_file, model_dir = self._resolve_gguf_path(model_path)
+        model_basename = Path(gguf_file).name
         # Use full container path for consistency (llama.cpp serves single model)
         self._model_name = f"/models/{model_basename}"
         port = config.get("port", self.default_port())
@@ -72,9 +93,6 @@ class LlamaCppEngine(InferenceEngine):
             "--port",
             str(port),
         ]
-
-        # Mount the model file's parent directory
-        model_dir = str(Path(model_abs).parent)
 
         container_cfg = ContainerConfig(
             image=config.get("image", self.resolved_image()),
