@@ -19,6 +19,7 @@ End-to-end testing suite for LLM inference engines. Measures quality consistency
 - **Web dashboard & REST API** — browse results, manage agents, and configure settings with TLS and per-agent token auth
 - **Local model browser** — scan and display models from a local directory, with engine and platform compatibility filtering in the quick test form
 - **Remote agents** — deploy thin agents to GPU servers via `curl | bash`; agents copy models from NFS shares, run benchmarks locally, and clean up. Per-agent settings are configurable from the web UI and synced via heartbeat
+- **Test agents** — virtual agents with configurable hardware specs for UI testing without real GPUs. Quick tests and campaigns simulate execution with realistic delays, live log streaming, and fake result generation
 - **Configurable engine images** — override default Docker images per engine via `~/.kitt/engines.yaml`
 - **Monitoring** — Prometheus + Grafana + InfluxDB stack generation
 - **Custom benchmarks** — define evaluations with YAML configuration files
@@ -290,6 +291,30 @@ The agent is a lightweight daemon (`kitt-agent`) that:
 - Handles unified memory architectures (e.g. DGX Spark GB10) where dedicated VRAM is shared with system RAM
 - Self-updates from the server via `kitt-agent update`
 - Does **not** install the full KITT Python package — benchmarks run inside a Docker container built from the KITT source
+
+## Test Agents
+
+Test agents are virtual agents that simulate benchmark execution without real GPU hardware. They enable end-to-end UI testing — creating campaigns, running quick tests, viewing live logs, and inspecting results — all without a real agent daemon.
+
+### Creating a test agent
+
+Navigate to **Agents → Create Test Agent** in the web dashboard, or click the "Create Test Agent" button on the agents list page. Configure hardware specs (GPU model, count, CPU, architecture, RAM, environment type) to match your testing scenario. Test agents appear in the agent list with a **TEST** badge and are always shown as online.
+
+### Simulated execution
+
+When you launch a quick test or campaign on a test agent:
+
+1. The test transitions through the same status lifecycle as a real test (queued → running → completed)
+2. Log lines stream in real-time over SSE with realistic 0.5–1.5s delays between messages
+3. Fake but logically consistent benchmark metrics are generated (throughput, latency, memory, accuracy)
+4. Results are persisted through the normal `ResultStore` pipeline and appear in the Results page
+
+### Differences from real agents
+
+- Test agents never go offline (the stale heartbeat check skips them)
+- Storage and NFS settings are hidden on the agent detail page
+- No authentication token is provisioned (port is set to 0)
+- Benchmark metrics are randomly generated within realistic ranges
 
 ## Development
 
