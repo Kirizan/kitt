@@ -296,7 +296,9 @@ class TestUserConfigOverrides:
         "kitt.engines.image_resolver._load_user_overrides",
         return_value={"vllm": "custom/vllm:v2"},
     )
-    def test_user_config_only_affects_specified_engine(self, mock_user, mock_cc, mock_arch):
+    def test_user_config_only_affects_specified_engine(
+        self, mock_user, mock_cc, mock_arch
+    ):
         """User config for vllm doesn't affect llama_cpp."""
         result = resolve_image("llama_cpp", "default/llama:latest")
         assert result == "default/llama:latest"
