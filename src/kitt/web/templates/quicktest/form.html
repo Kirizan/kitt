@@ -2,7 +2,7 @@
 {% block title %}KITT - New Quick Test{% endblock %}
 
 {% block content %}
-<div x-data="quickTest()" class="space-y-6 max-w-3xl" x-init="loadModels()">
+<div x-data="quickTest()" class="space-y-6 max-w-3xl" x-init="loadData()">
     <div class="flex items-center justify-between">
         <div>
             <h1 class="text-2xl font-bold">New Quick Test</h1>
@@ -15,13 +15,35 @@
         <!-- Agent -->
         <div>
             <label class="block text-sm text-kitt-dim mb-1">Agent</label>
-            <select x-model="form.agent_id"
+            <select x-model="form.agent_id" @change="onAgentChange()"
                     class="w-full bg-kitt-bg border border-kitt-primary/50 rounded-md px-4 py-2 text-sm focus:outline-none focus:border-kitt-accent">
                 <option value="">Select an agent...</option>
                 {% for agent in agents %}
-                <option value="{{ agent.id }}">{{ agent.name }} ({{ agent.gpu_info or 'no GPU info' }})</option>
+                <option value="{{ agent.id }}"
+                        data-arch="{{ agent.cpu_arch or '' }}">{{ agent.name }} ({{ agent.gpu_info or 'no GPU info' }})</option>
                 {% endfor %}
             </select>
+        </div>
+
+        <!-- Engine -->
+        <div>
+            <label class="block text-sm text-kitt-dim mb-1">Engine</label>
+            <select x-model="form.engine_name"
+                    class="w-full bg-kitt-bg border border-kitt-primary/50 rounded-md px-4 py-2 text-sm focus:outline-none focus:border-kitt-accent">
+                <option value="">Select an engine...</option>
+                <template x-for="eng in availableEngines" :key="eng.name">
+                    <option :value="eng.name"
+                            :disabled="!eng.compatible && !overrideCompat"
+                            :class="{ 'text-red-400': !eng.compatible }"
+                            x-text="eng.label + (eng.compatible ? '' : ' (' + eng.reason + ')')">
+                    </option>
+                </template>
+            </select>
+            <template x-if="!selectedEngineCompatible && form.engine_name">
+                <p class="text-xs text-yellow-400 mt-1">
+                    This engine may not work on the selected agent's platform.
+                </p>
+            </template>
         </div>
 
         <!-- Model (searchable combobox) -->
@@ -64,18 +86,6 @@
             </div>
         </div>
 
-        <!-- Engine -->
-        <div>
-            <label class="block text-sm text-kitt-dim mb-1">Engine</label>
-            <select x-model="form.engine_name"
-                    class="w-full bg-kitt-bg border border-kitt-primary/50 rounded-md px-4 py-2 text-sm focus:outline-none focus:border-kitt-accent">
-                <option value="vllm">vLLM</option>
-                <option value="tgi">TGI</option>
-                <option value="llama_cpp">llama.cpp</option>
-                <option value="ollama">Ollama</option>
-            </select>
-        </div>
-
         <!-- Benchmark -->
         <div>
             <label class="block text-sm text-kitt-dim mb-1">Benchmark</label>
@@ -89,7 +99,16 @@
             </select>
         </div>
 
-        <button @click="launch()" :disabled="launching"
+        <!-- Override toggle -->
+        <div class="flex items-center gap-2">
+            <input type="checkbox" id="override-compat" x-model="overrideCompat"
+                   class="rounded border-kitt-primary/50 bg-kitt-bg text-kitt-accent focus:ring-kitt-accent">
+            <label for="override-compat" class="text-xs text-kitt-dim">
+                Show all engines (override compatibility filtering)
+            </label>
+        </div>
+
+        <button @click="launch()" :disabled="launching || !form.agent_id || !form.engine_name"
                 class="w-full bg-kitt-accent hover:bg-kitt-accent/80 disabled:opacity-50 text-white px-6 py-2.5 rounded-md text-sm font-medium transition-colors">
             <span x-show="!launching">Run Test</span>
             <span x-show="launching">Launching...</span>
@@ -100,29 +119,92 @@
 
 {% block scripts %}
 <script>
+// Human-readable engine display names
+const ENGINE_LABELS = {
+    vllm: 'vLLM',
+    tgi: 'TGI',
+    llama_cpp: 'llama.cpp',
+    ollama: 'Ollama',
+    exllamav2: 'ExLlamaV2',
+    mlx: 'MLX',
+};
+
 function quickTest() {
     return {
         form: {
             agent_id: '',
             model_path: '',
-            engine_name: 'vllm',
+            engine_name: '',
             benchmark_name: 'throughput',
         },
         allModels: [],
         engineFormats: {},
+        agentCapabilities: {},
+        overrideCompat: false,
         launching: false,
 
-        async loadModels() {
+        async loadData() {
             try {
-                const [modelsResp, formatsResp] = await Promise.all([
+                const [modelsResp, formatsResp, capsResp] = await Promise.all([
                     fetch('/api/v1/quicktest/models'),
                     fetch('/api/v1/quicktest/engine-formats'),
+                    fetch('/api/v1/quicktest/agent-capabilities'),
                 ]);
                 this.allModels = await modelsResp.json();
                 this.engineFormats = await formatsResp.json();
+                this.agentCapabilities = await capsResp.json();
             } catch (e) {
-                console.warn('Failed to load models/formats:', e);
+                console.warn('Failed to load data:', e);
             }
+        },
+
+        onAgentChange() {
+            // Reset engine selection when agent changes — the available
+            // engines may differ for the new agent's platform.
+            const prev = this.form.engine_name;
+            const engines = this.availableEngines;
+            const stillAvailable = engines.some(e => e.name === prev && e.compatible);
+            if (!stillAvailable) {
+                // Pick first compatible engine, or clear
+                const first = engines.find(e => e.compatible);
+                this.form.engine_name = first ? first.name : '';
+            }
+        },
+
+        get availableEngines() {
+            const caps = this.agentCapabilities[this.form.agent_id];
+            const engineEntries = caps ? caps.engines : {};
+
+            // Build list from engine-formats (all known engines)
+            const engines = [];
+            for (const [name, formats] of Object.entries(this.engineFormats)) {
+                const compat = engineEntries[name];
+                const compatible = compat ? compat.compatible : true;
+                const reason = compat && !compatible ? compat.reason : '';
+                engines.push({
+                    name,
+                    label: ENGINE_LABELS[name] || name,
+                    formats,
+                    compatible,
+                    reason,
+                });
+            }
+
+            if (!this.overrideCompat) {
+                // Show compatible engines first, then incompatible (disabled)
+                engines.sort((a, b) => {
+                    if (a.compatible !== b.compatible) return a.compatible ? -1 : 1;
+                    return 0;
+                });
+            }
+
+            return engines;
+        },
+
+        get selectedEngineCompatible() {
+            if (!this.form.engine_name || !this.form.agent_id) return true;
+            const eng = this.availableEngines.find(e => e.name === this.form.engine_name);
+            return eng ? eng.compatible : true;
         },
 
         async launch() {
@@ -133,11 +215,16 @@ function quickTest() {
                 this.form.model_path = document.querySelector('[x-data="modelCombobox()"] input')?.value || '';
             }
 
+            const payload = { ...this.form };
+            if (this.overrideCompat) {
+                payload.force = true;
+            }
+
             try {
                 const resp = await fetch('/api/v1/quicktest/', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify(this.form),
+                    body: JSON.stringify(payload),
                 });
                 const data = await resp.json();
                 if (data.id) {
@@ -164,15 +251,17 @@ function modelCombobox() {
             const q = this.search.toLowerCase();
             let models = this.$data.allModels || [];
 
-            // Filter by engine format compatibility
-            const engine = this.$data.form?.engine_name;
-            const engineFmts = this.$data.engineFormats || {};
-            const supported = engine && engineFmts[engine];
-            if (supported && supported.length) {
-                models = models.filter(m => {
-                    if (!m.formats || !m.formats.length) return true;
-                    return m.formats.some(f => supported.includes(f));
-                });
+            // Filter by engine format compatibility (unless override is on)
+            if (!this.$data.overrideCompat) {
+                const engine = this.$data.form?.engine_name;
+                const engineFmts = this.$data.engineFormats || {};
+                const supported = engine && engineFmts[engine];
+                if (supported && supported.length) {
+                    models = models.filter(m => {
+                        if (!m.formats || !m.formats.length) return true;
+                        return m.formats.some(f => supported.includes(f));
+                    });
+                }
             }
 
             if (!q) return models;
