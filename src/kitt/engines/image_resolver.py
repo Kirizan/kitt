@@ -306,3 +306,48 @@ def has_hardware_overrides(engine_name: str) -> bool:
         True if the engine has non-empty overrides list.
     """
     return bool(_IMAGE_OVERRIDES.get(engine_name, []))
+
+
+# Known engine-platform incompatibilities.
+# Keyed by engine name → set of incompatible Docker arch strings.
+# Engines not listed here (or with empty sets) work on all platforms.
+# Populated from Phase 1-2 hardware validation on DGX Spark (arm64).
+_PLATFORM_INCOMPATIBLE: dict[str, dict[str, str]] = {
+    "tgi": {
+        "arm64": "No ARM64 Docker images; requires custom CUDA kernels "
+        "(dropout_layer_norm, flash_attn, flashinfer) with no aarch64 builds",
+    },
+    "exllamav2": {
+        "arm64": "Default Docker image is x86_64-only; no ARM64 build available",
+    },
+}
+
+
+def get_engine_compatibility(cpu_arch: str) -> dict[str, dict]:
+    """Return per-engine compatibility information for a given CPU architecture.
+
+    Args:
+        cpu_arch: CPU architecture in kernel convention (x86_64, aarch64)
+                  or Docker convention (amd64, arm64).
+
+    Returns:
+        Dict mapping engine name to compatibility info::
+
+            {
+                "vllm": {"compatible": True},
+                "tgi": {"compatible": False, "reason": "No ARM64 Docker images..."},
+                ...
+            }
+    """
+    arch = normalize_arch(cpu_arch) if cpu_arch else ""
+    result: dict[str, dict] = {}
+
+    for engine_name in _IMAGE_OVERRIDES:
+        incompatible = _PLATFORM_INCOMPATIBLE.get(engine_name, {})
+        reason = incompatible.get(arch)
+        if reason:
+            result[engine_name] = {"compatible": False, "reason": reason}
+        else:
+            result[engine_name] = {"compatible": True}
+
+    return result
