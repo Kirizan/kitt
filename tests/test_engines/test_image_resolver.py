@@ -397,13 +397,17 @@ class TestGetEngineCompatibility:
         """All engines should be compatible on x86_64."""
         result = get_engine_compatibility("amd64")
         for engine_name, info in result.items():
-            assert info["compatible"] is True, f"{engine_name} should be compatible on amd64"
+            assert info["compatible"] is True, (
+                f"{engine_name} should be compatible on amd64"
+            )
 
     def test_x86_64_normalized_to_amd64(self):
         """Kernel convention 'x86_64' should be normalized and all engines compatible."""
         result = get_engine_compatibility("x86_64")
         for engine_name, info in result.items():
-            assert info["compatible"] is True, f"{engine_name} should be compatible on x86_64"
+            assert info["compatible"] is True, (
+                f"{engine_name} should be compatible on x86_64"
+            )
 
     def test_aarch64_normalized_to_arm64(self):
         """Kernel convention 'aarch64' should be normalized to arm64."""
@@ -416,13 +420,17 @@ class TestGetEngineCompatibility:
         """Empty arch string should treat all engines as compatible."""
         result = get_engine_compatibility("")
         for engine_name, info in result.items():
-            assert info["compatible"] is True, f"{engine_name} should be compatible with empty arch"
+            assert info["compatible"] is True, (
+                f"{engine_name} should be compatible with empty arch"
+            )
 
     def test_unknown_arch_all_compatible(self):
         """Unknown arch should treat all engines as compatible."""
         result = get_engine_compatibility("riscv64")
         for engine_name, info in result.items():
-            assert info["compatible"] is True, f"{engine_name} should be compatible on riscv64"
+            assert info["compatible"] is True, (
+                f"{engine_name} should be compatible on riscv64"
+            )
 
     def test_returns_all_override_engines(self):
         """Result should include all engines from _IMAGE_OVERRIDES."""
