@@ -33,6 +33,7 @@ def _create_schema(conn: sqlite3.Connection) -> None:
             gpu_info TEXT DEFAULT '',
             gpu_count INTEGER DEFAULT 0,
             cpu_info TEXT DEFAULT '',
+            cpu_arch TEXT DEFAULT '',
             ram_gb REAL DEFAULT 0,
             environment_type TEXT DEFAULT '',
             fingerprint TEXT DEFAULT '',

@@ -143,6 +143,13 @@ MIGRATIONS: list[Migration] = [
         CREATE INDEX IF NOT EXISTS idx_agent_settings_agent ON agent_settings(agent_id);
         """,
     ),
+    (
+        9,
+        "Add cpu_arch column to agents table",
+        """
+        ALTER TABLE agents ADD COLUMN cpu_arch TEXT DEFAULT '';
+        """,
+    ),
 ]
 
 

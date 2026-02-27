@@ -59,13 +59,24 @@ class DockerManager:
             return False
 
     @staticmethod
-    def pull_image(image: str, quiet: bool = False) -> None:
+    def pull_image(
+        image: str, quiet: bool = False, platform: str | None = None
+    ) -> None:
         """Pull a Docker image from a registry.
+
+        Args:
+            image: Docker image reference (e.g. 'vllm/vllm-openai:latest').
+            quiet: Suppress pull progress output.
+            platform: Target platform (e.g. 'linux/arm64'). When set, passes
+                ``--platform`` to ``docker pull`` to select the correct
+                manifest from multi-arch images.
 
         Raises:
             RuntimeError: If the pull fails.
         """
         cmd = ["docker", "pull"]
+        if platform:
+            cmd.extend(["--platform", platform])
         if quiet:
             cmd.append("-q")
         cmd.append(image)
@@ -216,6 +227,7 @@ class DockerManager:
         target: str | None = None,
         build_args: dict[str, str] | None = None,
         timeout: int = 3600,
+        platform: str | None = None,
     ) -> None:
         """Build a Docker image from a Dockerfile.
 
@@ -226,11 +238,16 @@ class DockerManager:
             target: Optional multi-stage build target.
             build_args: Optional dict of --build-arg key=value pairs.
             timeout: Build timeout in seconds (default 3600 for CUDA builds).
+            platform: Target platform (e.g. 'linux/arm64'). When set, passes
+                ``--platform`` to ``docker build``.
 
         Raises:
             RuntimeError: If the build fails.
         """
         cmd = ["docker", "build", "-f", dockerfile, "-t", image]
+
+        if platform:
+            cmd.extend(["--platform", platform])
 
         if target:
             cmd.extend(["--target", target])

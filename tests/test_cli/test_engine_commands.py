@@ -133,6 +133,7 @@ class TestSetupEngine:
 class TestSetupEngineBuild:
     """Tests for KITT-managed image builds (docker build path)."""
 
+    @patch("kitt.engines.image_resolver._detect_arch", return_value="amd64")
     @patch("kitt.engines.image_resolver._detect_cc", return_value=(12, 1))
     @patch("kitt.engines.docker_manager.DockerManager.image_exists", return_value=False)
     @patch("kitt.engines.docker_manager.DockerManager.build_image")
@@ -141,9 +142,9 @@ class TestSetupEngineBuild:
         return_value=True,
     )
     def test_setup_llama_cpp_blackwell_builds(
-        self, mock_avail, mock_build, mock_exists, mock_cc
+        self, mock_avail, mock_build, mock_exists, mock_cc, mock_arch
     ):
-        """On Blackwell, llama_cpp setup builds the KITT-managed image."""
+        """On x86_64 Blackwell, llama_cpp setup builds the spark image."""
         runner = CliRunner()
         result = runner.invoke(engines, ["setup", "llama_cpp"])
         assert result.exit_code == 0
@@ -169,13 +170,14 @@ class TestSetupEngineBuild:
         image_arg = mock_pull.call_args[0][0]
         assert "text-generation-inference" in image_arg
 
+    @patch("kitt.engines.image_resolver._detect_arch", return_value="amd64")
     @patch("kitt.engines.image_resolver._detect_cc", return_value=(12, 1))
     @patch(
         "kitt.engines.docker_manager.DockerManager.is_docker_available",
         return_value=True,
     )
-    def test_setup_llama_cpp_blackwell_dry_run(self, mock_avail, mock_cc):
-        """Dry run for KITT-managed image shows docker build command."""
+    def test_setup_llama_cpp_blackwell_dry_run(self, mock_avail, mock_cc, mock_arch):
+        """Dry run for x86_64 KITT-managed image shows docker build command."""
         runner = CliRunner()
         result = runner.invoke(engines, ["setup", "--dry-run", "llama_cpp"])
         assert result.exit_code == 0
@@ -361,19 +363,22 @@ class TestListEngines:
         assert "Source" in result.output
         assert "Registry" in result.output
 
+    @patch("kitt.engines.image_resolver._detect_arch", return_value="amd64")
     @patch("kitt.engines.image_resolver._detect_cc", return_value=(12, 1))
     @patch("kitt.engines.docker_manager.DockerManager.image_exists", return_value=True)
     @patch(
         "kitt.engines.docker_manager.DockerManager.is_docker_available",
         return_value=True,
     )
-    def test_list_blackwell_shows_ngc_for_vllm(self, mock_avail, mock_exists, mock_cc):
-        """On Blackwell, vLLM should show the NGC image."""
+    def test_list_blackwell_shows_ngc_for_vllm(
+        self, mock_avail, mock_exists, mock_cc, mock_arch
+    ):
+        """On x86_64 Blackwell, vLLM should show NGC and llama.cpp shows spark."""
         runner = CliRunner()
         result = runner.invoke(engines, ["list"])
         # Rich table truncates long image names; check for the visible prefix
         assert "nvcr.io/nvidia/vl" in result.output
-        # llama.cpp shows the KITT-managed image
+        # llama.cpp shows the KITT-managed spark image on x86_64
         assert "kitt/llama-cpp:sp" in result.output
         # Other engines still show their default images
         assert "ollama/ollama" in result.output

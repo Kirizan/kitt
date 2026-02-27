@@ -370,10 +370,13 @@ def _build_fingerprint(info: dict[str, Any]) -> str:
 
 def detect_system() -> dict[str, Any]:
     """Gather system info for registration payload."""
+    from kitt_agent.docker_ops import normalize_arch
+
     info: dict[str, Any] = {
         "hostname": socket.gethostname(),
         "os": f"{platform.system()}-{platform.release()}",
         "kernel": platform.version(),
+        "cpu_arch": normalize_arch(platform.machine()),
     }
 
     # Environment type

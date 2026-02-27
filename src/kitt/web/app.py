@@ -99,7 +99,9 @@ def create_app(
     # so request.url_root reflects the external scheme/host behind Traefik.
     from werkzeug.middleware.proxy_fix import ProxyFix
 
-    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
+    app.wsgi_app = ProxyFix(  # type: ignore[method-assign]
+        app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1
+    )
 
     # Store config values on app
     base_dir = Path(results_dir) if results_dir else Path.cwd()

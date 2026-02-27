@@ -93,19 +93,22 @@ class InferenceEngine(ABC):
         """Pull or build the Docker image for this engine.
 
         Uses the build recipe for KITT-managed images, or pulls from the
-        registry for standard images.
+        registry for standard images.  Passes ``--platform linux/{arch}``
+        to ensure the correct manifest is selected on multi-arch registries.
 
         Raises:
             RuntimeError: If Docker is not available or pull/build fails.
         """
         from .docker_manager import DockerManager
-        from .image_resolver import get_build_recipe
+        from .image_resolver import _detect_arch, get_build_recipe
 
         if not DockerManager.is_docker_available():
             raise RuntimeError("Docker is not installed or not running")
 
         image = cls.resolved_image()
         recipe = get_build_recipe(image)
+        arch = _detect_arch()
+        docker_platform = f"linux/{arch}" if arch else None
 
         if recipe is not None:
             DockerManager.build_image(
@@ -114,9 +117,10 @@ class InferenceEngine(ABC):
                 context_dir=str(recipe.dockerfile_path.parent),
                 target=recipe.target,
                 build_args=recipe.build_args,
+                platform=docker_platform,
             )
         else:
-            DockerManager.pull_image(image)
+            DockerManager.pull_image(image, platform=docker_platform)
 
     @classmethod
     def validate_model(cls, model_path: str) -> str | None:
