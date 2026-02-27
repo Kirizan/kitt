@@ -7,6 +7,7 @@ End-to-end testing suite for LLM inference engines. Measures quality consistency
 ## Features
 
 - **Multi-engine support** — benchmark across vLLM, TGI, llama.cpp, and Ollama with a unified interface
+- **ARM64 and multi-arch support** — platform-aware image selection for ARM64 boards (DGX Spark, Jetson Orin) with automatic KITT-managed builds for engines that lack multi-arch images
 - **Docker-only engines** — all engines run in Docker containers, eliminating compatibility issues
 - **Quality benchmarks** — MMLU, GSM8K, TruthfulQA, and HellaSwag evaluations
 - **Performance benchmarks** — throughput, latency, memory usage, and warmup analysis
@@ -129,6 +130,19 @@ image_overrides:
 
 User overrides take the highest priority, followed by KITT's hardware-aware image selection, then the engine's built-in default.
 
+### Platform-aware image selection
+
+KITT automatically selects the best Docker image for the host CPU architecture and GPU compute capability. This is transparent — no user configuration is needed.
+
+| Platform | Engine | Image Selected |
+|----------|--------|---------------|
+| x86_64 + Blackwell (cc >= 10.0) | vLLM | NGC `nvcr.io/nvidia/vllm` |
+| x86_64 + Blackwell | llama.cpp | `kitt/llama-cpp:spark` (built locally) |
+| ARM64 + Blackwell (DGX Spark, Jetson Orin) | llama.cpp | `kitt/llama-cpp:arm64` (built locally) |
+| Any architecture | Ollama | Default image (bundles its own llama.cpp) |
+
+KITT-managed images (prefixed `kitt/`) are built locally from Dockerfiles in `docker/`. The first run on a new platform may take 10-20 minutes to compile. Subsequent runs use the cached image.
+
 ### Auto-pull
 
 The `--auto-pull` flag on `kitt run` automatically pulls (or builds) the engine image if it's not available locally:
@@ -139,13 +153,21 @@ kitt run -m /models/llama-7b -e vllm --auto-pull
 
 When running tests via a remote agent, `--auto-pull` is passed automatically.
 
-### Remote engine setup
+## Remote Host Management
 
-Set up engine images on a remote host via SSH:
+Manage remote GPU servers via SSH for direct campaign execution (separate from the agent-based workflow).
 
 ```bash
-kitt remote engines setup vllm --host spark.local
-kitt remote engines setup llama_cpp --host spark.local --dry-run
+kitt remote setup user@spark.local              # register a remote host
+kitt remote list                                 # list configured hosts
+kitt remote test spark.local                     # test SSH connectivity
+kitt remote engines setup vllm --host spark.local           # pull/build engine image
+kitt remote engines setup llama_cpp --host spark.local --dry-run  # dry-run
+kitt remote run campaign.yaml --host spark.local --wait      # run a campaign
+kitt remote status --host spark.local            # check campaign status
+kitt remote logs --host spark.local              # view campaign logs
+kitt remote sync --host spark.local -o ./results # sync results locally
+kitt remote remove spark.local                   # remove a host
 ```
 
 ## Remote Devon Integration
@@ -250,7 +272,7 @@ The agent is a lightweight daemon (`kitt-agent`) that:
 - Resolves models from NFS shares, copies to local storage, runs benchmarks, and cleans up
 - Runs benchmarks inside a locally-built KITT Docker container (falls back to local CLI)
 - Streams container logs back via SSE
-- Reports full hardware fingerprint during registration (GPU, CPU, RAM, storage, CUDA, driver, environment type, compute capability)
+- Reports full hardware fingerprint during registration (GPU, CPU, CPU architecture, RAM, storage, CUDA, driver, environment type, compute capability)
 - Handles unified memory architectures (e.g. DGX Spark GB10) where dedicated VRAM is shared with system RAM
 - Self-updates from the server via `kitt-agent update`
 - Does **not** install the full KITT Python package — benchmarks run inside a Docker container built from the KITT source
