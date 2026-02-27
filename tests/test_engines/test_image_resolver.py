@@ -5,6 +5,7 @@ from unittest.mock import patch
 from kitt.engines.image_resolver import (
     clear_cache,
     get_build_recipe,
+    get_engine_compatibility,
     get_supported_engines,
     has_hardware_overrides,
     is_kitt_managed_image,
@@ -365,3 +366,69 @@ class TestArchAwareResolution:
         """Ollama has no overrides — returns default on all hardware."""
         result = resolve_image("ollama", "ollama/ollama:latest")
         assert result == "ollama/ollama:latest"
+
+
+class TestGetEngineCompatibility:
+    """Tests for per-engine platform compatibility reporting."""
+
+    def test_arm64_marks_tgi_incompatible(self):
+        result = get_engine_compatibility("arm64")
+        assert result["tgi"]["compatible"] is False
+        assert "reason" in result["tgi"]
+
+    def test_arm64_marks_exllamav2_incompatible(self):
+        result = get_engine_compatibility("arm64")
+        assert result["exllamav2"]["compatible"] is False
+        assert "reason" in result["exllamav2"]
+
+    def test_arm64_marks_vllm_compatible(self):
+        result = get_engine_compatibility("arm64")
+        assert result["vllm"]["compatible"] is True
+
+    def test_arm64_marks_llama_cpp_compatible(self):
+        result = get_engine_compatibility("arm64")
+        assert result["llama_cpp"]["compatible"] is True
+
+    def test_arm64_marks_ollama_compatible(self):
+        result = get_engine_compatibility("arm64")
+        assert result["ollama"]["compatible"] is True
+
+    def test_amd64_all_compatible(self):
+        """All engines should be compatible on x86_64."""
+        result = get_engine_compatibility("amd64")
+        for engine_name, info in result.items():
+            assert info["compatible"] is True, f"{engine_name} should be compatible on amd64"
+
+    def test_x86_64_normalized_to_amd64(self):
+        """Kernel convention 'x86_64' should be normalized and all engines compatible."""
+        result = get_engine_compatibility("x86_64")
+        for engine_name, info in result.items():
+            assert info["compatible"] is True, f"{engine_name} should be compatible on x86_64"
+
+    def test_aarch64_normalized_to_arm64(self):
+        """Kernel convention 'aarch64' should be normalized to arm64."""
+        result = get_engine_compatibility("aarch64")
+        assert result["tgi"]["compatible"] is False
+        assert result["exllamav2"]["compatible"] is False
+        assert result["vllm"]["compatible"] is True
+
+    def test_empty_arch_all_compatible(self):
+        """Empty arch string should treat all engines as compatible."""
+        result = get_engine_compatibility("")
+        for engine_name, info in result.items():
+            assert info["compatible"] is True, f"{engine_name} should be compatible with empty arch"
+
+    def test_unknown_arch_all_compatible(self):
+        """Unknown arch should treat all engines as compatible."""
+        result = get_engine_compatibility("riscv64")
+        for engine_name, info in result.items():
+            assert info["compatible"] is True, f"{engine_name} should be compatible on riscv64"
+
+    def test_returns_all_override_engines(self):
+        """Result should include all engines from _IMAGE_OVERRIDES."""
+        result = get_engine_compatibility("amd64")
+        assert "vllm" in result
+        assert "tgi" in result
+        assert "llama_cpp" in result
+        assert "ollama" in result
+        assert "exllamav2" in result
