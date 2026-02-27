@@ -17,7 +17,7 @@ End-to-end testing suite for LLM inference engines. Measures quality consistency
 - **Devon integration** — embedded [Devon](https://github.com/kirizan/devon) web UI via server-side reverse proxy, with automatic fallback to local Devon
 - **Model format validation** — preflight checks prevent launching containers with incompatible model formats (e.g. safetensors on llama.cpp)
 - **Web dashboard & REST API** — browse results, manage agents, and configure settings with TLS and per-agent token auth
-- **Local model browser** — scan and display models from a local directory, with engine compatibility filtering in the quick test form
+- **Local model browser** — scan and display models from a local directory, with engine and platform compatibility filtering in the quick test form
 - **Remote agents** — deploy thin agents to GPU servers via `curl | bash`; agents copy models from NFS shares, run benchmarks locally, and clean up. Per-agent settings are configurable from the web UI and synced via heartbeat
 - **Configurable engine images** — override default Docker images per engine via `~/.kitt/engines.yaml`
 - **Monitoring** — Prometheus + Grafana + InfluxDB stack generation
@@ -84,6 +84,20 @@ KITT validates model format compatibility before launching containers. Each engi
 | Ollama | gguf |
 
 If you attempt to run a safetensors model with llama.cpp (or a GGUF model with vLLM), KITT exits with a clear error before any container starts. The web UI quick test form also filters models by engine compatibility.
+
+### Engine-platform compatibility
+
+When launching a quick test from the web UI, KITT checks whether each engine is compatible with the selected agent's CPU architecture. Engines that lack Docker images or required CUDA kernels for the agent's platform are marked as incompatible and disabled in the engine dropdown.
+
+| Engine | ARM64 (aarch64) | x86_64 |
+|--------|:---------------:|:------:|
+| vLLM | Yes | Yes |
+| TGI | No | Yes |
+| llama.cpp | Yes | Yes |
+| Ollama | Yes | Yes |
+| ExLlamaV2 | No | Yes |
+
+To bypass this filtering (for example, to test a custom-built image), check **Show all engines (override compatibility filtering)** in the quick test form. When the override is active, the API receives a `force` flag that skips both platform and model-format validation.
 
 ### Environment variables
 
