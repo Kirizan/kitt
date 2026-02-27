@@ -206,3 +206,120 @@ class TestLaunchFormatValidation:
             content_type="application/json",
         )
         assert resp.status_code == 202
+
+
+class TestAgentCapabilitiesEndpoint:
+    def test_returns_capabilities_for_agent(self, app):
+        """Agent capabilities include engine compatibility info."""
+        flask_app, agent_mgr, _ = app
+
+        from kitt.web.models.agent import AgentRegistration
+
+        reg = AgentRegistration(
+            name="spark", hostname="spark", port=8090, cpu_arch="aarch64"
+        )
+        result = agent_mgr.register(reg, "")
+        agent_id = result["agent_id"]
+
+        client = flask_app.test_client()
+        resp = client.get("/api/v1/quicktest/agent-capabilities")
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert agent_id in data
+        agent_caps = data[agent_id]
+        assert agent_caps["name"] == "spark"
+        assert agent_caps["cpu_arch"] == "aarch64"
+        assert "engines" in agent_caps
+        # TGI should be incompatible on ARM64
+        assert agent_caps["engines"]["tgi"]["compatible"] is False
+        # vLLM should be compatible
+        assert agent_caps["engines"]["vllm"]["compatible"] is True
+
+    def test_x86_agent_all_engines_compatible(self, app):
+        """x86_64 agent should have all engines compatible."""
+        flask_app, agent_mgr, _ = app
+
+        from kitt.web.models.agent import AgentRegistration
+
+        reg = AgentRegistration(
+            name="x86-box", hostname="x86-box", port=8090, cpu_arch="x86_64"
+        )
+        result = agent_mgr.register(reg, "")
+        agent_id = result["agent_id"]
+
+        client = flask_app.test_client()
+        resp = client.get("/api/v1/quicktest/agent-capabilities")
+        data = resp.get_json()
+        for engine_name, info in data[agent_id]["engines"].items():
+            assert info["compatible"] is True, (
+                f"{engine_name} should be compatible on x86_64"
+            )
+
+    def test_empty_agents_returns_empty(self, app):
+        """No agents registered returns empty dict."""
+        flask_app, _, _ = app
+        client = flask_app.test_client()
+        resp = client.get("/api/v1/quicktest/agent-capabilities")
+        assert resp.status_code == 200
+        assert resp.get_json() == {}
+
+
+class TestForceFlag:
+    def test_force_bypasses_format_validation(self, app, tmp_path):
+        """force=true allows launching incompatible format."""
+        flask_app, agent_mgr, _ = app
+
+        # Create a safetensors model (incompatible with llama_cpp)
+        model_dir = tmp_path / "model"
+        model_dir.mkdir()
+        (model_dir / "model.safetensors").write_bytes(b"\x00" * 100)
+
+        from kitt.web.models.agent import AgentRegistration
+
+        reg = AgentRegistration(name="test", hostname="test", port=8090)
+        result = agent_mgr.register(reg, "")
+        agent_id = result["agent_id"]
+
+        client = flask_app.test_client()
+        resp = client.post(
+            "/api/v1/quicktest/",
+            data=json.dumps(
+                {
+                    "agent_id": agent_id,
+                    "model_path": str(model_dir),
+                    "engine_name": "llama_cpp",
+                    "force": True,
+                }
+            ),
+            content_type="application/json",
+        )
+        # Should succeed (202) instead of 400 because force bypasses validation
+        assert resp.status_code == 202
+
+    def test_without_force_still_rejects_incompatible(self, app, tmp_path):
+        """Without force, incompatible format is still rejected."""
+        flask_app, agent_mgr, _ = app
+
+        model_dir = tmp_path / "model"
+        model_dir.mkdir()
+        (model_dir / "model.safetensors").write_bytes(b"\x00" * 100)
+
+        from kitt.web.models.agent import AgentRegistration
+
+        reg = AgentRegistration(name="test", hostname="test", port=8090)
+        result = agent_mgr.register(reg, "")
+        agent_id = result["agent_id"]
+
+        client = flask_app.test_client()
+        resp = client.post(
+            "/api/v1/quicktest/",
+            data=json.dumps(
+                {
+                    "agent_id": agent_id,
+                    "model_path": str(model_dir),
+                    "engine_name": "llama_cpp",
+                }
+            ),
+            content_type="application/json",
+        )
+        assert resp.status_code == 400

@@ -292,9 +292,13 @@ def create_agent_app(
                 "-v",
                 "/var/run/docker.sock:/var/run/docker.sock",
                 "-v",
-                f"{local_model_path}:{local_model_path}:ro",
-                "-v",
                 f"{output_dir}:{output_dir}",
+            ]
+            # Only mount model path if it looks like a filesystem path
+            # (Ollama registry names like "qwen2.5:7b" aren't mountable)
+            if local_model_path.startswith("/"):
+                args.extend(["-v", f"{local_model_path}:{local_model_path}:ro"])
+            args.extend([
                 kitt_image,
                 "run",
                 "-m",
@@ -306,7 +310,7 @@ def create_agent_app(
                 "-o",
                 str(output_dir),
                 "--auto-pull",
-            ]
+            ])
             on_log(f"Running KITT benchmark in container ({kitt_image})")
         else:
             # Fallback: local kitt CLI

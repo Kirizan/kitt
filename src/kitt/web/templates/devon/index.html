@@ -8,7 +8,7 @@
             <h1 class="text-2xl font-bold">Devon</h1>
             <p class="text-kitt-dim text-sm mt-1">Model management powered by Devon</p>
         </div>
-        <div id="devon-status" hx-get="/api/v1/devon/status" hx-trigger="load" hx-swap="innerHTML">
+        <div id="devon-status" hx-get="/api/v1/devon/status" hx-trigger="load" hx-swap="none">
             <span class="text-xs text-kitt-dim">Checking connection...</span>
         </div>
     </div>
@@ -79,7 +79,7 @@
 
 {% block scripts %}
 <script>
-document.body.addEventListener('htmx:afterSwap', function(event) {
+document.body.addEventListener('htmx:afterRequest', function(event) {
     if (event.detail.target.id !== 'devon-status') return;
 
     try {

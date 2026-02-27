@@ -1,5 +1,6 @@
 """Quick test REST API endpoints."""
 
+import logging
 import math
 import uuid
 from datetime import datetime
@@ -8,6 +9,8 @@ from flask import Blueprint, jsonify, request
 
 from kitt.web.auth import require_auth
 from kitt.web.services.event_bus import event_bus
+
+logger = logging.getLogger(__name__)
 
 bp = Blueprint("api_quicktest", __name__, url_prefix="/api/v1/quicktest")
 
@@ -33,6 +36,41 @@ def engine_formats():
             for name, cls in EngineRegistry.list_engines().items()
         }
     )
+
+
+@bp.route("/agent-capabilities", methods=["GET"])
+def agent_capabilities():
+    """Return per-agent engine compatibility based on CPU architecture.
+
+    Response format::
+
+        {
+            "agent-id": {
+                "name": "DGX Spark",
+                "cpu_arch": "aarch64",
+                "engines": {
+                    "vllm": {"compatible": true},
+                    "tgi": {"compatible": false, "reason": "..."}
+                }
+            }
+        }
+    """
+    from kitt.engines.image_resolver import get_engine_compatibility
+    from kitt.web.app import get_services
+
+    agent_mgr = get_services()["agent_manager"]
+    agents = agent_mgr.list_agents()
+
+    result = {}
+    for agent in agents:
+        cpu_arch = agent.get("cpu_arch", "")
+        result[agent["id"]] = {
+            "name": agent.get("name", ""),
+            "cpu_arch": cpu_arch,
+            "engines": get_engine_compatibility(cpu_arch),
+        }
+
+    return jsonify(result)
 
 
 @bp.route("/", methods=["GET"])
@@ -118,15 +156,26 @@ def launch():
     if agent is None:
         return jsonify({"error": "Agent not found"}), 404
 
-    # Validate model/engine format compatibility (safety net)
+    # Validate model/engine format compatibility (safety net).
+    # Users can bypass validation with force=true for testing
+    # unsupported configurations on purpose.
+    force = data.get("force", False)
+
     from kitt.engines.registry import EngineRegistry
 
     EngineRegistry.auto_discover()
     engine_cls = EngineRegistry.get(data["engine_name"])
-    if engine_cls:
+    if engine_cls and not force:
         error = engine_cls.validate_model(data["model_path"])
         if error:
             return jsonify({"error": error}), 400
+
+    if force:
+        logger.info(
+            "Force flag set — skipping validation for %s on %s",
+            data["engine_name"],
+            data["agent_id"],
+        )
 
     # Create quick test record with command_id for heartbeat dispatch
     test_id = uuid.uuid4().hex[:16]
