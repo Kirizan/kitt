@@ -59,9 +59,7 @@ class OllamaEngine(InferenceEngine):
         p = Path(model_path)
         if p.is_file() and p.suffix == ".gguf":
             return True
-        if p.is_dir() and any(p.glob("*.gguf")):
-            return True
-        return False
+        return bool(p.is_dir() and any(p.glob("*.gguf")))
 
     @staticmethod
     def _resolve_gguf_path(model_path: str) -> str:

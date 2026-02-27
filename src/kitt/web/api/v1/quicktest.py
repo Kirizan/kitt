@@ -7,10 +7,10 @@ from datetime import datetime
 
 from flask import Blueprint, jsonify, request
 
-logger = logging.getLogger(__name__)
-
 from kitt.web.auth import require_auth
 from kitt.web.services.event_bus import event_bus
+
+logger = logging.getLogger(__name__)
 
 bp = Blueprint("api_quicktest", __name__, url_prefix="/api/v1/quicktest")
 
