@@ -12,6 +12,7 @@ class AgentRegistration(BaseModel):
     gpu_info: str = ""
     gpu_count: int = 0
     cpu_info: str = ""
+    cpu_arch: str = ""
     ram_gb: int = 0
     environment_type: str = ""
     fingerprint: str = ""
@@ -74,5 +75,6 @@ class AgentSummary(BaseModel):
     status: str
     gpu_info: str = ""
     gpu_count: int = 0
+    cpu_arch: str = ""
     last_heartbeat: str = ""
     tags: list[str] = Field(default_factory=list)

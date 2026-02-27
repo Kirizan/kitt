@@ -1,4 +1,4 @@
-"""Tests for hardware-aware Docker image selection."""
+"""Tests for hardware- and platform-aware Docker image selection."""
 
 from unittest.mock import patch
 
@@ -19,67 +19,80 @@ class TestResolveImage:
     def teardown_method(self):
         clear_cache()
 
+    @patch("kitt.engines.image_resolver._detect_arch", return_value="amd64")
     @patch("kitt.engines.image_resolver._detect_cc", return_value=None)
-    def test_no_gpu_returns_default(self, mock_cc):
+    def test_no_gpu_returns_default(self, mock_cc, mock_arch):
         result = resolve_image("vllm", "vllm/vllm-openai:latest")
         assert result == "vllm/vllm-openai:latest"
 
+    @patch("kitt.engines.image_resolver._detect_arch", return_value="amd64")
     @patch("kitt.engines.image_resolver._detect_cc", return_value=(8, 9))
-    def test_ada_lovelace_returns_default(self, mock_cc):
+    def test_ada_lovelace_returns_default(self, mock_cc, mock_arch):
         result = resolve_image("vllm", "vllm/vllm-openai:latest")
         assert result == "vllm/vllm-openai:latest"
 
+    @patch("kitt.engines.image_resolver._detect_arch", return_value="amd64")
     @patch("kitt.engines.image_resolver._detect_cc", return_value=(9, 0))
-    def test_hopper_returns_default(self, mock_cc):
+    def test_hopper_returns_default(self, mock_cc, mock_arch):
         result = resolve_image("vllm", "vllm/vllm-openai:latest")
         assert result == "vllm/vllm-openai:latest"
 
+    @patch("kitt.engines.image_resolver._detect_arch", return_value="amd64")
     @patch("kitt.engines.image_resolver._detect_cc", return_value=(10, 0))
-    def test_blackwell_b200_returns_ngc(self, mock_cc):
+    def test_blackwell_b200_returns_ngc(self, mock_cc, mock_arch):
         result = resolve_image("vllm", "vllm/vllm-openai:latest")
         assert result == "nvcr.io/nvidia/vllm:26.01-py3"
 
+    @patch("kitt.engines.image_resolver._detect_arch", return_value="amd64")
     @patch("kitt.engines.image_resolver._detect_cc", return_value=(12, 0))
-    def test_blackwell_rtx5090_returns_ngc(self, mock_cc):
+    def test_blackwell_rtx5090_returns_ngc(self, mock_cc, mock_arch):
         result = resolve_image("vllm", "vllm/vllm-openai:latest")
         assert result == "nvcr.io/nvidia/vllm:26.01-py3"
 
+    @patch("kitt.engines.image_resolver._detect_arch", return_value="arm64")
     @patch("kitt.engines.image_resolver._detect_cc", return_value=(12, 1))
-    def test_blackwell_gb10_returns_ngc(self, mock_cc):
+    def test_blackwell_gb10_returns_ngc(self, mock_cc, mock_arch):
         result = resolve_image("vllm", "vllm/vllm-openai:latest")
         assert result == "nvcr.io/nvidia/vllm:26.01-py3"
 
+    @patch("kitt.engines.image_resolver._detect_arch", return_value="arm64")
     @patch("kitt.engines.image_resolver._detect_cc", return_value=(12, 1))
-    def test_blackwell_gb10_llama_cpp_returns_kitt_managed(self, mock_cc):
+    def test_blackwell_gb10_llama_cpp_returns_arm64_build(self, mock_cc, mock_arch):
         result = resolve_image("llama_cpp", "ghcr.io/ggml-org/llama.cpp:server-cuda")
-        assert result == "kitt/llama-cpp:spark"
+        assert result == "kitt/llama-cpp:arm64"
 
+    @patch("kitt.engines.image_resolver._detect_arch", return_value="amd64")
     @patch("kitt.engines.image_resolver._detect_cc", return_value=(10, 0))
-    def test_blackwell_b200_llama_cpp_returns_kitt_managed(self, mock_cc):
+    def test_blackwell_b200_llama_cpp_returns_spark_build(self, mock_cc, mock_arch):
+        """x86_64 Blackwell falls through arm64 override to wildcard spark build."""
         result = resolve_image("llama_cpp", "ghcr.io/ggml-org/llama.cpp:server-cuda")
         assert result == "kitt/llama-cpp:spark"
 
+    @patch("kitt.engines.image_resolver._detect_arch", return_value="amd64")
     @patch("kitt.engines.image_resolver._detect_cc", return_value=(8, 9))
-    def test_ada_lovelace_llama_cpp_returns_default(self, mock_cc):
+    def test_ada_lovelace_llama_cpp_returns_default(self, mock_cc, mock_arch):
         result = resolve_image("llama_cpp", "ghcr.io/ggml-org/llama.cpp:server-cuda")
         assert result == "ghcr.io/ggml-org/llama.cpp:server-cuda"
 
+    @patch("kitt.engines.image_resolver._detect_arch", return_value="arm64")
     @patch("kitt.engines.image_resolver._detect_cc", return_value=(12, 1))
-    def test_tgi_blackwell_returns_default(self, mock_cc):
+    def test_tgi_blackwell_returns_default(self, mock_cc, mock_arch):
         """TGI on Blackwell returns default (no viable ARM64+sm_121 build)."""
         default = "ghcr.io/huggingface/text-generation-inference:latest"
         result = resolve_image("tgi", default)
         assert result == default
 
+    @patch("kitt.engines.image_resolver._detect_arch", return_value="amd64")
     @patch("kitt.engines.image_resolver._detect_cc", return_value=(8, 9))
-    def test_tgi_non_blackwell_returns_default(self, mock_cc):
+    def test_tgi_non_blackwell_returns_default(self, mock_cc, mock_arch):
         """TGI on non-Blackwell returns default."""
         default = "ghcr.io/huggingface/text-generation-inference:latest"
         result = resolve_image("tgi", default)
         assert result == default
 
+    @patch("kitt.engines.image_resolver._detect_arch", return_value="amd64")
     @patch("kitt.engines.image_resolver._detect_cc", return_value=(12, 1))
-    def test_unknown_engine_returns_default(self, mock_cc):
+    def test_unknown_engine_returns_default(self, mock_cc, mock_arch):
         result = resolve_image("unknown_engine", "some/image:latest")
         assert result == "some/image:latest"
 
@@ -87,13 +100,19 @@ class TestResolveImage:
 class TestClearCache:
     def test_clear_allows_redetection(self):
         """After clear, the next call re-detects compute capability."""
-        with patch("kitt.engines.image_resolver._detect_cc", return_value=(12, 1)):
+        with (
+            patch("kitt.engines.image_resolver._detect_cc", return_value=(12, 1)),
+            patch("kitt.engines.image_resolver._detect_arch", return_value="amd64"),
+        ):
             result1 = resolve_image("vllm", "vllm/vllm-openai:latest")
             assert result1 == "nvcr.io/nvidia/vllm:26.01-py3"
 
         clear_cache()
 
-        with patch("kitt.engines.image_resolver._detect_cc", return_value=None):
+        with (
+            patch("kitt.engines.image_resolver._detect_cc", return_value=None),
+            patch("kitt.engines.image_resolver._detect_arch", return_value="amd64"),
+        ):
             result2 = resolve_image("vllm", "vllm/vllm-openai:latest")
             assert result2 == "vllm/vllm-openai:latest"
 
@@ -135,10 +154,17 @@ class TestHasHardwareOverrides:
 
 
 class TestBuildRecipe:
-    def test_llama_cpp_recipe_exists(self):
+    def test_llama_cpp_spark_recipe_exists(self):
         recipe = get_build_recipe("kitt/llama-cpp:spark")
         assert recipe is not None
         assert recipe.dockerfile == "docker/llama_cpp/Dockerfile.spark"
+        assert recipe.target == "server"
+        assert recipe.experimental is False
+
+    def test_llama_cpp_arm64_recipe_exists(self):
+        recipe = get_build_recipe("kitt/llama-cpp:arm64")
+        assert recipe is not None
+        assert recipe.dockerfile == "docker/llama_cpp/Dockerfile.arm64"
         assert recipe.target == "server"
         assert recipe.experimental is False
 
@@ -156,10 +182,16 @@ class TestBuildRecipe:
         assert recipe.dockerfile_path.is_absolute()
         assert recipe.dockerfile_path.name == "Dockerfile.spark"
 
+    def test_arm64_dockerfile_path_is_absolute(self):
+        recipe = get_build_recipe("kitt/llama-cpp:arm64")
+        assert recipe.dockerfile_path.is_absolute()
+        assert recipe.dockerfile_path.name == "Dockerfile.arm64"
+
 
 class TestIsKittManagedImage:
     def test_kitt_managed_images(self):
         assert is_kitt_managed_image("kitt/llama-cpp:spark") is True
+        assert is_kitt_managed_image("kitt/llama-cpp:arm64") is True
         # TGI build recipe removed (non-functional on Spark)
         assert is_kitt_managed_image("kitt/tgi:spark") is False
 
@@ -178,34 +210,39 @@ class TestFutureHardwareCompatibility:
     def teardown_method(self):
         clear_cache()
 
+    @patch("kitt.engines.image_resolver._detect_arch", return_value="amd64")
     @patch("kitt.engines.image_resolver._detect_cc", return_value=(15, 0))
-    def test_future_gpu_falls_back_to_highest_override(self, mock_cc):
+    def test_future_gpu_falls_back_to_highest_override(self, mock_cc, mock_arch):
         """A future GPU (cc 15.0) should match the highest available override."""
         result = resolve_image("vllm", "vllm/vllm-openai:latest")
         # Should match (10, 0) override since 15.0 >= 10.0
         assert result == "nvcr.io/nvidia/vllm:26.01-py3"
 
+    @patch("kitt.engines.image_resolver._detect_arch", return_value="amd64")
     @patch("kitt.engines.image_resolver._detect_cc", return_value=(15, 0))
-    def test_future_gpu_llama_cpp_uses_kitt_managed(self, mock_cc):
-        """A future GPU should match llama.cpp KITT-managed build."""
+    def test_future_gpu_llama_cpp_uses_kitt_managed(self, mock_cc, mock_arch):
+        """A future x86_64 GPU should match llama.cpp spark build (wildcard arch)."""
         result = resolve_image("llama_cpp", "ghcr.io/ggml-org/llama.cpp:server-cuda")
         assert result == "kitt/llama-cpp:spark"
 
+    @patch("kitt.engines.image_resolver._detect_arch", return_value="amd64")
     @patch("kitt.engines.image_resolver._detect_cc", return_value=(15, 0))
-    def test_future_gpu_tgi_returns_default(self, mock_cc):
+    def test_future_gpu_tgi_returns_default(self, mock_cc, mock_arch):
         """TGI has no viable build — returns default on any hardware."""
         default = "ghcr.io/huggingface/text-generation-inference:latest"
         result = resolve_image("tgi", default)
         assert result == default
 
+    @patch("kitt.engines.image_resolver._detect_arch", return_value="amd64")
     @patch("kitt.engines.image_resolver._detect_cc", return_value=(7, 5))
-    def test_older_gpu_returns_default(self, mock_cc):
+    def test_older_gpu_returns_default(self, mock_cc, mock_arch):
         """Older GPUs (Turing) return default image."""
         result = resolve_image("vllm", "vllm/vllm-openai:latest")
         assert result == "vllm/vllm-openai:latest"
 
+    @patch("kitt.engines.image_resolver._detect_arch", return_value="amd64")
     @patch("kitt.engines.image_resolver._detect_cc", return_value=(8, 6))
-    def test_ampere_returns_default(self, mock_cc):
+    def test_ampere_returns_default(self, mock_cc, mock_arch):
         """Ampere GPUs (RTX 30 series) return default image."""
         result = resolve_image("vllm", "vllm/vllm-openai:latest")
         assert result == "vllm/vllm-openai:latest"
@@ -220,42 +257,109 @@ class TestUserConfigOverrides:
     def teardown_method(self):
         clear_cache()
 
+    @patch("kitt.engines.image_resolver._detect_arch", return_value="amd64")
     @patch("kitt.engines.image_resolver._detect_cc", return_value=(12, 1))
     @patch(
         "kitt.engines.image_resolver._load_user_overrides",
         return_value={"vllm": "vllm/vllm-openai:latest"},
     )
-    def test_user_config_overrides_hardware(self, mock_user, mock_cc):
+    def test_user_config_overrides_hardware(self, mock_user, mock_cc, mock_arch):
         """User config takes priority over hardware-aware overrides."""
         result = resolve_image("vllm", "default/image:latest")
         assert result == "vllm/vllm-openai:latest"
 
+    @patch("kitt.engines.image_resolver._detect_arch", return_value="amd64")
     @patch("kitt.engines.image_resolver._detect_cc", return_value=(12, 1))
     @patch(
         "kitt.engines.image_resolver._load_user_overrides",
         return_value={},
     )
-    def test_empty_user_config_falls_through(self, mock_user, mock_cc):
+    def test_empty_user_config_falls_through(self, mock_user, mock_cc, mock_arch):
         """Empty user config falls through to hardware overrides."""
         result = resolve_image("vllm", "vllm/vllm-openai:latest")
         assert result == "nvcr.io/nvidia/vllm:26.01-py3"
 
+    @patch("kitt.engines.image_resolver._detect_arch", return_value="amd64")
     @patch("kitt.engines.image_resolver._detect_cc", return_value=None)
     @patch(
         "kitt.engines.image_resolver._load_user_overrides",
         return_value={"llama_cpp": "custom/llama:v1"},
     )
-    def test_user_config_without_gpu(self, mock_user, mock_cc):
+    def test_user_config_without_gpu(self, mock_user, mock_cc, mock_arch):
         """User config works even without GPU detection."""
         result = resolve_image("llama_cpp", "default/llama:latest")
         assert result == "custom/llama:v1"
 
+    @patch("kitt.engines.image_resolver._detect_arch", return_value="amd64")
     @patch("kitt.engines.image_resolver._detect_cc", return_value=None)
     @patch(
         "kitt.engines.image_resolver._load_user_overrides",
         return_value={"vllm": "custom/vllm:v2"},
     )
-    def test_user_config_only_affects_specified_engine(self, mock_user, mock_cc):
+    def test_user_config_only_affects_specified_engine(self, mock_user, mock_cc, mock_arch):
         """User config for vllm doesn't affect llama_cpp."""
         result = resolve_image("llama_cpp", "default/llama:latest")
         assert result == "default/llama:latest"
+
+
+class TestArchAwareResolution:
+    """Tests for platform-aware (CPU architecture) image selection."""
+
+    def setup_method(self):
+        clear_cache()
+
+    def teardown_method(self):
+        clear_cache()
+
+    @patch("kitt.engines.image_resolver._detect_arch", return_value="arm64")
+    @patch("kitt.engines.image_resolver._detect_cc", return_value=(12, 1))
+    def test_arm64_blackwell_llama_cpp_returns_arm64_image(self, mock_cc, mock_arch):
+        """ARM64 + Blackwell selects the arm64-specific llama.cpp image."""
+        result = resolve_image("llama_cpp", "ghcr.io/ggml-org/llama.cpp:server-cuda")
+        assert result == "kitt/llama-cpp:arm64"
+
+    @patch("kitt.engines.image_resolver._detect_arch", return_value="amd64")
+    @patch("kitt.engines.image_resolver._detect_cc", return_value=(12, 1))
+    def test_amd64_blackwell_llama_cpp_returns_spark_image(self, mock_cc, mock_arch):
+        """x86_64 + Blackwell skips arm64 override, falls to wildcard spark build."""
+        result = resolve_image("llama_cpp", "ghcr.io/ggml-org/llama.cpp:server-cuda")
+        assert result == "kitt/llama-cpp:spark"
+
+    @patch("kitt.engines.image_resolver._detect_arch", return_value="arm64")
+    @patch("kitt.engines.image_resolver._detect_cc", return_value=(8, 9))
+    def test_arm64_non_blackwell_returns_default(self, mock_cc, mock_arch):
+        """ARM64 + non-Blackwell (Ada Lovelace) returns default — no cc match."""
+        result = resolve_image("llama_cpp", "ghcr.io/ggml-org/llama.cpp:server-cuda")
+        assert result == "ghcr.io/ggml-org/llama.cpp:server-cuda"
+
+    @patch("kitt.engines.image_resolver._detect_arch", return_value=None)
+    @patch("kitt.engines.image_resolver._detect_cc", return_value=(12, 1))
+    def test_no_arch_detection_matches_wildcard(self, mock_cc, mock_arch):
+        """When arch detection returns None, wildcard (None) overrides still match."""
+        result = resolve_image("vllm", "vllm/vllm-openai:latest")
+        assert result == "nvcr.io/nvidia/vllm:26.01-py3"
+
+    @patch("kitt.engines.image_resolver._detect_arch", return_value=None)
+    @patch("kitt.engines.image_resolver._detect_cc", return_value=(12, 1))
+    def test_no_arch_detection_skips_arch_specific(self, mock_cc, mock_arch):
+        """When arch is None, arch-specific overrides (arm64) are skipped."""
+        result = resolve_image("llama_cpp", "ghcr.io/ggml-org/llama.cpp:server-cuda")
+        # arm64 override requires "arm64" != None, so it's skipped
+        # Wildcard (None, (10,0)) matches because None == None is not checked,
+        # the condition is: required_arch is not None and required_arch != arch
+        # For wildcard: required_arch is None -> condition is False -> match proceeds
+        assert result == "kitt/llama-cpp:spark"
+
+    @patch("kitt.engines.image_resolver._detect_arch", return_value="arm64")
+    @patch("kitt.engines.image_resolver._detect_cc", return_value=(10, 0))
+    def test_arm64_vllm_blackwell_uses_wildcard(self, mock_cc, mock_arch):
+        """vLLM has only wildcard overrides — arm64 matches the wildcard entry."""
+        result = resolve_image("vllm", "vllm/vllm-openai:latest")
+        assert result == "nvcr.io/nvidia/vllm:26.01-py3"
+
+    @patch("kitt.engines.image_resolver._detect_arch", return_value="arm64")
+    @patch("kitt.engines.image_resolver._detect_cc", return_value=(12, 1))
+    def test_arm64_blackwell_ollama_returns_default(self, mock_cc, mock_arch):
+        """Ollama has no overrides — returns default on all hardware."""
+        result = resolve_image("ollama", "ollama/ollama:latest")
+        assert result == "ollama/ollama:latest"

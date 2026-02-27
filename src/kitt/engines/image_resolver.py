@@ -1,8 +1,10 @@
-"""Hardware-aware Docker image selection for inference engines.
+"""Hardware- and platform-aware Docker image selection for inference engines.
 
-Maps GPU compute capabilities to the best Docker image for each engine.
-Blackwell-class GPUs (compute capability >= 10.0) require NVIDIA NGC
-containers with proper sm_100+/sm_120+/sm_121 support.
+Maps GPU compute capabilities and CPU architecture to the best Docker image
+for each engine.  Blackwell-class GPUs (compute capability >= 10.0) require
+NVIDIA NGC containers with proper sm_100+/sm_120+/sm_121 support.  ARM64
+boards (DGX Spark, Jetson Orin) need platform-specific images when the
+upstream registry only publishes x86_64 builds.
 
 Compute Capability Reference:
 - 7.x: Turing (RTX 20 series)
@@ -20,6 +22,7 @@ When adding new overrides:
 """
 
 import logging
+import platform
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -27,6 +30,22 @@ from typing import Any
 import yaml
 
 logger = logging.getLogger(__name__)
+
+# Docker and the kernel use different names for the same architectures.
+# Normalize to Docker conventions (amd64, arm64) for consistent comparison.
+_ARCH_ALIASES: dict[str, str] = {
+    "x86_64": "amd64",
+    "aarch64": "arm64",
+}
+
+
+def normalize_arch(arch: str) -> str:
+    """Normalize a CPU architecture string to Docker conventions.
+
+    Maps kernel names (x86_64, aarch64) to Docker names (amd64, arm64).
+    """
+    return _ARCH_ALIASES.get(arch, arch)
+
 
 # Project root (two levels up from this file: engines/ -> kitt/ -> src/ -> project)
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
@@ -61,6 +80,10 @@ _BUILD_RECIPES: dict[str, BuildRecipe] = {
         dockerfile="docker/llama_cpp/Dockerfile.spark",
         target="server",
     ),
+    "kitt/llama-cpp:arm64": BuildRecipe(
+        dockerfile="docker/llama_cpp/Dockerfile.arm64",
+        target="server",
+    ),
     # TGI: Dockerfile exists but image is non-functional on DGX Spark.
     # TGI requires custom CUDA kernels (dropout_layer_norm, flash_attn,
     # flashinfer, vllm._custom_ops) that have no aarch64+sm_121 builds.
@@ -85,12 +108,14 @@ def is_kitt_managed_image(image: str) -> bool:
 
 
 # Image overrides keyed by engine name.
-# Each entry is a list of (min_compute_capability, image) tuples,
-# sorted descending by compute capability. First match wins.
+# Each entry is a list of (cpu_arch, min_compute_capability, image) tuples.
+# cpu_arch is None for "any architecture", or a Docker arch string (e.g.
+# "arm64", "amd64").  More specific entries (arch + higher cc) come first.
 #
-# IMPORTANT: Keep lists sorted by compute capability DESCENDING so that
-# more specific (higher cc) matches are checked first.
-_IMAGE_OVERRIDES: dict[str, list[tuple[tuple[int, int], str]]] = {
+# IMPORTANT: Keep lists sorted with most specific entries first:
+#   1. Arch-specific entries before arch-wildcard (None) entries
+#   2. Higher compute capability before lower within each group
+_IMAGE_OVERRIDES: dict[str, list[tuple[str | None, tuple[int, int], str]]] = {
     # vLLM: Standard images use Triton which requires ptxas for the target arch.
     # Blackwell (sm_100+, sm_120, sm_121a) is not supported in standard vLLM.
     # NGC containers include proper Blackwell support.
@@ -99,7 +124,7 @@ _IMAGE_OVERRIDES: dict[str, list[tuple[tuple[int, int], str]]] = {
     # latest tag. Newer models (e.g. Qwen 3.5 / qwen3_5) may require a
     # more recent Transformers version than is bundled in older NGC images.
     "vllm": [
-        ((10, 0), "nvcr.io/nvidia/vllm:26.01-py3"),
+        (None, (10, 0), "nvcr.io/nvidia/vllm:26.01-py3"),
     ],
     # TGI: No ARM64 Docker images published. TGI is not viable on DGX Spark
     # due to hard dependencies on custom CUDA kernels (dropout_layer_norm,
@@ -107,10 +132,12 @@ _IMAGE_OVERRIDES: dict[str, list[tuple[tuple[int, int], str]]] = {
     # Falls back to default image (x86_64-only).
     # See docker/tgi/Dockerfile.spark for full analysis.
     "tgi": [],
-    # llama.cpp: Official CUDA images are x86_64-only. On Blackwell/aarch64
-    # (DGX Spark, GB10), use the KITT-managed build targeting sm_121.
+    # llama.cpp: Official CUDA images are x86_64-only.
+    # On ARM64 Blackwell (DGX Spark, GB10), use the KITT-managed arm64 build.
+    # On x86_64 Blackwell, fall back to the spark build (sm_121 CUDA support).
     "llama_cpp": [
-        ((10, 0), "kitt/llama-cpp:spark"),
+        ("arm64", (10, 0), "kitt/llama-cpp:arm64"),
+        (None, (10, 0), "kitt/llama-cpp:spark"),
     ],
     # Ollama: Bundles its own llama.cpp, works on all supported hardware.
     "ollama": [],
@@ -121,6 +148,10 @@ _IMAGE_OVERRIDES: dict[str, list[tuple[tuple[int, int], str]]] = {
 # Cache for detected compute capability (None = not yet detected)
 _cc_cache: tuple[int, int] | None = None
 _cc_detected: bool = False
+
+# Cache for detected CPU architecture (None = not yet detected)
+_arch_cache: str | None = None
+_arch_detected: bool = False
 
 
 def _detect_cc() -> tuple[int, int] | None:
@@ -141,6 +172,21 @@ def _detect_cc() -> tuple[int, int] | None:
     if _cc_cache:
         logger.info("GPU compute capability: %s.%s", _cc_cache[0], _cc_cache[1])
     return _cc_cache
+
+
+def _detect_arch() -> str | None:
+    """Detect and cache host CPU architecture (Docker convention: amd64, arm64)."""
+    global _arch_cache, _arch_detected
+    if _arch_detected:
+        return _arch_cache
+    _arch_detected = True
+
+    raw = platform.machine()
+    _arch_cache = normalize_arch(raw) if raw else None
+
+    if _arch_cache:
+        logger.info("Host CPU architecture: %s", _arch_cache)
+    return _arch_cache
 
 
 _USER_CONFIG_PATH = Path.home() / ".kitt" / "engines.yaml"
@@ -201,16 +247,21 @@ def resolve_image(engine_name: str, default_image: str) -> str:
         logger.info("Using user-configured image for %s: %s", engine_name, user_image)
         return user_image
 
-    # 2. Hardware-aware overrides
+    # 2. Hardware-aware overrides (arch + compute capability)
     cc = _detect_cc()
+    arch = _detect_arch()
     if cc is not None:
         overrides = _IMAGE_OVERRIDES.get(engine_name, [])
-        for min_cc, image in overrides:
+        for required_arch, min_cc, image in overrides:
+            # Skip if override requires a specific arch that doesn't match
+            if required_arch is not None and required_arch != arch:
+                continue
             if cc >= min_cc:
                 logger.info(
-                    "GPU cc %s.%s matched override for %s: %s",
+                    "GPU cc %s.%s arch=%s matched override for %s: %s",
                     cc[0],
                     cc[1],
+                    arch,
                     engine_name,
                     image,
                 )
@@ -221,9 +272,11 @@ def resolve_image(engine_name: str, default_image: str) -> str:
 
 def clear_cache() -> None:
     """Reset all cached state (for testing)."""
-    global _cc_cache, _cc_detected, _user_config_cache
+    global _cc_cache, _cc_detected, _arch_cache, _arch_detected, _user_config_cache
     _cc_cache = None
     _cc_detected = False
+    _arch_cache = None
+    _arch_detected = False
     _user_config_cache = None
 
 

@@ -69,16 +69,29 @@ def check_docker_available() -> CheckResult:
 def check_docker_gpu() -> CheckResult:
     """Check if Docker has GPU access."""
     try:
+        import platform as _platform
+
+        from kitt_agent.docker_ops import normalize_arch
+
+        arch = normalize_arch(_platform.machine())
+        docker_platform = f"linux/{arch}" if arch else None
+
+        cmd = [
+            "docker",
+            "run",
+            "--rm",
+        ]
+        if docker_platform:
+            cmd.extend(["--platform", docker_platform])
+        cmd.extend([
+            "--gpus",
+            "all",
+            "nvidia/cuda:12.0.0-base-ubuntu22.04",
+            "nvidia-smi",
+        ])
+
         result = subprocess.run(
-            [
-                "docker",
-                "run",
-                "--rm",
-                "--gpus",
-                "all",
-                "nvidia/cuda:12.0.0-base-ubuntu22.04",
-                "nvidia-smi",
-            ],
+            cmd,
             capture_output=True,
             text=True,
             timeout=120,

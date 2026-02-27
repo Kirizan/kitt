@@ -107,7 +107,8 @@ class AgentManager:
                 self._conn.execute(
                     """UPDATE agents SET
                         hostname = ?, port = ?, status = 'online',
-                        gpu_info = ?, gpu_count = ?, cpu_info = ?, ram_gb = ?,
+                        gpu_info = ?, gpu_count = ?, cpu_info = ?, cpu_arch = ?,
+                        ram_gb = ?,
                         environment_type = ?, fingerprint = ?, kitt_version = ?,
                         hardware_details = ?,
                         last_heartbeat = ?
@@ -118,6 +119,7 @@ class AgentManager:
                         reg.gpu_info,
                         reg.gpu_count,
                         reg.cpu_info,
+                        reg.cpu_arch,
                         reg.ram_gb,
                         reg.environment_type,
                         reg.fingerprint,
@@ -133,10 +135,10 @@ class AgentManager:
                     """INSERT INTO agents
                        (id, name, hostname, port, token, token_hash, token_prefix,
                         status, gpu_info, gpu_count,
-                        cpu_info, ram_gb, environment_type, fingerprint, kitt_version,
-                        hardware_details,
+                        cpu_info, cpu_arch, ram_gb, environment_type, fingerprint,
+                        kitt_version, hardware_details,
                         last_heartbeat, registered_at)
-                       VALUES (?, ?, ?, ?, '', ?, ?, 'online', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                       VALUES (?, ?, ?, ?, '', ?, ?, 'online', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                     (
                         agent_id,
                         reg.name,
@@ -147,6 +149,7 @@ class AgentManager:
                         reg.gpu_info,
                         reg.gpu_count,
                         reg.cpu_info,
+                        reg.cpu_arch,
                         reg.ram_gb,
                         reg.environment_type,
                         reg.fingerprint,

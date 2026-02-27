@@ -112,11 +112,21 @@ class DockerOps:
             return ""
 
     @staticmethod
-    def pull_image(image: str) -> bool:
-        """Pull a Docker image."""
-        logger.info("Pulling image: %s", image)
+    def pull_image(image: str, platform: str | None = None) -> bool:
+        """Pull a Docker image.
+
+        Args:
+            image: Docker image reference.
+            platform: Target platform (e.g. 'linux/arm64'). When set, passes
+                ``--platform`` to ``docker pull``.
+        """
+        logger.info("Pulling image: %s (platform=%s)", image, platform or "default")
+        cmd = ["docker", "pull"]
+        if platform:
+            cmd.extend(["--platform", platform])
+        cmd.append(image)
         result = subprocess.run(
-            ["docker", "pull", image],
+            cmd,
             capture_output=True,
             text=True,
             timeout=600,
