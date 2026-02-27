@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import json
 import logging
 import secrets
 import sqlite3
@@ -87,6 +88,72 @@ class AgentManager:
             "token": raw_token,
             "token_prefix": token_prefix,
         }
+
+    def create_test_agent(
+        self,
+        name: str,
+        gpu_info: str = "NVIDIA RTX 4090 24GB",
+        gpu_count: int = 1,
+        cpu_info: str = "Intel Core i9-13900K",
+        cpu_arch: str = "x86_64",
+        ram_gb: int = 64,
+        environment_type: str = "native_linux",
+    ) -> dict[str, Any]:
+        """Create a virtual test agent directly in the database.
+
+        Test agents are always online and simulate test execution
+        without requiring a real GPU server.
+
+        Returns:
+            Dict with agent_id.
+        """
+        agent_id = uuid.uuid4().hex[:16]
+        now = datetime.now().isoformat()
+        hostname = f"test-{name}"
+        tags = json.dumps(["test"])
+
+        with self._write_lock:
+            self._conn.execute(
+                """INSERT INTO agents
+                   (id, name, hostname, port, token, token_hash, token_prefix,
+                    status, gpu_info, gpu_count,
+                    cpu_info, cpu_arch, ram_gb, environment_type,
+                    last_heartbeat, registered_at, tags)
+                   VALUES (?, ?, ?, 0, '', '', '', 'online', ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    agent_id,
+                    name,
+                    hostname,
+                    gpu_info,
+                    gpu_count,
+                    cpu_info,
+                    cpu_arch,
+                    ram_gb,
+                    environment_type,
+                    now,
+                    now,
+                    tags,
+                ),
+            )
+            self._commit()
+
+        self._ensure_default_settings(agent_id)
+        logger.info("Created test agent: %s (%s)", name, agent_id)
+        return {"agent_id": agent_id}
+
+    def is_test_agent(self, agent_id: str) -> bool:
+        """Check whether an agent is a virtual test agent."""
+        row = self._conn.execute(
+            "SELECT tags FROM agents WHERE id = ?", (agent_id,)
+        ).fetchone()
+        if row is None:
+            return False
+        raw_tags = row["tags"] or "[]"
+        try:
+            tags = json.loads(raw_tags)
+        except (json.JSONDecodeError, TypeError):
+            return False
+        return "test" in tags
 
     def register(self, reg: AgentRegistration, token: str) -> dict[str, Any]:
         """Register a new agent or update an existing one.
@@ -480,14 +547,26 @@ class AgentManager:
         return command_id
 
     def _check_stale_agents(self) -> None:
-        """Mark agents as offline if heartbeat is stale."""
+        """Mark agents as offline if heartbeat is stale.
+
+        Test agents (tags contain "test") are always online and skipped.
+        """
         with self._write_lock:
             rows = self._conn.execute(
-                "SELECT id, last_heartbeat FROM agents WHERE status != 'offline'"
+                "SELECT id, last_heartbeat, tags FROM agents WHERE status != 'offline'"
             ).fetchall()
 
             now = time.time()
             for row in rows:
+                # Skip test agents — they are always online
+                raw_tags = row["tags"] or "[]"
+                try:
+                    tags = json.loads(raw_tags)
+                except (json.JSONDecodeError, TypeError):
+                    tags = []
+                if "test" in tags:
+                    continue
+
                 if row["last_heartbeat"]:
                     try:
                         hb_time = datetime.fromisoformat(row["last_heartbeat"])

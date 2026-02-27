@@ -120,6 +120,27 @@ def launch_campaign(campaign_id):
         return jsonify({"error": "No agent assigned to this campaign"}), 400
 
     svc.update_status(campaign_id, "queued")
+
+    # If the assigned agent is a test agent, simulate the campaign
+    from kitt.web.app import get_services
+
+    services = get_services()
+    agent_mgr = services["agent_manager"]
+
+    if agent_mgr.is_test_agent(campaign["agent_id"]):
+        from kitt.web.services.test_simulator import spawn_campaign_simulation
+
+        spawn_campaign_simulation(
+            campaign_id=campaign_id,
+            agent_id=campaign["agent_id"],
+            config=campaign.get("config", {}),
+            db_conn=services["db_conn"],
+            db_write_lock=services["db_write_lock"],
+            result_service=services["result_service"],
+            campaign_service=svc,
+            agent_manager=agent_mgr,
+        )
+
     return jsonify({"status": "queued"}), 202
 
 

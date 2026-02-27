@@ -8,9 +8,14 @@
             <h1 class="text-2xl font-bold">Agents</h1>
             <p class="text-kitt-dim text-sm mt-1">Manage GPU agents for distributed benchmarking</p>
         </div>
-        <a href="/agents/add" class="bg-kitt-accent hover:bg-kitt-accent/80 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors">
-            Add Agent
-        </a>
+        <div class="flex items-center space-x-3">
+            <a href="/agents/create-test" class="bg-kitt-surface hover:bg-kitt-primary/50 text-kitt-text border border-kitt-primary/50 px-4 py-2 rounded-md text-sm font-medium transition-colors">
+                Create Test Agent
+            </a>
+            <a href="/agents/add" class="bg-kitt-accent hover:bg-kitt-accent/80 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors">
+                Add Agent
+            </a>
+        </div>
     </div>
 
     {% if agents %}
@@ -33,6 +38,9 @@
                 <tr class="hover:bg-kitt-bg/30">
                     <td class="px-4 py-3">
                         <a href="/agents/{{ agent.id }}" class="font-medium hover:text-kitt-accent">{{ agent.name }}</a>
+                        {% if agent.tags and '"test"' in agent.tags %}
+                        <span class="ml-1.5 text-xs px-1.5 py-0.5 rounded bg-purple-900/50 text-purple-300 font-medium">TEST</span>
+                        {% endif %}
                     </td>
                     <td class="px-4 py-3 text-kitt-dim">{{ agent.hostname }}:{{ agent.port }}</td>
                     <td class="px-4 py-3">

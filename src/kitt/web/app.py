@@ -170,6 +170,7 @@ def create_app(
         "settings_service": settings_service,
         "local_model_service": LocalModelService(model_dir),
         "db_conn": db_conn,
+        "db_write_lock": db_write_lock,
         "store": store,
     }
 

@@ -208,6 +208,23 @@ def launch():
         {"status": "queued", "test_id": test_id, "command_id": command_id},
     )
 
+    # If this is a test agent, simulate execution instead of waiting for heartbeat
+    if agent_mgr.is_test_agent(data["agent_id"]):
+        from kitt.web.services.test_simulator import spawn_test_simulation
+
+        spawn_test_simulation(
+            test_id=test_id,
+            agent_id=data["agent_id"],
+            model_path=data["model_path"],
+            engine_name=data["engine_name"],
+            benchmark_name=data.get("benchmark_name", "throughput"),
+            suite_name=data.get("suite_name", "quick"),
+            db_conn=conn,
+            db_write_lock=services["db_write_lock"],
+            result_service=services["result_service"],
+            agent=agent,
+        )
+
     return jsonify({"id": test_id, "status": "queued", "command_id": command_id}), 202
 
 
