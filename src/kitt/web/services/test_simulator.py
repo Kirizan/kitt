@@ -181,12 +181,21 @@ def _run_campaign_simulation(
     failed = 0
 
     campaign_service.update_status(campaign_id, "running", total_runs=total_runs)
+    _publish_campaign_log(campaign_id, f"Campaign started: {total_runs} runs")
 
+    run_index = 0
     for model in models:
         model_path = model.get("path", model.get("name", "unknown"))
+        model_name = model_path.rsplit("/", 1)[-1] if "/" in model_path else model_path
         for engine in engines:
             engine_name = engine.get("name", "unknown")
             for benchmark_name in benchmarks:
+                run_index += 1
+                _publish_campaign_log(
+                    campaign_id,
+                    f"[{run_index}/{total_runs}] {model_name} / {engine_name} / {benchmark_name}",
+                )
+
                 # Create a quick_test row for each combo
                 test_id = uuid.uuid4().hex[:16]
                 command_id = uuid.uuid4().hex[:16]
@@ -232,9 +241,21 @@ def _run_campaign_simulation(
                 ).fetchone()
                 if row and row["status"] == "completed":
                     succeeded += 1
+                    _publish_campaign_log(
+                        campaign_id,
+                        f"[{run_index}/{total_runs}] Completed successfully",
+                    )
                 else:
                     failed += 1
+                    _publish_campaign_log(
+                        campaign_id,
+                        f"[{run_index}/{total_runs}] Failed",
+                    )
 
+    _publish_campaign_log(
+        campaign_id,
+        f"Campaign finished: {succeeded} succeeded, {failed} failed",
+    )
     campaign_service.update_status(
         campaign_id, "completed", succeeded=succeeded, failed=failed
     )
@@ -309,6 +330,11 @@ def spawn_campaign_simulation(
 
 
 # --- Helpers ---
+
+
+def _publish_campaign_log(campaign_id: str, line: str) -> None:
+    """Publish a log event to the campaign SSE channel."""
+    event_bus.publish("log", campaign_id, {"line": line, "campaign_id": campaign_id})
 
 
 def _update_test_status(

@@ -2,7 +2,9 @@
 {% block title %}KITT - Campaign: {{ campaign.name }}{% endblock %}
 
 {% block content %}
-<div class="space-y-6">
+<div class="space-y-6"
+     x-data="campaignDetail()"
+     x-init="init()">
     <div class="flex items-center justify-between">
         <div>
             <h1 class="text-2xl font-bold">{{ campaign.name }}</h1>
@@ -11,14 +13,15 @@
             {% endif %}
         </div>
         <div class="flex items-center space-x-3">
-            <span class="text-xs px-3 py-1 rounded-full
-                  {% if campaign.status == 'running' %}bg-blue-900/50 text-blue-300
-                  {% elif campaign.status == 'completed' %}bg-green-900/50 text-green-300
-                  {% elif campaign.status == 'failed' %}bg-red-900/50 text-red-300
-                  {% elif campaign.status == 'queued' %}bg-yellow-900/50 text-yellow-300
-                  {% else %}bg-gray-800 text-gray-400{% endif %}">
-                {{ campaign.status }}
-            </span>
+            <span x-text="currentStatus"
+                  :class="{
+                      'bg-blue-900/50 text-blue-300': currentStatus === 'running',
+                      'bg-green-900/50 text-green-300': currentStatus === 'completed',
+                      'bg-red-900/50 text-red-300': currentStatus === 'failed',
+                      'bg-yellow-900/50 text-yellow-300': currentStatus === 'queued',
+                      'bg-gray-800 text-gray-400': !['running','completed','failed','queued'].includes(currentStatus),
+                  }"
+                  class="text-xs px-3 py-1 rounded-full font-medium"></span>
 
             {% if campaign.status == 'draft' %}
             <button hx-post="/api/v1/campaigns/{{ campaign.id }}/launch" hx-swap="none"
@@ -87,15 +90,101 @@
     {% endif %}
 
     <!-- Live log stream -->
-    {% if campaign.status in ('running', 'queued') %}
     <div class="bg-kitt-surface rounded-lg p-5">
-        <h2 class="text-lg font-semibold mb-3">Live Logs</h2>
-        <div id="log-stream" class="bg-kitt-bg rounded-md p-4 h-64 overflow-y-auto font-mono text-xs text-kitt-dim"
-             hx-sse="connect:/api/v1/events/stream/{{ campaign.id }}">
-            <div hx-sse="swap:log" hx-swap="beforeend"></div>
-            <p class="text-kitt-dim">Waiting for logs...</p>
+        <div class="flex items-center justify-between mb-3">
+            <h2 class="text-lg font-semibold">Logs</h2>
+            <div class="flex items-center gap-2">
+                <template x-if="isActive">
+                    <span class="flex items-center gap-1.5">
+                        <span x-show="sseConnected" class="w-2 h-2 rounded-full bg-green-400" title="SSE connected"></span>
+                        <span x-show="!sseConnected" class="w-2 h-2 rounded-full bg-yellow-400 animate-pulse" title="Connecting..."></span>
+                        <span class="text-xs text-kitt-dim">Live</span>
+                    </span>
+                </template>
+            </div>
+        </div>
+        <div x-ref="logContainer"
+             class="bg-kitt-bg rounded-md p-4 h-64 overflow-y-auto font-mono text-xs text-kitt-dim space-y-0.5">
+            <template x-for="(line, i) in logLines" :key="i">
+                <div x-text="line"></div>
+            </template>
+            <div x-show="logLines.length === 0" class="text-kitt-dim">
+                <span x-show="isActive">Waiting for logs...</span>
+                <span x-show="!isActive">No log lines recorded.</span>
+            </div>
         </div>
     </div>
-    {% endif %}
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function campaignDetail() {
+    return {
+        campaignId: '{{ campaign.id }}',
+        currentStatus: '{{ campaign.status }}',
+        logLines: [],
+        sseConnected: false,
+        _eventSource: null,
+
+        get isActive() {
+            return ['queued', 'running'].includes(this.currentStatus);
+        },
+
+        init() {
+            if (this.isActive) {
+                this._connectSSE();
+            }
+        },
+
+        _scrollToBottom() {
+            this.$nextTick(() => {
+                const el = this.$refs.logContainer;
+                if (el) el.scrollTop = el.scrollHeight;
+            });
+        },
+
+        _connectSSE() {
+            if (this._eventSource) {
+                this._eventSource.close();
+            }
+
+            const url = '/api/v1/events/stream/' + this.campaignId;
+            const es = new EventSource(url);
+            this._eventSource = es;
+
+            es.onopen = () => {
+                this.sseConnected = true;
+            };
+
+            es.addEventListener('log', (e) => {
+                const data = JSON.parse(e.data);
+                this.logLines.push(data.line || data.message || '');
+                this._scrollToBottom();
+            });
+
+            es.addEventListener('status', (e) => {
+                const data = JSON.parse(e.data);
+                const newStatus = data.status || '';
+                if (newStatus && newStatus !== this.currentStatus) {
+                    this.currentStatus = newStatus;
+                    this.logLines.push('[status] ' + newStatus);
+                    this._scrollToBottom();
+                }
+                if (newStatus === 'completed' || newStatus === 'failed') {
+                    es.close();
+                    this.sseConnected = false;
+                }
+            });
+
+            es.onerror = () => {
+                this.sseConnected = false;
+                if (!this.isActive) {
+                    es.close();
+                }
+            };
+        },
+    };
+}
+</script>
 {% endblock %}
