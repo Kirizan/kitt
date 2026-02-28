@@ -148,7 +148,7 @@ class CampaignService:
             self._commit()
 
         event_bus.publish(
-            "campaign_status",
+            "status",
             campaign_id,
             {
                 "status": status,

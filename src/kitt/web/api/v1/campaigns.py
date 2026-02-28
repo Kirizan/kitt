@@ -165,6 +165,21 @@ def cancel_campaign(campaign_id):
     return jsonify({"status": "cancelled"})
 
 
+@bp.route("/<campaign_id>/logs", methods=["GET"])
+def get_campaign_logs(campaign_id):
+    """Get stored log lines for a campaign."""
+    from kitt.web.app import get_services
+
+    db_conn = get_services()["db_conn"]
+    rows = db_conn.execute(
+        "SELECT line, created_at FROM campaign_logs WHERE campaign_id = ? ORDER BY id",
+        (campaign_id,),
+    ).fetchall()
+    return jsonify(
+        {"lines": [{"line": r["line"], "created_at": r["created_at"]} for r in rows]}
+    )
+
+
 @bp.route("/<campaign_id>/config", methods=["PUT"])
 @require_auth
 def update_config(campaign_id):

@@ -181,12 +181,42 @@ def _run_campaign_simulation(
     failed = 0
 
     campaign_service.update_status(campaign_id, "running", total_runs=total_runs)
+    _publish_campaign_log(
+        db_conn, db_write_lock, campaign_id, f"Campaign started: {total_runs} runs"
+    )
 
+    run_index = 0
+    cancelled = False
     for model in models:
         model_path = model.get("path", model.get("name", "unknown"))
+        model_name = model_path.rsplit("/", 1)[-1] if "/" in model_path else model_path
         for engine in engines:
             engine_name = engine.get("name", "unknown")
             for benchmark_name in benchmarks:
+                # Check for cancellation before each run
+                row = db_conn.execute(
+                    "SELECT status FROM web_campaigns WHERE id = ?",
+                    (campaign_id,),
+                ).fetchone()
+                if row and row["status"] == "cancelled":
+                    _publish_campaign_log(
+                        db_conn,
+                        db_write_lock,
+                        campaign_id,
+                        "Campaign cancelled by user",
+                    )
+                    logger.info("Campaign %s cancelled", campaign_id)
+                    cancelled = True
+                    break
+
+                run_index += 1
+                _publish_campaign_log(
+                    db_conn,
+                    db_write_lock,
+                    campaign_id,
+                    f"[{run_index}/{total_runs}] {model_name} / {engine_name} / {benchmark_name}",
+                )
+
                 # Create a quick_test row for each combo
                 test_id = uuid.uuid4().hex[:16]
                 command_id = uuid.uuid4().hex[:16]
@@ -232,12 +262,35 @@ def _run_campaign_simulation(
                 ).fetchone()
                 if row and row["status"] == "completed":
                     succeeded += 1
+                    _publish_campaign_log(
+                        db_conn,
+                        db_write_lock,
+                        campaign_id,
+                        f"[{run_index}/{total_runs}] Completed successfully",
+                    )
                 else:
                     failed += 1
+                    _publish_campaign_log(
+                        db_conn,
+                        db_write_lock,
+                        campaign_id,
+                        f"[{run_index}/{total_runs}] Failed",
+                    )
+            if cancelled:
+                break
+        if cancelled:
+            break
 
-    campaign_service.update_status(
-        campaign_id, "completed", succeeded=succeeded, failed=failed
-    )
+    if not cancelled:
+        _publish_campaign_log(
+            db_conn,
+            db_write_lock,
+            campaign_id,
+            f"Campaign finished: {succeeded} succeeded, {failed} failed",
+        )
+        campaign_service.update_status(
+            campaign_id, "completed", succeeded=succeeded, failed=failed
+        )
     logger.info(
         "Campaign simulation completed: %s (%d succeeded, %d failed)",
         campaign_id,
@@ -309,6 +362,23 @@ def spawn_campaign_simulation(
 
 
 # --- Helpers ---
+
+
+def _publish_campaign_log(
+    db_conn: sqlite3.Connection,
+    db_write_lock: threading.Lock,
+    campaign_id: str,
+    line: str,
+) -> None:
+    """Persist a campaign log line to the database and publish to SSE."""
+    with db_write_lock:
+        db_conn.execute(
+            "INSERT INTO campaign_logs (campaign_id, line) VALUES (?, ?)",
+            (campaign_id, line),
+        )
+        db_conn.commit()
+
+    event_bus.publish("log", campaign_id, {"line": line, "campaign_id": campaign_id})
 
 
 def _update_test_status(
