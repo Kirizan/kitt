@@ -327,3 +327,38 @@ kitt-agent stop
 
 Sends `SIGTERM` to the agent process using the PID stored in
 `~/.kitt/agent.pid`.
+
+---
+
+## Test Agents
+
+Test agents are virtual agents that simulate benchmark execution without real
+GPU hardware. They are useful for end-to-end UI testing — creating campaigns,
+running quick tests, viewing live logs, and inspecting results — all without a
+real agent daemon or GPU server.
+
+### Creating a test agent
+
+Navigate to **Agents > Create Test Agent** in the web dashboard. Configure
+hardware specs (GPU model, count, CPU, architecture, RAM, environment type) to
+match the testing scenario. Test agents appear in the agent list with a **TEST**
+badge and are always shown as online.
+
+### Simulated execution
+
+When a quick test or campaign is launched on a test agent:
+
+1. The test transitions through the same status lifecycle as a real test
+   (queued → running → completed).
+2. Log lines stream in real time over SSE with realistic 0.5–1.5s delays.
+3. Fake but logically consistent benchmark metrics are generated (throughput,
+   latency, memory, accuracy).
+4. Results are persisted through the normal `ResultStore` pipeline and appear
+   in the Results page.
+
+### Differences from real agents
+
+- Test agents never go offline (the stale heartbeat check skips them).
+- Storage and NFS settings are hidden on the agent detail page.
+- No authentication token is provisioned (port is set to 0).
+- Benchmark metrics are randomly generated within realistic ranges.

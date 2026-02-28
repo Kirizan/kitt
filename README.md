@@ -20,6 +20,7 @@ End-to-end testing suite for LLM inference engines. Measures quality consistency
 - **Local model browser** — scan and display models from a local directory, with engine and platform compatibility filtering in the quick test form
 - **Remote agents** — deploy thin agents to GPU servers via `curl | bash`; agents copy models from NFS shares, run benchmarks locally, and clean up. Per-agent settings are configurable from the web UI and synced via heartbeat
 - **Test agents** — virtual agents with configurable hardware specs for UI testing without real GPUs. Quick tests and campaigns simulate execution with realistic delays, live log streaming, and fake result generation
+- **Campaigns** — multi-model, multi-engine benchmark sweeps with a step-by-step web wizard and CLI. Campaigns dispatch tests one at a time via the heartbeat mechanism and stream live progress logs
 - **Configurable engine images** — override default Docker images per engine via `~/.kitt/engines.yaml`
 - **Monitoring** — Prometheus + Grafana + InfluxDB stack generation
 - **Custom benchmarks** — define evaluations with YAML configuration files
@@ -291,6 +292,44 @@ The agent is a lightweight daemon (`kitt-agent`) that:
 - Handles unified memory architectures (e.g. DGX Spark GB10) where dedicated VRAM is shared with system RAM
 - Self-updates from the server via `kitt-agent update`
 - Does **not** install the full KITT Python package — benchmarks run inside a Docker container built from the KITT source
+
+## Campaigns
+
+Campaigns run a matrix of models, engines, and benchmarks on an agent, producing a full result set in one operation.
+
+### Web UI wizard
+
+Navigate to **Campaigns → Create Campaign** in the web dashboard. The step-by-step wizard walks through:
+
+1. **Basics** — campaign name and description
+2. **Agent** — select the target agent (determines engine compatibility)
+3. **Engines** — pick one or more engines, with format badges and platform warnings based on the selected agent
+4. **Models** — searchable multi-select checklist filtered by the selected engines' supported formats
+5. **Review** — compatibility matrix showing which model/engine combinations will run
+
+After creation, click **Launch** to start the campaign. The detail page shows live log streaming and per-test status updates in real time.
+
+### CLI
+
+```bash
+kitt campaign run campaign.yaml                  # run from a YAML config
+kitt campaign run campaign.yaml --dry-run        # preview planned runs
+kitt campaign run campaign.yaml --resume         # resume a failed campaign
+kitt campaign list                               # list all campaigns
+kitt campaign status [CAMPAIGN_ID]               # show status (latest if no ID)
+kitt campaign create --from-results ./results    # generate config from existing results
+kitt campaign wizard                             # interactive TUI builder
+kitt campaign schedule campaign.yaml --cron "0 2 * * *"  # schedule recurring runs
+kitt campaign cron-status                        # show scheduled campaigns
+```
+
+### How dispatch works
+
+When a campaign launches on a **real agent**, the server breaks the campaign config into individual quick test rows and queues them one at a time. The agent's heartbeat picks up each queued test, runs it, and reports completion. The campaign executor polls for completion between tests, publishes live progress logs, and handles cancellation and timeouts (30-minute per-test limit).
+
+When a campaign launches on a **test agent**, execution is simulated with realistic delays and fake metrics — see [Test Agents](#test-agents) below.
+
+Campaign logs are persisted to the database so they survive page refreshes and are available after the campaign completes.
 
 ## Test Agents
 

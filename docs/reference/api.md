@@ -79,6 +79,7 @@ endpoints all require authentication.
 | POST | `/api/v1/campaigns/<id>/launch` | Yes | Launch a campaign |
 | POST | `/api/v1/campaigns/<id>/cancel` | Yes | Cancel a running campaign |
 | PUT | `/api/v1/campaigns/<id>/config` | Yes | Update campaign config (draft only) |
+| GET | `/api/v1/campaigns/<id>/logs` | No | Get stored log lines for a campaign |
 
 ### Models
 
@@ -94,6 +95,7 @@ endpoints all require authentication.
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
 | GET | `/api/v1/quicktest/models` | No | List available models from Devon manifest |
+| GET | `/api/v1/quicktest/agent-capabilities` | No | Get per-engine compatibility for an agent (query: `agent_id`) |
 | GET | `/api/v1/quicktest/` | No | List quick tests (query: `status`, `agent_name`, `page`, `per_page`) |
 | POST | `/api/v1/quicktest/` | Yes | Launch a quick test (body: `agent_id`, `model_path`, `engine_name`) |
 | GET | `/api/v1/quicktest/<id>` | No | Get quick test status |

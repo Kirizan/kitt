@@ -2,6 +2,65 @@
 
 All notable changes to KITT are documented on this page.
 
+## 1.6.2
+
+- Added real agent campaign dispatch via heartbeat — campaigns on real agents now break into individual quick test rows, queue them one at a time, and poll for completion using the existing heartbeat mechanism
+- Campaign executor tracks progress with campaign-level log streaming, handles cancellation, and enforces a 30-minute per-test timeout
+
+## 1.6.1
+
+- Fixed campaign live log streaming stuck on "waiting for logs..." — simulation published events to test ID channels but the detail page subscribed to the campaign ID channel
+- Replaced HTMX SSE with JavaScript EventSource + Alpine.js in campaign detail template (matching the quick test pattern)
+- Persisted campaign logs to database (`campaign_logs` table, schema v10) so page refresh and post-completion views show log history
+- Added `GET /api/v1/campaigns/<id>/logs` endpoint for stored log retrieval
+- Fixed SSE connection not closing on cancelled status
+- Added cancellation check between iterations in campaign simulation loop
+
+## 1.6.0
+
+- Added interactive campaign creation wizard with step-by-step flow: agent selection, engine compatibility filtering with format badges and platform warnings, searchable model multi-select, and compatibility matrix review
+- Added virtual test agents for end-to-end UI testing without real GPU hardware — configurable hardware specs, always-online status, TEST badge in agent list
+- Test agents simulate quick test and campaign execution with realistic delays, live SSE log streaming, and fake result generation through the normal ResultStore pipeline
+- Campaign and quicktest APIs detect test agents and spawn simulation threads instead of dispatching to agents
+- Added result generator producing realistic metrics for throughput, latency, memory, and accuracy benchmarks
+- Fixed stored XSS in campaign row rendering by escaping user values
+- Added thread safety with `db_write_lock` on all quicktest DB writes
+- Added input validation for integer form fields in test agent creation
+
+## 1.5.0
+
+- Added agent-aware engine filtering to quick test UI — engines dynamically populated from API based on selected agent's CPU architecture
+- Added `get_engine_compatibility()` in image resolver reporting per-engine ARM64/x86_64 compatibility
+- Added `GET /api/v1/quicktest/agent-capabilities` endpoint returning per-agent engine compatibility
+- Added override toggle and `force` flag to bypass both platform and model-format validation
+- Fixed Devon UI "connecting" stuck state (`htmx:afterSwap` → `htmx:afterRequest`)
+- ARM64 engine fixes: Docker CLI static binary, GGUF directory resolution, Ollama local import, vLLM NGC prefix detection
+
+## 1.4.1
+
+- Fixed `SCHEMA_VERSION` not incremented after adding migration v9 (`cpu_arch` column), so the migration never ran on server startup
+- Added `cpu_arch` to Postgres fresh-install schema
+
+## 1.4.0
+
+- Added platform-aware image selection for ARM64 and multi-arch support — image resolver considers CPU architecture alongside GPU compute capability
+- ARM64 boards (DGX Spark, Jetson Orin) get platform-specific images for engines without multi-arch builds
+- Added `--platform` flag to `DockerManager.pull_image()` and `build_image()`
+- Added `cpu_arch` field to agent registration, models, and database (migration v9)
+- Added `kitt/llama-cpp:arm64` build recipe and Dockerfile for ARM64 hosts
+- Fixed arm64/aarch64 architecture mismatch in agent Docker checks — added `normalize_arch()` for consistent naming
+- Added `kitt remote` CLI commands for managing remote GPU servers via SSH
+
+## 1.3.0
+
+- Fixed end-to-end remote execution on DGX Spark
+- Added agent 404 recovery with hostname fallback and canonical ID sync
+- Added model format validation preflight checks — engines declare supported formats and KITT blocks incompatible model/engine combinations before container launch
+- Added web UI engine/model compatibility filtering in quick test form
+- Added configurable engine images via `~/.kitt/engines.yaml`
+- Added `--auto-pull` flag to `kitt run` for automatic engine image pulling
+- Added `kitt remote engines setup` command for remote engine image management
+
 ## 1.2.1
 
 - Fixed agent benchmark results never reaching the server — `_execute_test()` now reads `metrics.json` from the output directory and forwards it as `result_data` in `_report()`
