@@ -133,7 +133,10 @@ function campaignDetail() {
 
         init() {
             if (this.isActive) {
+                this._loadStoredLogs();
                 this._connectSSE();
+            } else {
+                this._loadStoredLogs();
             }
         },
 
@@ -142,6 +145,19 @@ function campaignDetail() {
                 const el = this.$refs.logContainer;
                 if (el) el.scrollTop = el.scrollHeight;
             });
+        },
+
+        async _loadStoredLogs() {
+            try {
+                const resp = await fetch('/api/v1/campaigns/' + this.campaignId + '/logs');
+                const data = await resp.json();
+                if (data.lines) {
+                    this.logLines = data.lines.map(l => l.line);
+                    this._scrollToBottom();
+                }
+            } catch (e) {
+                console.warn('Failed to load stored logs:', e);
+            }
         },
 
         _connectSSE() {
@@ -159,8 +175,11 @@ function campaignDetail() {
 
             es.addEventListener('log', (e) => {
                 const data = JSON.parse(e.data);
-                this.logLines.push(data.line || data.message || '');
-                this._scrollToBottom();
+                const line = data.line || data.message || '';
+                if (!this.logLines.includes(line)) {
+                    this.logLines.push(line);
+                    this._scrollToBottom();
+                }
             });
 
             es.addEventListener('status', (e) => {
@@ -171,7 +190,7 @@ function campaignDetail() {
                     this.logLines.push('[status] ' + newStatus);
                     this._scrollToBottom();
                 }
-                if (newStatus === 'completed' || newStatus === 'failed') {
+                if (['completed', 'failed', 'cancelled'].includes(newStatus)) {
                     es.close();
                     this.sseConnected = false;
                 }

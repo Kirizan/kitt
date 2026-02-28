@@ -150,6 +150,19 @@ MIGRATIONS: list[Migration] = [
         ALTER TABLE agents ADD COLUMN cpu_arch TEXT DEFAULT '';
         """,
     ),
+    (
+        10,
+        "Add campaign_logs table for persistent campaign log storage",
+        """
+        CREATE TABLE IF NOT EXISTS campaign_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            campaign_id TEXT NOT NULL REFERENCES web_campaigns(id),
+            line TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+        CREATE INDEX idx_campaign_logs_campaign ON campaign_logs(campaign_id);
+        """,
+    ),
 ]
 
 
