@@ -1861,6 +1861,83 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#162" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.6.2
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#161" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.6.1
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#160" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.6.0
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#150" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.5.0
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#141" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.4.1
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#140" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.4.0
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#130" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.3.0
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#121" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1939,6 +2016,83 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#162" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.6.2
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#161" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.6.1
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#160" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.6.0
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#150" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.5.0
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#141" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.4.1
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#140" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.4.0
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#130" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.3.0
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#121" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2004,6 +2158,65 @@
 
 <h1 id="changelog">Changelog<a class="headerlink" href="#changelog" title="Permanent link">&para;</a></h1>
 <p>All notable changes to KITT are documented on this page.</p>
+<h2 id="162">1.6.2<a class="headerlink" href="#162" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Added real agent campaign dispatch via heartbeat — campaigns on real agents now break into individual quick test rows, queue them one at a time, and poll for completion using the existing heartbeat mechanism</li>
+<li>Campaign executor tracks progress with campaign-level log streaming, handles cancellation, and enforces a 30-minute per-test timeout</li>
+</ul>
+<h2 id="161">1.6.1<a class="headerlink" href="#161" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Fixed campaign live log streaming stuck on "waiting for logs..." — simulation published events to test ID channels but the detail page subscribed to the campaign ID channel</li>
+<li>Replaced HTMX SSE with JavaScript EventSource + Alpine.js in campaign detail template (matching the quick test pattern)</li>
+<li>Persisted campaign logs to database (<code>campaign_logs</code> table, schema v10) so page refresh and post-completion views show log history</li>
+<li>Added <code>GET /api/v1/campaigns/&lt;id&gt;/logs</code> endpoint for stored log retrieval</li>
+<li>Fixed SSE connection not closing on cancelled status</li>
+<li>Added cancellation check between iterations in campaign simulation loop</li>
+</ul>
+<h2 id="160">1.6.0<a class="headerlink" href="#160" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Added interactive campaign creation wizard with step-by-step flow: agent selection, engine compatibility filtering with format badges and platform warnings, searchable model multi-select, and compatibility matrix review</li>
+<li>Added virtual test agents for end-to-end UI testing without real GPU hardware — configurable hardware specs, always-online status, TEST badge in agent list</li>
+<li>Test agents simulate quick test and campaign execution with realistic delays, live SSE log streaming, and fake result generation through the normal ResultStore pipeline</li>
+<li>Campaign and quicktest APIs detect test agents and spawn simulation threads instead of dispatching to agents</li>
+<li>Added result generator producing realistic metrics for throughput, latency, memory, and accuracy benchmarks</li>
+<li>Fixed stored XSS in campaign row rendering by escaping user values</li>
+<li>Added thread safety with <code>db_write_lock</code> on all quicktest DB writes</li>
+<li>Added input validation for integer form fields in test agent creation</li>
+</ul>
+<h2 id="150">1.5.0<a class="headerlink" href="#150" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Added agent-aware engine filtering to quick test UI — engines dynamically populated from API based on selected agent's CPU architecture</li>
+<li>Added <code>get_engine_compatibility()</code> in image resolver reporting per-engine ARM64/x86_64 compatibility</li>
+<li>Added <code>GET /api/v1/quicktest/agent-capabilities</code> endpoint returning per-agent engine compatibility</li>
+<li>Added override toggle and <code>force</code> flag to bypass both platform and model-format validation</li>
+<li>Fixed Devon UI "connecting" stuck state (<code>htmx:afterSwap</code> → <code>htmx:afterRequest</code>)</li>
+<li>ARM64 engine fixes: Docker CLI static binary, GGUF directory resolution, Ollama local import, vLLM NGC prefix detection</li>
+</ul>
+<h2 id="141">1.4.1<a class="headerlink" href="#141" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Fixed <code>SCHEMA_VERSION</code> not incremented after adding migration v9 (<code>cpu_arch</code> column), so the migration never ran on server startup</li>
+<li>Added <code>cpu_arch</code> to Postgres fresh-install schema</li>
+</ul>
+<h2 id="140">1.4.0<a class="headerlink" href="#140" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Added platform-aware image selection for ARM64 and multi-arch support — image resolver considers CPU architecture alongside GPU compute capability</li>
+<li>ARM64 boards (DGX Spark, Jetson Orin) get platform-specific images for engines without multi-arch builds</li>
+<li>Added <code>--platform</code> flag to <code>DockerManager.pull_image()</code> and <code>build_image()</code></li>
+<li>Added <code>cpu_arch</code> field to agent registration, models, and database (migration v9)</li>
+<li>Added <code>kitt/llama-cpp:arm64</code> build recipe and Dockerfile for ARM64 hosts</li>
+<li>Fixed arm64/aarch64 architecture mismatch in agent Docker checks — added <code>normalize_arch()</code> for consistent naming</li>
+<li>Added <code>kitt remote</code> CLI commands for managing remote GPU servers via SSH</li>
+</ul>
+<h2 id="130">1.3.0<a class="headerlink" href="#130" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Fixed end-to-end remote execution on DGX Spark</li>
+<li>Added agent 404 recovery with hostname fallback and canonical ID sync</li>
+<li>Added model format validation preflight checks — engines declare supported formats and KITT blocks incompatible model/engine combinations before container launch</li>
+<li>Added web UI engine/model compatibility filtering in quick test form</li>
+<li>Added configurable engine images via <code>~/.kitt/engines.yaml</code></li>
+<li>Added <code>--auto-pull</code> flag to <code>kitt run</code> for automatic engine image pulling</li>
+<li>Added <code>kitt remote engines setup</code> command for remote engine image management</li>
+</ul>
 <h2 id="121">1.2.1<a class="headerlink" href="#121" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Fixed agent benchmark results never reaching the server — <code>_execute_test()</code> now reads <code>metrics.json</code> from the output directory and forwards it as <code>result_data</code> in <code>_report()</code></li>

@@ -913,6 +913,28 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#web-ui-campaign-wizard" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Web UI Campaign Wizard
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#agent-based-dispatch" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Agent-Based Dispatch
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#key-options-reference" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2067,6 +2089,28 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#web-ui-campaign-wizard" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Web UI Campaign Wizard
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#agent-based-dispatch" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Agent-Based Dispatch
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#key-options-reference" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2191,6 +2235,27 @@ models and quants. See <code>configs/campaigns/rerun-failures.yaml</code> for an
 existing results directory:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>kitt<span class="w"> </span>campaign<span class="w"> </span>create<span class="w"> </span>--from-results<span class="w"> </span>./kitt-results<span class="w"> </span>-o<span class="w"> </span>replay.yaml
 </code></pre></div>
+<h2 id="web-ui-campaign-wizard">Web UI Campaign Wizard<a class="headerlink" href="#web-ui-campaign-wizard" title="Permanent link">&para;</a></h2>
+<p>The web dashboard provides a step-by-step wizard for creating campaigns without writing YAML. Navigate to <strong>Campaigns &gt; Create Campaign</strong> and follow the six steps:</p>
+<ol>
+<li><strong>Basics</strong> — enter a campaign name and optional description.</li>
+<li><strong>Agent</strong> — select the target agent. The chosen agent's hardware determines which engines are compatible.</li>
+<li><strong>Engines</strong> — pick one or more engines. Format badges (safetensors, GGUF) and platform warnings are shown based on the selected agent's CPU architecture.</li>
+<li><strong>Models</strong> — a searchable multi-select checklist of models found in the configured model directory, filtered to only show models compatible with the selected engines' supported formats.</li>
+<li><strong>Settings</strong> — choose the test suite, toggle Devon-managed model handling, and enable post-run cleanup.</li>
+<li><strong>Review</strong> — a compatibility matrix shows which model/engine combinations will actually run. Confirm to create the campaign.</li>
+</ol>
+<p>After creation, click <strong>Launch</strong> on the campaign detail page to start execution.</p>
+<h2 id="agent-based-dispatch">Agent-Based Dispatch<a class="headerlink" href="#agent-based-dispatch" title="Permanent link">&para;</a></h2>
+<p>When a campaign is launched on a remote agent from the web UI, KITT breaks the campaign config into individual quick test rows and queues them one at a time. Each test is picked up by the agent's heartbeat, dispatched for execution, and the campaign executor waits for it to finish before queuing the next.</p>
+<p>The campaign detail page streams live progress logs over SSE showing:</p>
+<ul>
+<li>Which model/engine/benchmark combination is running</li>
+<li>Agent status transitions (queued, dispatched, running, completed)</li>
+<li>Success/failure counts and final summary</li>
+</ul>
+<p>Campaign logs are persisted to the database, so they survive page refreshes and remain available after the campaign completes. Each test has a 30-minute timeout.</p>
+<p>Campaigns launched on a <strong>test agent</strong> use simulated execution instead — see the <a href="../agents/#test-agents">Test Agents</a> section.</p>
 <h2 id="key-options-reference">Key Options Reference<a class="headerlink" href="#key-options-reference" title="Permanent link">&para;</a></h2>
 <table>
 <thead>

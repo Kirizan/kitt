@@ -1129,6 +1129,56 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#test-agents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Test Agents
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Test Agents">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#creating-a-test-agent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Creating a test agent
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#simulated-execution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Simulated execution
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#differences-from-real-agents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Differences from real agents
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -2265,6 +2315,56 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#test-agents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Test Agents
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Test Agents">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#creating-a-test-agent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Creating a test agent
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#simulated-execution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Simulated execution
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#differences-from-real-agents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Differences from real agents
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -2639,6 +2739,35 @@ to kill the running process.</p>
 </code></pre></div>
 <p>Sends <code>SIGTERM</code> to the agent process using the PID stored in
 <code>~/.kitt/agent.pid</code>.</p>
+<hr />
+<h2 id="test-agents">Test Agents<a class="headerlink" href="#test-agents" title="Permanent link">&para;</a></h2>
+<p>Test agents are virtual agents that simulate benchmark execution without real
+GPU hardware. They are useful for end-to-end UI testing — creating campaigns,
+running quick tests, viewing live logs, and inspecting results — all without a
+real agent daemon or GPU server.</p>
+<h3 id="creating-a-test-agent">Creating a test agent<a class="headerlink" href="#creating-a-test-agent" title="Permanent link">&para;</a></h3>
+<p>Navigate to <strong>Agents &gt; Create Test Agent</strong> in the web dashboard. Configure
+hardware specs (GPU model, count, CPU, architecture, RAM, environment type) to
+match the testing scenario. Test agents appear in the agent list with a <strong>TEST</strong>
+badge and are always shown as online.</p>
+<h3 id="simulated-execution">Simulated execution<a class="headerlink" href="#simulated-execution" title="Permanent link">&para;</a></h3>
+<p>When a quick test or campaign is launched on a test agent:</p>
+<ol>
+<li>The test transitions through the same status lifecycle as a real test
+   (queued → running → completed).</li>
+<li>Log lines stream in real time over SSE with realistic 0.5–1.5s delays.</li>
+<li>Fake but logically consistent benchmark metrics are generated (throughput,
+   latency, memory, accuracy).</li>
+<li>Results are persisted through the normal <code>ResultStore</code> pipeline and appear
+   in the Results page.</li>
+</ol>
+<h3 id="differences-from-real-agents">Differences from real agents<a class="headerlink" href="#differences-from-real-agents" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Test agents never go offline (the stale heartbeat check skips them).</li>
+<li>Storage and NFS settings are hidden on the agent detail page.</li>
+<li>No authentication token is provisioned (port is set to 0).</li>
+<li>Benchmark metrics are randomly generated within realistic ranges.</li>
+</ul>
 
 
 

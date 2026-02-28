@@ -1644,6 +1644,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#campaign_logs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        campaign_logs
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2222,6 +2233,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#campaign_logs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        campaign_logs
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2274,7 +2296,7 @@
 KARR uses a relational database to store benchmark results, agent state, campaign
 progress, and event logs. The schema is versioned and managed through an
 automatic migration system.</p>
-<p><strong>Current schema version:</strong> 8</p>
+<p><strong>Current schema version:</strong> 10</p>
 <h2 id="migration-system">Migration System<a class="headerlink" href="#migration-system" title="Permanent link">&para;</a></h2>
 <p>The <code>schema_version</code> table tracks which migrations have been applied:</p>
 <table>
@@ -2700,6 +2722,12 @@ forward-only; downgrades are not supported.</p>
 <td></td>
 <td>JSON array of tags for filtering</td>
 </tr>
+<tr>
+<td><code>cpu_arch</code></td>
+<td>TEXT</td>
+<td></td>
+<td>CPU architecture (<code>amd64</code>, <code>arm64</code>) (v9)</td>
+</tr>
 </tbody>
 </table>
 <h3 id="web_campaigns">web_campaigns<a class="headerlink" href="#web_campaigns" title="Permanent link">&para;</a></h3>
@@ -2742,7 +2770,7 @@ forward-only; downgrades are not supported.</p>
 <td><code>status</code></td>
 <td>TEXT</td>
 <td></td>
-<td>Current status (<code>pending</code>, <code>running</code>, <code>completed</code>, <code>failed</code>)</td>
+<td>Current status (<code>draft</code>, <code>queued</code>, <code>running</code>, <code>completed</code>, <code>failed</code>, <code>cancelled</code>)</td>
 </tr>
 <tr>
 <td><code>agent_id</code></td>
@@ -3038,6 +3066,44 @@ forward-only; downgrades are not supported.</p>
 </tr>
 </tbody>
 </table>
+<h3 id="campaign_logs">campaign_logs<a class="headerlink" href="#campaign_logs" title="Permanent link">&para;</a></h3>
+<p>Persistent log storage for campaign execution output (v10).</p>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Type</th>
+<th>Constraints</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code></td>
+<td>INTEGER</td>
+<td>PRIMARY KEY AUTOINCREMENT</td>
+<td>Row identifier</td>
+</tr>
+<tr>
+<td><code>campaign_id</code></td>
+<td>TEXT</td>
+<td>FOREIGN KEY -&gt; web_campaigns(id)</td>
+<td>Parent campaign</td>
+</tr>
+<tr>
+<td><code>line</code></td>
+<td>TEXT</td>
+<td></td>
+<td>Log line content</td>
+</tr>
+<tr>
+<td><code>created_at</code></td>
+<td>TEXT</td>
+<td></td>
+<td>ISO-8601 timestamp</td>
+</tr>
+</tbody>
+</table>
 <h2 id="indexes">Indexes<a class="headerlink" href="#indexes" title="Permanent link">&para;</a></h2>
 <p>The following indexes are created to accelerate common query patterns:</p>
 <table>
@@ -3075,9 +3141,19 @@ forward-only; downgrades are not supported.</p>
 <td><code>run_id</code></td>
 </tr>
 <tr>
+<td><code>idx_benchmarks_test_name</code></td>
+<td>benchmarks</td>
+<td><code>test_name</code></td>
+</tr>
+<tr>
 <td><code>idx_metrics_benchmark_id</code></td>
 <td>metrics</td>
 <td><code>benchmark_id</code></td>
+</tr>
+<tr>
+<td><code>idx_metrics_name</code></td>
+<td>metrics</td>
+<td><code>metric_name</code></td>
 </tr>
 <tr>
 <td><code>idx_hardware_run_id</code></td>
@@ -3085,19 +3161,59 @@ forward-only; downgrades are not supported.</p>
 <td><code>run_id</code></td>
 </tr>
 <tr>
-<td><code>idx_events_event_type</code></td>
+<td><code>idx_agents_name</code></td>
+<td>agents</td>
+<td><code>name</code></td>
+</tr>
+<tr>
+<td><code>idx_agents_status</code></td>
+<td>agents</td>
+<td><code>status</code></td>
+</tr>
+<tr>
+<td><code>idx_web_campaigns_status</code></td>
+<td>web_campaigns</td>
+<td><code>status</code></td>
+</tr>
+<tr>
+<td><code>idx_web_campaigns_agent</code></td>
+<td>web_campaigns</td>
+<td><code>agent_id</code></td>
+</tr>
+<tr>
+<td><code>idx_quick_tests_agent</code></td>
+<td>quick_tests</td>
+<td><code>agent_id</code></td>
+</tr>
+<tr>
+<td><code>idx_quick_tests_status</code></td>
+<td>quick_tests</td>
+<td><code>status</code></td>
+</tr>
+<tr>
+<td><code>idx_events_type</code></td>
 <td>events</td>
 <td><code>event_type</code></td>
 </tr>
 <tr>
-<td><code>idx_events_source_id</code></td>
+<td><code>idx_events_source</code></td>
 <td>events</td>
 <td><code>source_id</code></td>
 </tr>
 <tr>
-<td><code>idx_events_created_at</code></td>
-<td>events</td>
-<td><code>created_at</code></td>
+<td><code>idx_quick_test_logs_test</code></td>
+<td>quick_test_logs</td>
+<td><code>test_id</code></td>
+</tr>
+<tr>
+<td><code>idx_campaign_logs_campaign</code></td>
+<td>campaign_logs</td>
+<td><code>campaign_id</code></td>
+</tr>
+<tr>
+<td><code>idx_agent_settings_agent</code></td>
+<td>agent_settings</td>
+<td><code>agent_id</code></td>
 </tr>
 </tbody>
 </table>

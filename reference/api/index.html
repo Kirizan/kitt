@@ -2430,6 +2430,12 @@ endpoints all require authentication.</p>
 <td>Yes</td>
 <td>Update campaign config (draft only)</td>
 </tr>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/campaigns/&lt;id&gt;/logs</code></td>
+<td>No</td>
+<td>Get stored log lines for a campaign</td>
+</tr>
 </tbody>
 </table>
 <h3 id="models">Models<a class="headerlink" href="#models" title="Permanent link">&para;</a></h3>
@@ -2485,6 +2491,12 @@ endpoints all require authentication.</p>
 <td><code>/api/v1/quicktest/models</code></td>
 <td>No</td>
 <td>List available models from Devon manifest</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/quicktest/agent-capabilities</code></td>
+<td>No</td>
+<td>Get per-engine compatibility for an agent (query: <code>agent_id</code>)</td>
 </tr>
 <tr>
 <td>GET</td>
