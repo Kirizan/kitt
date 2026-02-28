@@ -173,9 +173,7 @@ def _run_campaign_simulation(
 
     agent = agent_manager.get_agent(agent_id)
     if agent is None:
-        campaign_service.update_status(
-            campaign_id, "failed", error="Agent not found"
-        )
+        campaign_service.update_status(campaign_id, "failed", error="Agent not found")
         return
 
     total_runs = len(models) * len(engines) * len(benchmarks)
