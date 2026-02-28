@@ -140,6 +140,17 @@ def launch_campaign(campaign_id):
             campaign_service=svc,
             agent_manager=agent_mgr,
         )
+    else:
+        from kitt.web.services.campaign_executor import spawn_campaign_execution
+
+        spawn_campaign_execution(
+            campaign_id=campaign_id,
+            agent_id=campaign["agent_id"],
+            config=campaign.get("config", {}),
+            db_conn=services["db_conn"],
+            db_write_lock=services["db_write_lock"],
+            campaign_service=svc,
+        )
 
     return jsonify({"status": "queued"}), 202
 
