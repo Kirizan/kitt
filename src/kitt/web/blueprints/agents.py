@@ -79,13 +79,20 @@ def create_test():
         flash("An agent with that name already exists", "error")
         return redirect(url_for("agents.create_test_form"))
 
+    try:
+        gpu_count = int(request.form.get("gpu_count", "1"))
+        ram_gb = int(request.form.get("ram_gb", "64"))
+    except (ValueError, TypeError):
+        flash("GPU count and RAM must be numbers", "error")
+        return redirect(url_for("agents.create_test_form"))
+
     result = agent_mgr.create_test_agent(
         name=name,
         gpu_info=request.form.get("gpu_info", "NVIDIA RTX 4090 24GB"),
-        gpu_count=int(request.form.get("gpu_count", "1")),
+        gpu_count=gpu_count,
         cpu_info=request.form.get("cpu_info", "Intel Core i9-13900K"),
         cpu_arch=request.form.get("cpu_arch", "x86_64"),
-        ram_gb=int(request.form.get("ram_gb", "64")),
+        ram_gb=ram_gb,
         environment_type=request.form.get("environment_type", "native_linux"),
     )
 

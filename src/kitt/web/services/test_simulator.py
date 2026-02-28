@@ -91,6 +91,8 @@ def _run_simulation(
         f"Iteration 1/5 complete ({random.uniform(80, 180):.1f} tok/s)",
         f"Iteration 2/5 complete ({random.uniform(80, 180):.1f} tok/s)",
         f"Iteration 3/5 complete ({random.uniform(80, 180):.1f} tok/s)",
+        f"Iteration 4/5 complete ({random.uniform(80, 180):.1f} tok/s)",
+        f"Iteration 5/5 complete ({random.uniform(80, 180):.1f} tok/s)",
         "Benchmark complete. Saving results...",
     ]
 
@@ -178,6 +180,7 @@ def _run_campaign_simulation(
 
     total_runs = len(models) * len(engines) * len(benchmarks)
     succeeded = 0
+    failed = 0
 
     campaign_service.update_status(campaign_id, "running", total_runs=total_runs)
 
@@ -223,12 +226,26 @@ def _run_campaign_simulation(
                     result_service=result_service,
                     agent=agent,
                 )
-                succeeded += 1
+
+                # Check actual test outcome
+                row = db_conn.execute(
+                    "SELECT status FROM quick_tests WHERE id = ?",
+                    (test_id,),
+                ).fetchone()
+                if row and row["status"] == "completed":
+                    succeeded += 1
+                else:
+                    failed += 1
 
     campaign_service.update_status(
-        campaign_id, "completed", succeeded=succeeded, failed=0
+        campaign_id, "completed", succeeded=succeeded, failed=failed
     )
-    logger.info("Campaign simulation completed: %s (%d runs)", campaign_id, succeeded)
+    logger.info(
+        "Campaign simulation completed: %s (%d succeeded, %d failed)",
+        campaign_id,
+        succeeded,
+        failed,
+    )
 
 
 def spawn_test_simulation(

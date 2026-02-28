@@ -6,6 +6,7 @@ with random but logically consistent metrics.
 
 from __future__ import annotations
 
+import contextlib
 import random
 from datetime import datetime
 from typing import Any
@@ -73,15 +74,11 @@ def _build_system_info(agent: dict[str, Any]) -> dict[str, Any]:
     parts = gpu_info.split()
     for i, part in enumerate(parts):
         if part.upper() == "GB" and i > 0:
-            try:
+            with contextlib.suppress(ValueError):
                 vram_gb = int(parts[i - 1])
-            except ValueError:
-                pass
         elif part.upper().endswith("GB"):
-            try:
+            with contextlib.suppress(ValueError):
                 vram_gb = int(part[:-2])
-            except ValueError:
-                pass
 
     return {
         "gpu": {
