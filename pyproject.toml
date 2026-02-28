@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "kitt"
-version = "1.5.0"
+version = "1.6.0"
 description = "KITT (Kirizan's Inference Testing Tools) - End-to-end testing suite for LLM inference engines"
 authors = ["Kirizan"]
 license = "Apache-2.0"

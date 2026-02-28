@@ -183,23 +183,25 @@ def launch():
     now = datetime.now().isoformat()
 
     conn = services["db_conn"]
-    conn.execute(
-        """INSERT INTO quick_tests
-           (id, agent_id, model_path, engine_name, benchmark_name, suite_name,
-            status, command_id, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, 'queued', ?, ?)""",
-        (
-            test_id,
-            data["agent_id"],
-            data["model_path"],
-            data["engine_name"],
-            data.get("benchmark_name", "throughput"),
-            data.get("suite_name", "quick"),
-            command_id,
-            now,
-        ),
-    )
-    conn.commit()
+    db_write_lock = services["db_write_lock"]
+    with db_write_lock:
+        conn.execute(
+            """INSERT INTO quick_tests
+               (id, agent_id, model_path, engine_name, benchmark_name, suite_name,
+                status, command_id, created_at)
+               VALUES (?, ?, ?, ?, ?, ?, 'queued', ?, ?)""",
+            (
+                test_id,
+                data["agent_id"],
+                data["model_path"],
+                data["engine_name"],
+                data.get("benchmark_name", "throughput"),
+                data.get("suite_name", "quick"),
+                command_id,
+                now,
+            ),
+        )
+        conn.commit()
 
     # Publish queued event for SSE subscribers
     event_bus.publish(
@@ -207,6 +209,23 @@ def launch():
         test_id,
         {"status": "queued", "test_id": test_id, "command_id": command_id},
     )
+
+    # If this is a test agent, simulate execution instead of waiting for heartbeat
+    if agent_mgr.is_test_agent(data["agent_id"]):
+        from kitt.web.services.test_simulator import spawn_test_simulation
+
+        spawn_test_simulation(
+            test_id=test_id,
+            agent_id=data["agent_id"],
+            model_path=data["model_path"],
+            engine_name=data["engine_name"],
+            benchmark_name=data.get("benchmark_name", "throughput"),
+            suite_name=data.get("suite_name", "quick"),
+            db_conn=conn,
+            db_write_lock=services["db_write_lock"],
+            result_service=services["result_service"],
+            agent=agent,
+        )
 
     return jsonify({"id": test_id, "status": "queued", "command_id": command_id}), 202
 
@@ -259,11 +278,13 @@ def post_log(test_id):
         return jsonify({"error": "'line' is required"}), 400
 
     # Persist log line to database
-    conn.execute(
-        "INSERT INTO quick_test_logs (test_id, line) VALUES (?, ?)",
-        (test_id, data["line"]),
-    )
-    conn.commit()
+    db_write_lock = get_services()["db_write_lock"]
+    with db_write_lock:
+        conn.execute(
+            "INSERT INTO quick_test_logs (test_id, line) VALUES (?, ?)",
+            (test_id, data["line"]),
+        )
+        conn.commit()
 
     # Publish log line to SSE subscribers
     event_bus.publish(
@@ -297,18 +318,20 @@ def update_status(test_id):
 
     now = datetime.now().isoformat()
 
-    if new_status == "running":
-        conn.execute(
-            "UPDATE quick_tests SET status = ?, started_at = ? WHERE id = ?",
-            (new_status, now, test_id),
-        )
-    elif new_status in ("completed", "failed"):
-        error = data.get("error", "")
-        conn.execute(
-            "UPDATE quick_tests SET status = ?, completed_at = ?, error = ? WHERE id = ?",
-            (new_status, now, error, test_id),
-        )
-    conn.commit()
+    db_write_lock = get_services()["db_write_lock"]
+    with db_write_lock:
+        if new_status == "running":
+            conn.execute(
+                "UPDATE quick_tests SET status = ?, started_at = ? WHERE id = ?",
+                (new_status, now, test_id),
+            )
+        elif new_status in ("completed", "failed"):
+            error = data.get("error", "")
+            conn.execute(
+                "UPDATE quick_tests SET status = ?, completed_at = ?, error = ? WHERE id = ?",
+                (new_status, now, error, test_id),
+            )
+        conn.commit()
 
     # Publish status event for SSE subscribers
     event_bus.publish(

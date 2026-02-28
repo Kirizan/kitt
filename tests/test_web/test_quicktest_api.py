@@ -93,9 +93,12 @@ def app(db_conn, tmp_path):
     agent_mgr = AgentManager(db_conn)
     model_svc = LocalModelService(str(tmp_path))
 
+    import threading
+
     _services = {
         "agent_manager": agent_mgr,
         "db_conn": db_conn,
+        "db_write_lock": threading.Lock(),
         "local_model_service": model_svc,
     }
 

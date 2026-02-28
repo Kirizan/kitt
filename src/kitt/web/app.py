@@ -170,6 +170,7 @@ def create_app(
         "settings_service": settings_service,
         "local_model_service": LocalModelService(model_dir),
         "db_conn": db_conn,
+        "db_write_lock": db_write_lock,
         "store": store,
     }
 
@@ -239,6 +240,8 @@ def create_app(
 
     @app.route("/partials/campaign_rows")
     def partial_campaign_rows():
+        from markupsafe import escape
+
         campaigns = _services["campaign_service"].list_campaigns(per_page=5)
         html_parts = []
         for c in campaigns["items"]:
@@ -252,8 +255,8 @@ def create_app(
                 f"""
             <div class="bg-kitt-bg/50 rounded-md p-3">
                 <div class="flex items-center justify-between">
-                    <a href="/campaigns/{c["id"]}" class="text-sm font-medium hover:text-kitt-accent">{c["name"]}</a>
-                    <span class="text-xs px-2 py-0.5 rounded {status_cls}">{c["status"]}</span>
+                    <a href="/campaigns/{escape(c["id"])}" class="text-sm font-medium hover:text-kitt-accent">{escape(c["name"])}</a>
+                    <span class="text-xs px-2 py-0.5 rounded {status_cls}">{escape(c["status"])}</span>
                 </div>
             </div>"""
             )

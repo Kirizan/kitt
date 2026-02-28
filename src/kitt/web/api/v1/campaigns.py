@@ -41,12 +41,40 @@ def create_campaign():
     if not name:
         return jsonify({"error": "Campaign name is required"}), 400
 
+    config = data.get("config", {})
+
+    # Validate config has models and engines when provided
+    models = config.get("models", [])
+    engines = config.get("engines", [])
+    if models and not isinstance(models, list):
+        return jsonify({"error": "config.models must be a list"}), 400
+    if engines and not isinstance(engines, list):
+        return jsonify({"error": "config.engines must be a list"}), 400
+
+    # Validate each model has a name
+    for i, model in enumerate(models):
+        if not isinstance(model, dict) or not model.get("name"):
+            return jsonify({"error": f"Model at index {i} must have a 'name'"}), 400
+
+    # Validate each engine has a name
+    for i, engine in enumerate(engines):
+        if not isinstance(engine, dict) or not engine.get("name"):
+            return jsonify({"error": f"Engine at index {i} must have a 'name'"}), 400
+
+    agent_id = data.get("agent_id", "")
+    if agent_id:
+        from kitt.web.app import get_services
+
+        agent_mgr = get_services()["agent_manager"]
+        if agent_mgr.get_agent(agent_id) is None:
+            return jsonify({"error": "Agent not found"}), 404
+
     svc = _get_campaign_service()
     campaign_id = svc.create(
         name=name,
-        config_json=data.get("config", {}),
+        config_json=config,
         description=data.get("description", ""),
-        agent_id=data.get("agent_id", ""),
+        agent_id=agent_id,
     )
     return jsonify({"id": campaign_id}), 201
 
@@ -92,6 +120,27 @@ def launch_campaign(campaign_id):
         return jsonify({"error": "No agent assigned to this campaign"}), 400
 
     svc.update_status(campaign_id, "queued")
+
+    # If the assigned agent is a test agent, simulate the campaign
+    from kitt.web.app import get_services
+
+    services = get_services()
+    agent_mgr = services["agent_manager"]
+
+    if agent_mgr.is_test_agent(campaign["agent_id"]):
+        from kitt.web.services.test_simulator import spawn_campaign_simulation
+
+        spawn_campaign_simulation(
+            campaign_id=campaign_id,
+            agent_id=campaign["agent_id"],
+            config=campaign.get("config", {}),
+            db_conn=services["db_conn"],
+            db_write_lock=services["db_write_lock"],
+            result_service=services["result_service"],
+            campaign_service=svc,
+            agent_manager=agent_mgr,
+        )
+
     return jsonify({"status": "queued"}), 202
 
 

@@ -55,6 +55,51 @@ def add():
     return render_template("agents/add.html", server_url=server_url)
 
 
+@bp.route("/create-test", methods=["GET"])
+def create_test_form():
+    """Show form to create a virtual test agent."""
+    return render_template("agents/create_test.html")
+
+
+@bp.route("/create-test", methods=["POST"])
+@csrf_protect
+def create_test():
+    """Create a virtual test agent."""
+    from kitt.web.app import get_services
+
+    agent_mgr = get_services()["agent_manager"]
+
+    name = request.form.get("name", "").strip()
+    if not name:
+        flash("Name is required", "error")
+        return redirect(url_for("agents.create_test_form"))
+
+    # Check for duplicate name
+    if agent_mgr.get_agent_by_name(name):
+        flash("An agent with that name already exists", "error")
+        return redirect(url_for("agents.create_test_form"))
+
+    try:
+        gpu_count = int(request.form.get("gpu_count", "1"))
+        ram_gb = int(request.form.get("ram_gb", "64"))
+    except (ValueError, TypeError):
+        flash("GPU count and RAM must be numbers", "error")
+        return redirect(url_for("agents.create_test_form"))
+
+    result = agent_mgr.create_test_agent(
+        name=name,
+        gpu_info=request.form.get("gpu_info", "NVIDIA RTX 4090 24GB"),
+        gpu_count=gpu_count,
+        cpu_info=request.form.get("cpu_info", "Intel Core i9-13900K"),
+        cpu_arch=request.form.get("cpu_arch", "x86_64"),
+        ram_gb=ram_gb,
+        environment_type=request.form.get("environment_type", "native_linux"),
+    )
+
+    flash("Test agent created", "success")
+    return redirect(url_for("agents.detail", agent_id=result["agent_id"]))
+
+
 @bp.route("/<agent_id>/settings", methods=["POST"])
 @csrf_protect
 def update_settings(agent_id):
