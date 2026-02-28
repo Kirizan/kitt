@@ -5,7 +5,7 @@ KARR uses a relational database to store benchmark results, agent state, campaig
 progress, and event logs. The schema is versioned and managed through an
 automatic migration system.
 
-**Current schema version:** 8
+**Current schema version:** 10
 
 ## Migration System
 
@@ -111,6 +111,7 @@ Registered agent daemons for distributed execution.
 | `registered_at` | TEXT | | ISO-8601 registration timestamp |
 | `notes` | TEXT | | Free-form notes |
 | `tags` | TEXT | | JSON array of tags for filtering |
+| `cpu_arch` | TEXT | | CPU architecture (`amd64`, `arm64`) (v9) |
 
 ### web_campaigns
 
@@ -122,7 +123,7 @@ Campaign definitions and progress tracking for the web dashboard.
 | `name` | TEXT | | Campaign display name |
 | `description` | TEXT | | Human-readable description |
 | `config_json` | TEXT | | Full campaign configuration as JSON |
-| `status` | TEXT | | Current status (`pending`, `running`, `completed`, `failed`) |
+| `status` | TEXT | | Current status (`draft`, `queued`, `running`, `completed`, `failed`, `cancelled`) |
 | `agent_id` | TEXT | FOREIGN KEY -> agents(id) | Assigned agent |
 | `created_at` | TEXT | | Creation timestamp |
 | `started_at` | TEXT | | Execution start timestamp |
@@ -196,6 +197,17 @@ Per-agent configurable settings, synced to agents via heartbeat (v8).
 | `key` | TEXT | UNIQUE(agent_id, key) | Setting key |
 | `value` | TEXT | | Setting value |
 
+### campaign_logs
+
+Persistent log storage for campaign execution output (v10).
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | INTEGER | PRIMARY KEY AUTOINCREMENT | Row identifier |
+| `campaign_id` | TEXT | FOREIGN KEY -> web_campaigns(id) | Parent campaign |
+| `line` | TEXT | | Log line content |
+| `created_at` | TEXT | | ISO-8601 timestamp |
+
 ## Indexes
 
 The following indexes are created to accelerate common query patterns:
@@ -207,11 +219,21 @@ The following indexes are created to accelerate common query patterns:
 | `idx_runs_suite_name` | runs | `suite_name` |
 | `idx_runs_timestamp` | runs | `timestamp` |
 | `idx_benchmarks_run_id` | benchmarks | `run_id` |
+| `idx_benchmarks_test_name` | benchmarks | `test_name` |
 | `idx_metrics_benchmark_id` | metrics | `benchmark_id` |
+| `idx_metrics_name` | metrics | `metric_name` |
 | `idx_hardware_run_id` | hardware | `run_id` |
-| `idx_events_event_type` | events | `event_type` |
-| `idx_events_source_id` | events | `source_id` |
-| `idx_events_created_at` | events | `created_at` |
+| `idx_agents_name` | agents | `name` |
+| `idx_agents_status` | agents | `status` |
+| `idx_web_campaigns_status` | web_campaigns | `status` |
+| `idx_web_campaigns_agent` | web_campaigns | `agent_id` |
+| `idx_quick_tests_agent` | quick_tests | `agent_id` |
+| `idx_quick_tests_status` | quick_tests | `status` |
+| `idx_events_type` | events | `event_type` |
+| `idx_events_source` | events | `source_id` |
+| `idx_quick_test_logs_test` | quick_test_logs | `test_id` |
+| `idx_campaign_logs_campaign` | campaign_logs | `campaign_id` |
+| `idx_agent_settings_agent` | agent_settings | `agent_id` |
 
 ## PostgreSQL Differences
 

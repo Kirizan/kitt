@@ -128,6 +128,33 @@ existing results directory:
 kitt campaign create --from-results ./kitt-results -o replay.yaml
 ```
 
+## Web UI Campaign Wizard
+
+The web dashboard provides a step-by-step wizard for creating campaigns without writing YAML. Navigate to **Campaigns > Create Campaign** and follow the six steps:
+
+1. **Basics** — enter a campaign name and optional description.
+2. **Agent** — select the target agent. The chosen agent's hardware determines which engines are compatible.
+3. **Engines** — pick one or more engines. Format badges (safetensors, GGUF) and platform warnings are shown based on the selected agent's CPU architecture.
+4. **Models** — a searchable multi-select checklist of models found in the configured model directory, filtered to only show models compatible with the selected engines' supported formats.
+5. **Settings** — choose the test suite, toggle Devon-managed model handling, and enable post-run cleanup.
+6. **Review** — a compatibility matrix shows which model/engine combinations will actually run. Confirm to create the campaign.
+
+After creation, click **Launch** on the campaign detail page to start execution.
+
+## Agent-Based Dispatch
+
+When a campaign is launched on a remote agent from the web UI, KITT breaks the campaign config into individual quick test rows and queues them one at a time. Each test is picked up by the agent's heartbeat, dispatched for execution, and the campaign executor waits for it to finish before queuing the next.
+
+The campaign detail page streams live progress logs over SSE showing:
+
+- Which model/engine/benchmark combination is running
+- Agent status transitions (queued, dispatched, running, completed)
+- Success/failure counts and final summary
+
+Campaign logs are persisted to the database, so they survive page refreshes and remain available after the campaign completes. Each test has a 30-minute timeout.
+
+Campaigns launched on a **test agent** use simulated execution instead — see the [Test Agents](agents.md#test-agents) section.
+
 ## Key Options Reference
 
 | Option | Description |
