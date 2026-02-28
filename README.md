@@ -305,7 +305,8 @@ Navigate to **Campaigns → Create Campaign** in the web dashboard. The step-by-
 2. **Agent** — select the target agent (determines engine compatibility)
 3. **Engines** — pick one or more engines, with format badges and platform warnings based on the selected agent
 4. **Models** — searchable multi-select checklist filtered by the selected engines' supported formats
-5. **Review** — compatibility matrix showing which model/engine combinations will run
+5. **Settings** — suite selection, Devon-managed model toggle, and post-run cleanup option
+6. **Review** — compatibility matrix showing which model/engine combinations will run
 
 After creation, click **Launch** to start the campaign. The detail page shows live log streaming and per-test status updates in real time.
 
