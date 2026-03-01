@@ -149,6 +149,16 @@ def cleanup_storage(agent_id):
     return Markup('<span class="text-xs text-green-400">Cleanup command queued</span>')
 
 
+@bp.route("/<agent_id>/engines")
+def agent_engines(agent_id):
+    """HTMX partial: engine status table for an agent."""
+    from kitt.web.app import get_services
+
+    engine_svc = get_services()["engine_service"]
+    engines = engine_svc.get_agent_engines(agent_id)
+    return render_template("partials/agent_engines.html", engines=engines)
+
+
 @bp.route("/<agent_id>/delete", methods=["POST"])
 @csrf_protect
 def delete(agent_id):
