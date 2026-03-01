@@ -181,6 +181,7 @@ def create_app(
     from kitt.web.blueprints.campaigns import bp as campaigns_bp
     from kitt.web.blueprints.dashboard import bp as dashboard_bp
     from kitt.web.blueprints.devon import bp as devon_bp
+    from kitt.web.blueprints.engines import bp as engines_bp
     from kitt.web.blueprints.models import bp as models_bp
     from kitt.web.blueprints.quicktest import bp as quicktest_bp
     from kitt.web.blueprints.results import bp as results_bp
@@ -188,6 +189,7 @@ def create_app(
 
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(agents_bp)
+    app.register_blueprint(engines_bp)
     app.register_blueprint(devon_bp)
     app.register_blueprint(models_bp)
     app.register_blueprint(campaigns_bp)
@@ -201,6 +203,7 @@ def create_app(
     from kitt.web.api.v1.campaigns import bp as api_campaigns_bp
     from kitt.web.api.v1.devon import bp as api_devon_bp
     from kitt.web.api.v1.devon_proxy import bp as devon_proxy_bp
+    from kitt.web.api.v1.engines import bp as api_engines_bp
     from kitt.web.api.v1.events import bp as api_events_bp
     from kitt.web.api.v1.health import bp as health_bp
     from kitt.web.api.v1.models import bp as api_models_bp
@@ -209,6 +212,7 @@ def create_app(
 
     app.register_blueprint(health_bp)
     app.register_blueprint(api_agents_bp)
+    app.register_blueprint(api_engines_bp)
     app.register_blueprint(api_devon_bp)
     app.register_blueprint(devon_proxy_bp)
     app.register_blueprint(api_agent_install_bp)
