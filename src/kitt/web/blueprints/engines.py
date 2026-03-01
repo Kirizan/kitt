@@ -29,11 +29,13 @@ def _get_engine_registry():
         EngineRegistry.auto_discover()
         engines = []
         for name, cls in EngineRegistry.list_engines().items():
-            engines.append({
-                "name": name,
-                "supported_modes": [m.value for m in cls.supported_modes()],
-                "default_mode": cls.default_mode().value,
-            })
+            engines.append(
+                {
+                    "name": name,
+                    "supported_modes": [m.value for m in cls.supported_modes()],
+                    "default_mode": cls.default_mode().value,
+                }
+            )
         return engines
     except Exception:
         return []

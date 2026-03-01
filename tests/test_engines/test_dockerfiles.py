@@ -1,6 +1,6 @@
 """Tests for KITT-managed Dockerfiles — validate files exist and contain expected content."""
 
-from kitt.engines.image_resolver import _BUILD_RECIPES, _PROJECT_ROOT, get_build_recipe
+from kitt.engines.image_resolver import _BUILD_RECIPES, get_build_recipe
 
 
 class TestDockerfilesExist:
@@ -46,5 +46,3 @@ class TestLlamaCppDockerfileSpark:
 
     def test_enables_native(self):
         assert "GGML_NATIVE=ON" in self.content
-
-

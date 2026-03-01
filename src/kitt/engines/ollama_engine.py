@@ -119,7 +119,9 @@ class OllamaEngine(InferenceEngine):
         try:
             result = subprocess.run(
                 ["systemctl", "is-active", "ollama"],
-                capture_output=True, text=True, timeout=5,
+                capture_output=True,
+                text=True,
+                timeout=5,
             )
             already_running = result.stdout.strip() == "active"
         except (FileNotFoundError, subprocess.TimeoutExpired):
@@ -147,10 +149,12 @@ class OllamaEngine(InferenceEngine):
             self._model_name = "kitt-local-model"
             modelfile_content = f"FROM {gguf_file}\n"
             logger.info("Importing local GGUF '%s' into Ollama...", gguf_file)
-            create_payload = json.dumps({
-                "name": self._model_name,
-                "modelfile": modelfile_content,
-            }).encode("utf-8")
+            create_payload = json.dumps(
+                {
+                    "name": self._model_name,
+                    "modelfile": modelfile_content,
+                }
+            ).encode("utf-8")
             req = urllib.request.Request(
                 f"{self._base_url}/api/create",
                 data=create_payload,

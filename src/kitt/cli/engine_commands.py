@@ -304,7 +304,6 @@ def profiles():
 @click.option("--engine", default=None, help="Filter profiles by engine name")
 def list_profiles(engine):
     """List all saved engine profiles."""
-    from kitt.web.services.engine_service import EngineService
 
     svc = _get_engine_service()
     if svc is None:

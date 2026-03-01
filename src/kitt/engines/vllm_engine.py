@@ -74,9 +74,12 @@ class VLLMEngine(InferenceEngine):
         self._model_name = model_path
 
         args = [
-            "-m", "vllm.entrypoints.openai.api_server",
-            "--model", model_path,
-            "--port", str(port),
+            "-m",
+            "vllm.entrypoints.openai.api_server",
+            "--model",
+            model_path,
+            "--port",
+            str(port),
         ]
 
         if config.get("tensor_parallel_size", 1) > 1:
@@ -86,7 +89,9 @@ class VLLMEngine(InferenceEngine):
 
         binary = ProcessManager.find_binary("python3") or "python3"
         self._process = ProcessManager.start_process(
-            binary, args, env=config.get("env", {}),
+            binary,
+            args,
+            env=config.get("env", {}),
         )
 
         health_url = f"http://localhost:{port}{self.health_endpoint()}"

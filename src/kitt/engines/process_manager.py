@@ -1,12 +1,14 @@
 """Native process lifecycle management for inference engines."""
 
+import contextlib
 import logging
 import os
 import shutil
 import signal
 import subprocess
 import time
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -77,8 +79,8 @@ class ProcessManager:
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
             )
-        except FileNotFoundError:
-            raise FileNotFoundError(f"Binary not found: {binary}")
+        except FileNotFoundError as exc:
+            raise FileNotFoundError(f"Binary not found: {binary}") from exc
         except OSError as exc:
             raise RuntimeError(f"Failed to start process: {exc}") from exc
 
@@ -168,7 +170,5 @@ class ProcessManager:
                 return
 
         # Force kill
-        try:
+        with contextlib.suppress(OSError, ProcessLookupError):
             os.kill(pid, signal.SIGKILL)
-        except (OSError, ProcessLookupError):
-            pass

@@ -103,13 +103,15 @@ def engine_registry():
         EngineRegistry.auto_discover()
         engines = []
         for name, cls in EngineRegistry.list_engines().items():
-            engines.append({
-                "name": name,
-                "supported_modes": [m.value for m in cls.supported_modes()],
-                "default_mode": cls.default_mode().value,
-                "default_image": cls.default_image(),
-                "container_port": cls.container_port(),
-            })
+            engines.append(
+                {
+                    "name": name,
+                    "supported_modes": [m.value for m in cls.supported_modes()],
+                    "default_mode": cls.default_mode().value,
+                    "default_image": cls.default_image(),
+                    "container_port": cls.container_port(),
+                }
+            )
         return jsonify({"engines": engines})
     except Exception as e:
         logger.warning("Failed to list engine registry: %s", e)

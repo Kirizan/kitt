@@ -109,11 +109,16 @@ class LlamaCppEngine(InferenceEngine):
         n_ctx = config.get("n_ctx", 4096)
 
         args = [
-            "-m", gguf_file,
-            "--n-gpu-layers", str(n_gpu_layers),
-            "-c", str(n_ctx),
-            "--host", "0.0.0.0",
-            "--port", str(port),
+            "-m",
+            gguf_file,
+            "--n-gpu-layers",
+            str(n_gpu_layers),
+            "-c",
+            str(n_ctx),
+            "--host",
+            "0.0.0.0",
+            "--port",
+            str(port),
         ]
 
         binary = ProcessManager.find_binary("llama-server")
@@ -123,7 +128,9 @@ class LlamaCppEngine(InferenceEngine):
             )
 
         self._process = ProcessManager.start_process(
-            binary, args, env=config.get("env", {}),
+            binary,
+            args,
+            env=config.get("env", {}),
         )
 
         health_url = f"http://localhost:{port}{self.health_endpoint()}"
