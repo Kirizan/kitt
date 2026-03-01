@@ -10,6 +10,7 @@ import logging
 import os
 import shutil
 import subprocess as sp
+import sys
 import threading
 import time
 from typing import Any
@@ -58,16 +59,18 @@ class EngineOps:
 
         if name == "vllm":
             # vLLM is a Python module, not a standalone binary.
+            # Use sys.executable so we find vllm in the agent venv.
+            python = sys.executable
             try:
                 out = sp.run(
-                    ["python3", "-c", "import vllm; print(vllm.__version__)"],
+                    [python, "-c", "import vllm; print(vllm.__version__)"],
                     capture_output=True,
                     text=True,
                     timeout=10,
                 )
                 if out.returncode == 0:
                     result["installed"] = True
-                    result["binary_path"] = "python3 -m vllm"
+                    result["binary_path"] = f"{python} -m vllm"
                     result["version"] = out.stdout.strip()
             except (FileNotFoundError, sp.TimeoutExpired):
                 pass
@@ -302,10 +305,40 @@ def _install_ollama(log: Any) -> dict[str, Any]:
 
 
 def _install_llama_cpp(log: Any) -> dict[str, Any]:
-    """Install llama.cpp llama-server from pre-built release or source."""
-    log("Attempting to install llama-server via pip (llama-cpp-python[server])...")
+    """Install llama.cpp llama-server from source or package manager."""
+    # Method 1: Build from source with CUDA (most reliable on ARM64/Blackwell).
+    if shutil.which("cmake") and shutil.which("git"):
+        log("Building llama.cpp from source with CUDA support...")
+        nvcc = shutil.which("nvcc") or "/usr/local/cuda/bin/nvcc"
+        cuda_arch = os.environ.get("CUDA_ARCHITECTURES", "native")
+        build_script = (
+            "cd /tmp && rm -rf llama.cpp"
+            " && git clone --depth 1 https://github.com/ggml-org/llama.cpp.git"
+            " && cd llama.cpp"
+            f" && cmake -B build -DGGML_CUDA=ON"
+            f" -DCMAKE_CUDA_ARCHITECTURES={cuda_arch}"
+            f" -DCMAKE_CUDA_COMPILER={nvcc}"
+            " && cmake --build build --config Release -j$(nproc) --target llama-server"
+            " && sudo cp build/bin/llama-server /usr/local/bin/"
+            " && rm -rf /tmp/llama.cpp"
+        )
+        result = sp.run(
+            ["bash", "-c", build_script],
+            capture_output=True,
+            text=True,
+            timeout=600,
+        )
+        if result.returncode == 0:
+            info = EngineOps.find_engine("llama_cpp")
+            if info["installed"]:
+                log(f"llama-server built and installed (version {info['version']})")
+                return {"success": True, "version": info["version"], "error": ""}
+        log(f"Source build failed: {result.stderr.strip()[-200:]}")
+
+    # Method 2: Try pip into the current venv.
+    log("Trying pip install llama-cpp-python[server]...")
     result = sp.run(
-        ["pip3", "install", "llama-cpp-python[server]"],
+        [sys.executable, "-m", "pip", "install", "llama-cpp-python[server]"],
         capture_output=True,
         text=True,
         timeout=600,
@@ -313,34 +346,21 @@ def _install_llama_cpp(log: Any) -> dict[str, Any]:
     if result.returncode == 0:
         info = EngineOps.find_engine("llama_cpp")
         if info["installed"]:
-            log(f"llama-server installed (version {info['version']})")
-            return {"success": True, "version": info["version"], "error": ""}
-
-    log("pip install failed or llama-server not in PATH — trying snap...")
-    result = sp.run(
-        ["snap", "install", "llama-cpp", "--classic"],
-        capture_output=True,
-        text=True,
-        timeout=300,
-    )
-    if result.returncode == 0:
-        info = EngineOps.find_engine("llama_cpp")
-        if info["installed"]:
-            log(f"llama-server installed via snap (version {info['version']})")
+            log(f"llama-server installed via pip (version {info['version']})")
             return {"success": True, "version": info["version"], "error": ""}
 
     return {
         "success": False,
         "version": "",
-        "error": "Could not install llama-server via pip or snap",
+        "error": "Could not install llama-server from source or pip",
     }
 
 
 def _install_vllm(log: Any) -> dict[str, Any]:
-    """Install vLLM via pip."""
+    """Install vLLM via pip into the current Python environment."""
     log("Installing vLLM via pip...")
     result = sp.run(
-        ["pip3", "install", "vllm"],
+        [sys.executable, "-m", "pip", "install", "vllm"],
         capture_output=True,
         text=True,
         timeout=600,
@@ -507,7 +527,7 @@ def _start_vllm(
 ) -> sp.Popen[str]:
     """Start a vLLM OpenAI-compatible server."""
     args = [
-        "python3",
+        sys.executable,
         "-m",
         "vllm.entrypoints.openai.api_server",
         "--port",
