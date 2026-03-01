@@ -75,22 +75,6 @@ class TestResolveImage:
         result = resolve_image("llama_cpp", "ghcr.io/ggml-org/llama.cpp:server-cuda")
         assert result == "ghcr.io/ggml-org/llama.cpp:server-cuda"
 
-    @patch("kitt.engines.image_resolver._detect_arch", return_value="arm64")
-    @patch("kitt.engines.image_resolver._detect_cc", return_value=(12, 1))
-    def test_tgi_blackwell_returns_default(self, mock_cc, mock_arch):
-        """TGI on Blackwell returns default (no viable ARM64+sm_121 build)."""
-        default = "ghcr.io/huggingface/text-generation-inference:latest"
-        result = resolve_image("tgi", default)
-        assert result == default
-
-    @patch("kitt.engines.image_resolver._detect_arch", return_value="amd64")
-    @patch("kitt.engines.image_resolver._detect_cc", return_value=(8, 9))
-    def test_tgi_non_blackwell_returns_default(self, mock_cc, mock_arch):
-        """TGI on non-Blackwell returns default."""
-        default = "ghcr.io/huggingface/text-generation-inference:latest"
-        result = resolve_image("tgi", default)
-        assert result == default
-
     @patch("kitt.engines.image_resolver._detect_arch", return_value="amd64")
     @patch("kitt.engines.image_resolver._detect_cc", return_value=(12, 1))
     def test_unknown_engine_returns_default(self, mock_cc, mock_arch):
@@ -123,7 +107,6 @@ class TestGetSupportedEngines:
         """All engines in _IMAGE_OVERRIDES should be returned."""
         engines = get_supported_engines()
         assert "vllm" in engines
-        assert "tgi" in engines
         assert "llama_cpp" in engines
         assert "ollama" in engines
 
@@ -136,10 +119,6 @@ class TestHasHardwareOverrides:
     def test_vllm_has_overrides(self):
         """vLLM has Blackwell overrides."""
         assert has_hardware_overrides("vllm") is True
-
-    def test_tgi_no_overrides(self):
-        """TGI has no viable Blackwell build (custom CUDA kernels missing)."""
-        assert has_hardware_overrides("tgi") is False
 
     def test_llama_cpp_has_overrides(self):
         """llama.cpp has Blackwell overrides for ARM64+CUDA."""
@@ -169,11 +148,6 @@ class TestBuildRecipe:
         assert recipe.target == "server"
         assert recipe.experimental is False
 
-    def test_tgi_recipe_removed(self):
-        """TGI build recipe removed — image is non-functional on Spark."""
-        recipe = get_build_recipe("kitt/tgi:spark")
-        assert recipe is None
-
     def test_registry_image_has_no_recipe(self):
         assert get_build_recipe("vllm/vllm-openai:latest") is None
         assert get_build_recipe("nvcr.io/nvidia/vllm:26.01-py3") is None
@@ -193,8 +167,6 @@ class TestIsKittManagedImage:
     def test_kitt_managed_images(self):
         assert is_kitt_managed_image("kitt/llama-cpp:spark") is True
         assert is_kitt_managed_image("kitt/llama-cpp:arm64") is True
-        # TGI build recipe removed (non-functional on Spark)
-        assert is_kitt_managed_image("kitt/tgi:spark") is False
 
     def test_registry_images(self):
         assert is_kitt_managed_image("vllm/vllm-openai:latest") is False
@@ -225,14 +197,6 @@ class TestFutureHardwareCompatibility:
         """A future x86_64 GPU should match llama.cpp spark build (wildcard arch)."""
         result = resolve_image("llama_cpp", "ghcr.io/ggml-org/llama.cpp:server-cuda")
         assert result == "kitt/llama-cpp:spark"
-
-    @patch("kitt.engines.image_resolver._detect_arch", return_value="amd64")
-    @patch("kitt.engines.image_resolver._detect_cc", return_value=(15, 0))
-    def test_future_gpu_tgi_returns_default(self, mock_cc, mock_arch):
-        """TGI has no viable build — returns default on any hardware."""
-        default = "ghcr.io/huggingface/text-generation-inference:latest"
-        result = resolve_image("tgi", default)
-        assert result == default
 
     @patch("kitt.engines.image_resolver._detect_arch", return_value="amd64")
     @patch("kitt.engines.image_resolver._detect_cc", return_value=(7, 5))
@@ -371,11 +335,6 @@ class TestArchAwareResolution:
 class TestGetEngineCompatibility:
     """Tests for per-engine platform compatibility reporting."""
 
-    def test_arm64_marks_tgi_incompatible(self):
-        result = get_engine_compatibility("arm64")
-        assert result["tgi"]["compatible"] is False
-        assert "reason" in result["tgi"]
-
     def test_arm64_marks_exllamav2_incompatible(self):
         result = get_engine_compatibility("arm64")
         assert result["exllamav2"]["compatible"] is False
@@ -412,7 +371,6 @@ class TestGetEngineCompatibility:
     def test_aarch64_normalized_to_arm64(self):
         """Kernel convention 'aarch64' should be normalized to arm64."""
         result = get_engine_compatibility("aarch64")
-        assert result["tgi"]["compatible"] is False
         assert result["exllamav2"]["compatible"] is False
         assert result["vllm"]["compatible"] is True
 
@@ -436,7 +394,6 @@ class TestGetEngineCompatibility:
         """Result should include all engines from _IMAGE_OVERRIDES."""
         result = get_engine_compatibility("amd64")
         assert "vllm" in result
-        assert "tgi" in result
         assert "llama_cpp" in result
         assert "ollama" in result
         assert "exllamav2" in result

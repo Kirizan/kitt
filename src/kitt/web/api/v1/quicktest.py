@@ -50,7 +50,7 @@ def agent_capabilities():
                 "cpu_arch": "aarch64",
                 "engines": {
                     "vllm": {"compatible": true},
-                    "tgi": {"compatible": false, "reason": "..."}
+                    "llama_cpp": {"compatible": false, "reason": "..."}
                 }
             }
         }

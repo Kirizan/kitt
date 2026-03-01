@@ -11,11 +11,6 @@ class TestDockerfilesExist:
             f"Dockerfile not found: {recipe.dockerfile_path}"
         )
 
-    def test_tgi_dockerfile_exists_as_reference(self):
-        """TGI Dockerfile exists as reference even though build recipe is removed."""
-        path = _PROJECT_ROOT / "docker" / "tgi" / "Dockerfile.spark"
-        assert path.exists(), f"Reference Dockerfile not found: {path}"
-
     def test_all_recipes_have_dockerfiles(self):
         """Every BuildRecipe must reference an existing Dockerfile."""
         for image, recipe in _BUILD_RECIPES.items():
@@ -53,29 +48,3 @@ class TestLlamaCppDockerfileSpark:
         assert "GGML_NATIVE=ON" in self.content
 
 
-class TestTgiDockerfileSpark:
-    """TGI Dockerfile kept as reference — non-functional due to missing CUDA kernels."""
-
-    def setup_method(self):
-        path = _PROJECT_ROOT / "docker" / "tgi" / "Dockerfile.spark"
-        self.content = path.read_text()
-
-    def test_uses_cuda_13(self):
-        assert "CUDA_VERSION=13" in self.content
-
-    def test_non_functional_warning(self):
-        assert "NON-FUNCTIONAL" in self.content
-
-    def test_installs_rust(self):
-        assert "rustup" in self.content
-
-    def test_clones_tgi(self):
-        assert "text-generation-inference" in self.content
-
-    def test_has_multi_stage_build(self):
-        assert "AS build" in self.content
-        assert "AS runtime" in self.content
-
-    def test_targets_sm_121(self):
-        # TGI uses CUDA_COMPUTE_CAP or TORCH_CUDA_ARCH_LIST
-        assert "121" in self.content or "12.1" in self.content

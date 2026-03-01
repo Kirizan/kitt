@@ -145,7 +145,7 @@ class TestEngineFormatsEndpoint:
         resp = client.get("/api/v1/quicktest/engine-formats")
         data = resp.get_json()
         # At minimum these engines should be present
-        for engine in ["vllm", "tgi", "llama_cpp", "ollama"]:
+        for engine in ["vllm", "llama_cpp", "ollama"]:
             assert engine in data
 
 
@@ -233,8 +233,6 @@ class TestAgentCapabilitiesEndpoint:
         assert agent_caps["name"] == "spark"
         assert agent_caps["cpu_arch"] == "aarch64"
         assert "engines" in agent_caps
-        # TGI should be incompatible on ARM64
-        assert agent_caps["engines"]["tgi"]["compatible"] is False
         # vLLM should be compatible
         assert agent_caps["engines"]["vllm"]["compatible"] is True
 

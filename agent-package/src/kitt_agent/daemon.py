@@ -466,7 +466,7 @@ def create_agent_app(
     # Flask routes
     # ---------------------------------------------------------------
 
-    _VALID_ENGINES = {"vllm", "tgi", "llama_cpp", "ollama"}
+    _VALID_ENGINES = {"vllm", "llama_cpp", "ollama", "exllamav2", "mlx"}
     _VALID_SUITES = {"quick", "standard", "performance"}
 
     def _check_auth():
