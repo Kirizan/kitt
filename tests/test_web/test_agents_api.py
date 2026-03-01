@@ -59,6 +59,8 @@ def _create_schema(conn: sqlite3.Connection) -> None:
             suite_name TEXT DEFAULT 'quick',
             status TEXT DEFAULT 'queued',
             command_id TEXT,
+            engine_mode TEXT DEFAULT 'docker',
+            profile_id TEXT DEFAULT '',
             error TEXT DEFAULT '',
             created_at TEXT,
             started_at TEXT,

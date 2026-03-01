@@ -26,16 +26,28 @@ def models():
 
 @bp.route("/engine-formats", methods=["GET"])
 def engine_formats():
-    """Return supported model formats per engine."""
+    """Return supported model formats and modes per engine."""
     from kitt.engines.registry import EngineRegistry
 
     EngineRegistry.auto_discover()
-    return jsonify(
-        {
-            name: cls.supported_formats()
-            for name, cls in EngineRegistry.list_engines().items()
+    result = {}
+    for name, cls in EngineRegistry.list_engines().items():
+        result[name] = {
+            "formats": cls.supported_formats(),
+            "modes": [m.value for m in cls.supported_modes()],
+            "default_mode": cls.default_mode().value,
         }
-    )
+    return jsonify(result)
+
+
+@bp.route("/engine-profiles", methods=["GET"])
+def engine_profiles():
+    """Return engine profiles for the quicktest form."""
+    from kitt.web.app import get_services
+
+    engine_svc = get_services()["engine_service"]
+    profiles = engine_svc.list_profiles()
+    return jsonify({"profiles": profiles})
 
 
 @bp.route("/agent-capabilities", methods=["GET"])
@@ -181,6 +193,8 @@ def launch():
     test_id = uuid.uuid4().hex[:16]
     command_id = uuid.uuid4().hex[:16]
     now = datetime.now().isoformat()
+    engine_mode = data.get("engine_mode", "docker")
+    profile_id = data.get("profile_id", "")
 
     conn = services["db_conn"]
     db_write_lock = services["db_write_lock"]
@@ -188,8 +202,8 @@ def launch():
         conn.execute(
             """INSERT INTO quick_tests
                (id, agent_id, model_path, engine_name, benchmark_name, suite_name,
-                status, command_id, created_at)
-               VALUES (?, ?, ?, ?, ?, ?, 'queued', ?, ?)""",
+                status, command_id, engine_mode, profile_id, created_at)
+               VALUES (?, ?, ?, ?, ?, ?, 'queued', ?, ?, ?, ?)""",
             (
                 test_id,
                 data["agent_id"],
@@ -198,6 +212,8 @@ def launch():
                 data.get("benchmark_name", "throughput"),
                 data.get("suite_name", "quick"),
                 command_id,
+                engine_mode,
+                profile_id,
                 now,
             ),
         )

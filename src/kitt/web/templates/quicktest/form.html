@@ -86,6 +86,29 @@
             </div>
         </div>
 
+        <!-- Engine Mode & Profile -->
+        <div class="grid grid-cols-2 gap-4">
+            <div>
+                <label class="block text-sm text-kitt-dim mb-1">Engine Mode</label>
+                <select x-model="form.engine_mode"
+                        class="w-full bg-kitt-bg border border-kitt-primary/50 rounded-md px-4 py-2 text-sm focus:outline-none focus:border-kitt-accent">
+                    <template x-for="mode in currentEngineModes" :key="mode">
+                        <option :value="mode" x-text="mode"></option>
+                    </template>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm text-kitt-dim mb-1">Profile <span class="text-kitt-dim font-normal">(optional)</span></label>
+                <select x-model="form.profile_id"
+                        class="w-full bg-kitt-bg border border-kitt-primary/50 rounded-md px-4 py-2 text-sm focus:outline-none focus:border-kitt-accent">
+                    <option value="">None</option>
+                    <template x-for="p in filteredProfiles" :key="p.id">
+                        <option :value="p.id" x-text="p.name + ' (' + p.mode + ')'"></option>
+                    </template>
+                </select>
+            </div>
+        </div>
+
         <!-- Benchmark -->
         <div>
             <label class="block text-sm text-kitt-dim mb-1">Benchmark</label>
@@ -134,63 +157,85 @@ function quickTest() {
             agent_id: '',
             model_path: '',
             engine_name: '',
+            engine_mode: 'docker',
+            profile_id: '',
             benchmark_name: 'throughput',
         },
         allModels: [],
         engineFormats: {},
+        engineProfiles: [],
         agentCapabilities: {},
         overrideCompat: false,
         launching: false,
 
         async loadData() {
             try {
-                const [modelsResp, formatsResp, capsResp] = await Promise.all([
+                const [modelsResp, formatsResp, capsResp, profilesResp] = await Promise.all([
                     fetch('/api/v1/quicktest/models'),
                     fetch('/api/v1/quicktest/engine-formats'),
                     fetch('/api/v1/quicktest/agent-capabilities'),
+                    fetch('/api/v1/quicktest/engine-profiles'),
                 ]);
                 this.allModels = await modelsResp.json();
                 this.engineFormats = await formatsResp.json();
                 this.agentCapabilities = await capsResp.json();
+                const profilesData = await profilesResp.json();
+                this.engineProfiles = profilesData.profiles || [];
             } catch (e) {
                 console.warn('Failed to load data:', e);
             }
         },
 
         onAgentChange() {
-            // Reset engine selection when agent changes — the available
-            // engines may differ for the new agent's platform.
             const prev = this.form.engine_name;
             const engines = this.availableEngines;
             const stillAvailable = engines.some(e => e.name === prev && e.compatible);
             if (!stillAvailable) {
-                // Pick first compatible engine, or clear
                 const first = engines.find(e => e.compatible);
                 this.form.engine_name = first ? first.name : '';
+                this._syncEngineMode();
             }
+        },
+
+        _syncEngineMode() {
+            // Set default mode for selected engine.
+            const info = this.engineFormats[this.form.engine_name];
+            if (info) {
+                this.form.engine_mode = info.default_mode || 'docker';
+            }
+            this.form.profile_id = '';
+        },
+
+        get currentEngineModes() {
+            const info = this.engineFormats[this.form.engine_name];
+            return info ? (info.modes || ['docker']) : ['docker'];
+        },
+
+        get filteredProfiles() {
+            if (!this.form.engine_name) return [];
+            return this.engineProfiles.filter(p => p.engine === this.form.engine_name);
         },
 
         get availableEngines() {
             const caps = this.agentCapabilities[this.form.agent_id];
             const engineEntries = caps ? caps.engines : {};
 
-            // Build list from engine-formats (all known engines)
             const engines = [];
-            for (const [name, formats] of Object.entries(this.engineFormats)) {
+            for (const [name, info] of Object.entries(this.engineFormats)) {
+                const formats = info.formats || info;
                 const compat = engineEntries[name];
                 const compatible = compat ? compat.compatible : true;
                 const reason = compat && !compatible ? compat.reason : '';
                 engines.push({
                     name,
                     label: ENGINE_LABELS[name] || name,
-                    formats,
+                    formats: Array.isArray(formats) ? formats : [],
                     compatible,
                     reason,
                 });
             }
 
             if (!this.overrideCompat) {
-                // Show compatible engines first, then incompatible (disabled)
                 engines.sort((a, b) => {
                     if (a.compatible !== b.compatible) return a.compatible ? -1 : 1;
                     return 0;
@@ -209,7 +254,6 @@ function quickTest() {
         async launch() {
             this.launching = true;
 
-            // Use search text as model_path if not set by combobox selection
             if (!this.form.model_path) {
                 this.form.model_path = document.querySelector('[x-data="modelCombobox()"] input')?.value || '';
             }
@@ -254,8 +298,9 @@ function modelCombobox() {
             if (!this.$data.overrideCompat) {
                 const engine = this.$data.form?.engine_name;
                 const engineFmts = this.$data.engineFormats || {};
-                const supported = engine && engineFmts[engine];
-                if (supported && supported.length) {
+                const info = engine && engineFmts[engine];
+                const supported = info ? (info.formats || info) : null;
+                if (supported && Array.isArray(supported) && supported.length) {
                     models = models.filter(m => {
                         if (!m.formats || !m.formats.length) return true;
                         return m.formats.some(f => supported.includes(f));

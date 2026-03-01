@@ -334,14 +334,15 @@ function campaignWizard() {
             const engineEntries = caps ? caps.engines : {};
 
             const engines = [];
-            for (const [name, formats] of Object.entries(this.engineFormats)) {
+            for (const [name, info] of Object.entries(this.engineFormats)) {
+                const formats = info.formats || info;
                 const compat = engineEntries[name];
                 const compatible = compat ? compat.compatible : true;
                 const reason = compat && !compatible ? compat.reason : '';
                 engines.push({
                     name,
                     label: ENGINE_LABELS[name] || name,
-                    formats,
+                    formats: Array.isArray(formats) ? formats : [],
                     compatible,
                     reason,
                 });
@@ -360,8 +361,9 @@ function campaignWizard() {
             // Collect all formats supported by any selected engine
             const formats = new Set();
             for (const eng of this.form.engines) {
-                const fmts = this.engineFormats[eng] || [];
-                fmts.forEach(f => formats.add(f));
+                const info = this.engineFormats[eng] || {};
+                const fmts = info.formats || info;
+                if (Array.isArray(fmts)) fmts.forEach(f => formats.add(f));
             }
             return formats;
         },
@@ -424,9 +426,10 @@ function campaignWizard() {
         },
 
         isCompatible(model, engineName) {
-            const engineFmts = this.engineFormats[engineName] || [];
+            const info = this.engineFormats[engineName] || {};
+            const engineFmts = info.formats || info;
             if (!model.formats || !model.formats.length) return true;
-            if (!engineFmts.length) return true;
+            if (!Array.isArray(engineFmts) || !engineFmts.length) return true;
             return model.formats.some(f => engineFmts.includes(f));
         },
 
