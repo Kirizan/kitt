@@ -294,7 +294,7 @@ class AgentManager:
             commands: list[dict[str, Any]] = []
             rows = self._conn.execute(
                 """SELECT id, command_id, model_path, engine_name, benchmark_name,
-                          suite_name
+                          suite_name, engine_mode, profile_id
                    FROM quick_tests
                    WHERE agent_id = ? AND status = 'queued'
                    ORDER BY created_at

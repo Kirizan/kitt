@@ -7,6 +7,7 @@ import logging
 from flask import Blueprint, flash, redirect, render_template, request, url_for
 
 from kitt.web.app import get_services
+from kitt.web.auth import csrf_protect
 
 logger = logging.getLogger(__name__)
 
@@ -65,6 +66,7 @@ def profile_new():
 
 
 @bp.route("/profiles", methods=["POST"])
+@csrf_protect
 def profile_create():
     """Create a new engine profile."""
     import json
@@ -116,6 +118,7 @@ def profile_edit(profile_id):
 
 
 @bp.route("/profiles/<profile_id>", methods=["POST"])
+@csrf_protect
 def profile_update(profile_id):
     """Update an existing engine profile."""
     import json
@@ -147,6 +150,7 @@ def profile_update(profile_id):
 
 
 @bp.route("/profiles/<profile_id>/delete", methods=["POST"])
+@csrf_protect
 def profile_delete(profile_id):
     """Delete an engine profile."""
     deleted = _svc().delete_profile(profile_id)

@@ -34,17 +34,6 @@ parameters:
 | `dtype` | `auto` | Data type (`auto`, `float16`, `bfloat16`) |
 | `trust_remote_code` | `false` | Allow custom model code from HuggingFace |
 
-### TGI (Text Generation Inference)
-
-File: `configs/engines/tgi.yaml`
-
-```yaml
-name: tgi
-parameters:
-  base_url: "http://localhost:8080"
-  max_concurrent_requests: 128
-```
-
 ### llama.cpp
 
 File: `configs/engines/llama_cpp.yaml`

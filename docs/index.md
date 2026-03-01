@@ -3,7 +3,7 @@
 **End-to-end testing suite for LLM inference engines.**
 
 KITT (Kirizan's Inference Testing Tools) measures quality consistency and
-performance across LLM inference engines -- vLLM, TGI, llama.cpp, and Ollama --
+performance across LLM inference engines -- vLLM, llama.cpp, Ollama, and more --
 so you can make informed deployment decisions backed by reproducible data.
 
 Every engine runs in a Docker container. You supply a model path, pick an engine,
@@ -15,12 +15,13 @@ collection, and result storage.
 ## Feature Highlights
 
 **Multi-Engine Support**
-:   Test across vLLM, TGI, llama.cpp, and Ollama with a single command. Compare
+:   Test across vLLM, llama.cpp, Ollama, ExLlamaV2, and MLX with a single command. Compare
     results side by side across engines.
 
-**Docker-Only Engines**
-:   Every engine runs in a container -- no host installs required. KITT manages
-    the full container lifecycle automatically.
+**Docker and Native Engines**
+:   Engines run in Docker containers or as native host processes. KITT manages
+    the full lifecycle automatically. On DGX Spark, native mode is the default
+    for Ollama and llama.cpp.
 
 **Quality Benchmarks**
 :   Evaluate model accuracy with MMLU, GSM8K, TruthfulQA, and HellaSwag.

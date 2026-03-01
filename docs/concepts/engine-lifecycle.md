@@ -51,9 +51,9 @@ Each engine exposes a different health endpoint:
 | Engine    | Health Endpoint | Default Port | Success Indicator |
 |-----------|----------------|--------------|-------------------|
 | vLLM      | `/health`      | 8000         | 200 OK |
-| TGI       | `/info`        | 8080         | 200 OK with model info |
 | Ollama    | `/api/tags`    | 11434        | 200 OK with model list |
 | llama.cpp | `/health`      | 8081         | 200 OK |
+| ExLlamaV2 | `/health`      | 8000         | 200 OK |
 
 ### 5. Benchmark Execution
 

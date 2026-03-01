@@ -48,9 +48,10 @@ class VLLMEngine(InferenceEngine):
 | Engine    | Docker Image                                            | API Style             | Default Port |
 |-----------|---------------------------------------------------------|-----------------------|--------------|
 | vLLM      | `vllm/vllm-openai:latest`                              | OpenAI `/v1/completions` | 8000         |
-| TGI       | `ghcr.io/huggingface/text-generation-inference:latest`  | HF `/generate`        | 8080         |
 | llama.cpp | `ghcr.io/ggerganov/llama.cpp:server`                    | OpenAI `/v1/completions` | 8081         |
 | Ollama    | `ollama/ollama:latest`                                  | Ollama `/api/generate` | 11434        |
+| ExLlamaV2 | `kitt/exllamav2:latest`                                 | OpenAI `/v1/completions` | 8000         |
+| MLX       | _(native only)_                                         | OpenAI `/v1/completions` | 8000         |
 
 ## Docker Management
 
@@ -144,7 +145,7 @@ agent-package/
 ```
 src/kitt/
 ├── cli/           # Click commands (run, engines, test, results, compare, web, fingerprint, stack, agent, monitoring)
-├── engines/       # Inference engine plugins (base ABC, registry, vllm, tgi, llama_cpp, ollama)
+├── engines/       # Inference engine plugins (base ABC, registry, vllm, llama_cpp, ollama, exllamav2, mlx)
 ├── benchmarks/    # Benchmark plugins (base ABC, registry, performance/*, quality/*)
 ├── config/        # Pydantic models + YAML loader
 ├── hardware/      # System fingerprinting (GPU, CPU, RAM, storage, CUDA)

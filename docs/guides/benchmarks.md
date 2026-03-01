@@ -65,7 +65,7 @@ kitt run -m /models/llama2-7b -e vllm -s standard -o ./my-results
 kitt run -m /models/mistral-7b -e llama_cpp -s performance --store-karr
 
 # Override run count
-kitt run -m /models/qwen-7b -e tgi -s standard --runs 5
+kitt run -m /models/qwen-7b -e ollama -s standard --runs 5
 ```
 
 ## Output Artifacts

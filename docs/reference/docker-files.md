@@ -57,7 +57,6 @@ This avoids cross-architecture issues when the server (amd64) and agents
 |------|---------|
 | `docker/web/Dockerfile` | Web dashboard image (also used by `kitt-agent build`) |
 | `docker/llama_cpp/Dockerfile.spark` | llama.cpp build for DGX Spark |
-| `docker/tgi/Dockerfile.spark` | TGI build for DGX Spark |
 
 ## docker-compose.yaml (Monitoring)
 
@@ -95,9 +94,9 @@ engines at `localhost:<port>`:
 | Engine | Default Port |
 |--------|-------------|
 | vLLM | 8000 |
-| TGI | 8080 |
 | llama.cpp | 8081 |
 | Ollama | 11434 |
+| ExLlamaV2 | 8000 |
 
 ## GPU passthrough
 

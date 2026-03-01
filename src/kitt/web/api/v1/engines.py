@@ -7,6 +7,7 @@ import logging
 from flask import Blueprint, jsonify, request
 
 from kitt.web.app import get_services
+from kitt.web.auth import require_auth
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +32,7 @@ def list_profiles():
 
 
 @bp.route("/profiles", methods=["POST"])
+@require_auth
 def create_profile():
     """Create a new engine profile."""
     data = request.get_json(silent=True)
@@ -61,6 +63,7 @@ def get_profile(profile_id):
 
 
 @bp.route("/profiles/<profile_id>", methods=["PUT"])
+@require_auth
 def update_profile(profile_id):
     """Update an engine profile."""
     data = request.get_json(silent=True)
@@ -74,6 +77,7 @@ def update_profile(profile_id):
 
 
 @bp.route("/profiles/<profile_id>", methods=["DELETE"])
+@require_auth
 def delete_profile(profile_id):
     """Delete an engine profile."""
     deleted = _svc().delete_profile(profile_id)

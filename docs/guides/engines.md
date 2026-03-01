@@ -1,16 +1,18 @@
 # Engines
 
-KITT supports four inference engines. Every engine runs inside a Docker
-container -- no host-level installs are needed beyond Docker itself.
+KITT supports multiple inference engines. Engines can run inside Docker
+containers or as native host processes, depending on the engine and
+environment.
 
 ## Supported Engines
 
-| Engine | Key | Docker Image | API Format | Default Port | Model Formats |
-|---|---|---|---|---|---|
-| vLLM | `vllm` | `vllm/vllm-openai:latest` | OpenAI `/v1/completions` | 8000 | safetensors, pytorch |
-| TGI | `tgi` | `ghcr.io/huggingface/text-generation-inference:latest` | HuggingFace `/generate` | 8080 | safetensors, pytorch |
-| llama.cpp | `llama_cpp` | `ghcr.io/ggerganov/llama.cpp:server` | OpenAI `/v1/completions` | 8081 | gguf |
-| Ollama | `ollama` | `ollama/ollama:latest` | Ollama `/api/generate` | 11434 | gguf |
+| Engine | Key | Docker Image | API Format | Default Port | Model Formats | Modes |
+|---|---|---|---|---|---|---|
+| vLLM | `vllm` | `vllm/vllm-openai:latest` | OpenAI `/v1/completions` | 8000 | safetensors, pytorch | docker, native |
+| llama.cpp | `llama_cpp` | `ghcr.io/ggerganov/llama.cpp:server` | OpenAI `/v1/completions` | 8081 | gguf | docker, native |
+| Ollama | `ollama` | `ollama/ollama:latest` | Ollama `/api/generate` | 11434 | gguf | docker, native |
+| ExLlamaV2 | `exllamav2` | `kitt/exllamav2:latest` | OpenAI `/v1/completions` | 8000 | exl2, gptq | docker |
+| MLX | `mlx` | _(native only)_ | OpenAI `/v1/completions` | 8000 | safetensors, mlx | native |
 
 ## Listing Engines
 
@@ -50,14 +52,14 @@ kitt engines setup ollama
 Use `--dry-run` to see the `docker pull` command without executing it:
 
 ```bash
-kitt engines setup --dry-run tgi
+kitt engines setup --dry-run llama_cpp
 ```
 
 ## Model Format Compatibility
 
 Engines are divided into two groups by the model formats they accept:
 
-**safetensors / pytorch** -- vLLM and TGI load models in their native
+**safetensors / pytorch** -- vLLM loads models in their native
 HuggingFace format. Point the `--model` flag at a directory containing
 `model.safetensors` or `pytorch_model.bin` files (or a HuggingFace repo ID
 for engines that support it).
