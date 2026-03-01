@@ -1,0 +1,398 @@
+"""Agent-side native engine lifecycle management.
+
+Handles discovery, installation, startup, shutdown, and status
+queries for inference engines running as native host processes.
+"""
+
+from __future__ import annotations
+
+import logging
+import os
+import shutil
+import signal
+import subprocess as sp
+import time
+from pathlib import Path
+from typing import Any
+
+logger = logging.getLogger(__name__)
+
+# Engine binary names to search for during discovery.
+_ENGINE_BINARIES: dict[str, list[str]] = {
+    "ollama": ["ollama"],
+    "llama_cpp": ["llama-server"],
+    "vllm": [],  # Python module — no standalone binary
+}
+
+# Default ports used by native engine servers.
+_ENGINE_PORTS: dict[str, int] = {
+    "ollama": 11434,
+    "llama_cpp": 8081,
+    "vllm": 8000,
+}
+
+
+class EngineOps:
+    """Agent-side engine lifecycle operations.
+
+    All methods are designed to be called from the daemon's command
+    dispatch, either synchronously or in a background thread.
+    """
+
+    # Active engine processes tracked by engine name.
+    _processes: dict[str, sp.Popen[str]] = {}
+
+    @staticmethod
+    def find_engine(name: str) -> dict[str, Any]:
+        """Discover whether an engine is available on the host.
+
+        Returns a dict with:
+            installed (bool), binary_path (str), version (str)
+        """
+        result: dict[str, Any] = {
+            "engine": name,
+            "installed": False,
+            "binary_path": "",
+            "version": "",
+        }
+
+        if name == "vllm":
+            # vLLM is a Python module, not a standalone binary.
+            try:
+                out = sp.run(
+                    ["python3", "-c", "import vllm; print(vllm.__version__)"],
+                    capture_output=True,
+                    text=True,
+                    timeout=10,
+                )
+                if out.returncode == 0:
+                    result["installed"] = True
+                    result["binary_path"] = "python3 -m vllm"
+                    result["version"] = out.stdout.strip()
+            except (FileNotFoundError, sp.TimeoutExpired):
+                pass
+            return result
+
+        binaries = _ENGINE_BINARIES.get(name, [])
+        for binary in binaries:
+            path = shutil.which(binary)
+            if path:
+                result["installed"] = True
+                result["binary_path"] = path
+                result["version"] = _get_version(binary, path)
+                break
+
+        return result
+
+    @staticmethod
+    def engine_status(name: str) -> dict[str, Any]:
+        """Get current status of an engine.
+
+        Returns a dict with:
+            engine, installed, binary_path, version, running, pid, port
+        """
+        info = EngineOps.find_engine(name)
+        info["running"] = False
+        info["pid"] = 0
+        info["port"] = _ENGINE_PORTS.get(name, 0)
+
+        # Check for tracked process.
+        proc = EngineOps._processes.get(name)
+        if proc and proc.poll() is None:
+            info["running"] = True
+            info["pid"] = proc.pid
+            return info
+
+        # Check if Ollama systemd service is running.
+        if name == "ollama":
+            if _is_systemd_active("ollama"):
+                info["running"] = True
+                pid = _get_systemd_pid("ollama")
+                if pid:
+                    info["pid"] = pid
+                return info
+
+        return info
+
+    @staticmethod
+    def start_engine(
+        name: str,
+        runtime_config: dict[str, Any],
+        model_path: str = "",
+        on_log: Any = None,
+    ) -> dict[str, Any]:
+        """Start a native engine process.
+
+        Returns a dict with: success, pid, port, error
+        """
+        log = on_log or logger.info
+        port = runtime_config.get("port", _ENGINE_PORTS.get(name, 0))
+
+        # Check if already running.
+        status = EngineOps.engine_status(name)
+        if status["running"]:
+            log(f"{name} is already running (PID {status['pid']})")
+            return {
+                "success": True,
+                "pid": status["pid"],
+                "port": port,
+                "error": "",
+            }
+
+        if not status["installed"]:
+            return {
+                "success": False,
+                "pid": 0,
+                "port": port,
+                "error": f"{name} is not installed",
+            }
+
+        try:
+            if name == "ollama":
+                proc = _start_ollama(port, runtime_config, log)
+            elif name == "llama_cpp":
+                proc = _start_llama_cpp(
+                    status["binary_path"], port, model_path, runtime_config, log
+                )
+            elif name == "vllm":
+                proc = _start_vllm(port, model_path, runtime_config, log)
+            else:
+                return {
+                    "success": False,
+                    "pid": 0,
+                    "port": port,
+                    "error": f"Unknown engine: {name}",
+                }
+
+            # Verify the process started.
+            time.sleep(0.5)
+            if proc.poll() is not None:
+                stderr = proc.stderr.read() if proc.stderr else ""
+                return {
+                    "success": False,
+                    "pid": 0,
+                    "port": port,
+                    "error": f"Process exited immediately: {stderr}",
+                }
+
+            EngineOps._processes[name] = proc
+            log(f"{name} started (PID {proc.pid}, port {port})")
+            return {"success": True, "pid": proc.pid, "port": port, "error": ""}
+
+        except Exception as e:
+            return {"success": False, "pid": 0, "port": port, "error": str(e)}
+
+    @staticmethod
+    def stop_engine(name: str) -> dict[str, Any]:
+        """Stop a running engine process.
+
+        Returns a dict with: success, error
+        """
+        proc = EngineOps._processes.pop(name, None)
+        if proc and proc.poll() is None:
+            try:
+                proc.terminate()
+                try:
+                    proc.wait(timeout=10)
+                except sp.TimeoutExpired:
+                    proc.kill()
+                    proc.wait(timeout=5)
+                return {"success": True, "error": ""}
+            except Exception as e:
+                return {"success": False, "error": str(e)}
+
+        # Try systemd for Ollama.
+        if name == "ollama" and _is_systemd_active("ollama"):
+            try:
+                sp.run(
+                    ["systemctl", "stop", "ollama"],
+                    capture_output=True,
+                    timeout=15,
+                )
+                return {"success": True, "error": ""}
+            except Exception as e:
+                return {"success": False, "error": str(e)}
+
+        return {"success": False, "error": f"{name} is not running"}
+
+    @staticmethod
+    def all_engine_status() -> list[dict[str, Any]]:
+        """Get status of all known engines. Used for heartbeat payload."""
+        results = []
+        for name in _ENGINE_BINARIES:
+            results.append(EngineOps.engine_status(name))
+        return results
+
+
+# -------------------------------------------------------------------
+# Internal helpers
+# -------------------------------------------------------------------
+
+
+def _get_version(binary_name: str, binary_path: str) -> str:
+    """Try to get the version string from an engine binary."""
+    try:
+        if binary_name == "ollama":
+            out = sp.run(
+                [binary_path, "--version"],
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+            # Ollama outputs: "ollama version 0.x.y"
+            return out.stdout.strip().replace("ollama version ", "")
+        elif binary_name in ("llama-server",):
+            out = sp.run(
+                [binary_path, "--version"],
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+            return out.stdout.strip().split("\n")[0]
+    except (FileNotFoundError, sp.TimeoutExpired):
+        pass
+    return ""
+
+
+def _is_systemd_active(service: str) -> bool:
+    """Check if a systemd service is active."""
+    try:
+        result = sp.run(
+            ["systemctl", "is-active", service],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        return result.stdout.strip() == "active"
+    except (FileNotFoundError, sp.TimeoutExpired):
+        return False
+
+
+def _get_systemd_pid(service: str) -> int:
+    """Get the main PID of a systemd service."""
+    try:
+        result = sp.run(
+            ["systemctl", "show", "--property=MainPID", service],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        for line in result.stdout.strip().split("\n"):
+            if line.startswith("MainPID="):
+                pid = int(line.split("=", 1)[1])
+                return pid if pid > 0 else 0
+    except (FileNotFoundError, sp.TimeoutExpired, ValueError):
+        pass
+    return 0
+
+
+def _start_ollama(
+    port: int,
+    runtime_config: dict[str, Any],
+    log: Any,
+) -> sp.Popen[str]:
+    """Start an Ollama server process."""
+    env = os.environ.copy()
+    env["OLLAMA_HOST"] = f"0.0.0.0:{port}"
+
+    # Forward runtime config as environment variables.
+    for key in ("OLLAMA_NUM_PARALLEL", "OLLAMA_MAX_LOADED_MODELS", "OLLAMA_GPU_OVERHEAD"):
+        if key.lower() in runtime_config:
+            env[key] = str(runtime_config[key.lower()])
+        elif key in runtime_config:
+            env[key] = str(runtime_config[key])
+
+    log(f"Starting ollama serve on port {port}")
+    return sp.Popen(
+        ["ollama", "serve"],
+        stdout=sp.PIPE,
+        stderr=sp.STDOUT,
+        text=True,
+        env=env,
+    )
+
+
+def _start_llama_cpp(
+    binary_path: str,
+    port: int,
+    model_path: str,
+    runtime_config: dict[str, Any],
+    log: Any,
+) -> sp.Popen[str]:
+    """Start a llama-server process."""
+    args = [
+        binary_path,
+        "--port",
+        str(port),
+        "--host",
+        "0.0.0.0",
+    ]
+
+    if model_path:
+        args.extend(["--model", model_path])
+
+    # Map runtime config to CLI flags.
+    flag_map = {
+        "n_gpu_layers": "--n-gpu-layers",
+        "n_ctx": "--ctx-size",
+        "n_batch": "--batch-size",
+        "threads": "--threads",
+        "flash_attn": "--flash-attn",
+    }
+    for key, flag in flag_map.items():
+        if key in runtime_config:
+            val = runtime_config[key]
+            if isinstance(val, bool):
+                if val:
+                    args.append(flag)
+            else:
+                args.extend([flag, str(val)])
+
+    log(f"Starting llama-server on port {port}: {' '.join(args[:6])}...")
+    return sp.Popen(
+        args,
+        stdout=sp.PIPE,
+        stderr=sp.STDOUT,
+        text=True,
+    )
+
+
+def _start_vllm(
+    port: int,
+    model_path: str,
+    runtime_config: dict[str, Any],
+    log: Any,
+) -> sp.Popen[str]:
+    """Start a vLLM OpenAI-compatible server."""
+    args = [
+        "python3",
+        "-m",
+        "vllm.entrypoints.openai.api_server",
+        "--port",
+        str(port),
+        "--host",
+        "0.0.0.0",
+    ]
+
+    if model_path:
+        args.extend(["--model", model_path])
+
+    # Map runtime config to CLI flags.
+    flag_map = {
+        "tensor_parallel_size": "--tensor-parallel-size",
+        "gpu_memory_utilization": "--gpu-memory-utilization",
+        "max_model_len": "--max-model-len",
+        "dtype": "--dtype",
+        "quantization": "--quantization",
+    }
+    for key, flag in flag_map.items():
+        if key in runtime_config:
+            args.extend([flag, str(runtime_config[key])])
+
+    log(f"Starting vLLM server on port {port}")
+    return sp.Popen(
+        args,
+        stdout=sp.PIPE,
+        stderr=sp.STDOUT,
+        text=True,
+    )

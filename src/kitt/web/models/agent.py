@@ -1,5 +1,7 @@
 """Agent-related Pydantic models."""
 
+from typing import Any
+
 from pydantic import BaseModel, Field
 
 
@@ -30,13 +32,26 @@ class AgentHeartbeat(BaseModel):
     gpu_memory_used_gb: float = 0.0
     storage_gb_free: float = 0.0
     uptime_s: float = 0.0
+    engines: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class AgentCommand(BaseModel):
-    """Command sent from server to agent."""
+    """Command sent from server to agent.
+
+    Command types:
+        run_container — Docker container orchestration
+        run_test — benchmark execution (Docker or native)
+        cleanup_storage — evict local model copies
+        stop_container — stop an active Docker container
+        check_docker — check Docker availability
+        engine_status — query native engine status
+        start_engine — start a native engine process
+        stop_engine — stop a native engine process
+        install_engine — check/install an engine
+    """
 
     command_id: str
-    type: str  # run_campaign, run_test, cancel, pull_model, check_engine
+    type: str
     payload: dict = Field(default_factory=dict)
 
 

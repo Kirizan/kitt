@@ -244,7 +244,8 @@ class AgentManager:
         """Process agent heartbeat.
 
         Checks for pending quick_tests assigned to this agent and returns
-        them as commands for the agent to execute.
+        them as commands for the agent to execute.  Also persists engine
+        status reported by the agent into the ``agent_engines`` table.
 
         Returns:
             Dict with ack and any pending commands.
@@ -257,6 +258,36 @@ class AgentManager:
                    WHERE id = ?""",
                 (hb.status or "idle", now, agent_id),
             )
+
+            # Persist engine status reported by the agent.
+            for eng in hb.engines:
+                engine_name = eng.get("engine", "")
+                if not engine_name:
+                    continue
+                status = "installed" if eng.get("installed") else "not_installed"
+                if eng.get("running"):
+                    status = "running"
+                mode = "native"  # Agent-reported engines are native discoveries
+                self._conn.execute(
+                    """INSERT INTO agent_engines
+                       (agent_id, engine, mode, version, binary_path, status, last_checked)
+                       VALUES (?, ?, ?, ?, ?, ?, ?)
+                       ON CONFLICT(agent_id, engine, mode) DO UPDATE SET
+                           version = excluded.version,
+                           binary_path = excluded.binary_path,
+                           status = excluded.status,
+                           last_checked = excluded.last_checked""",
+                    (
+                        agent_id,
+                        engine_name,
+                        mode,
+                        eng.get("version", ""),
+                        eng.get("binary_path", ""),
+                        status,
+                        now,
+                    ),
+                )
+
             self._commit()
 
             # Check for queued quick_tests assigned to this agent

@@ -79,6 +79,7 @@ def create_agent_app(
     app = Flask(__name__)
 
     from kitt_agent.docker_ops import ContainerSpec, DockerOps
+    from kitt_agent.engine_ops import EngineOps
     from kitt_agent.log_streamer import LogStreamer
 
     log_streamers: dict[str, LogStreamer] = {}
@@ -429,6 +430,97 @@ def create_agent_app(
                     if not item.name.startswith("."):
                         model_storage.cleanup_model(str(item))
 
+    def _execute_start_engine(
+        payload: dict[str, Any],
+        command_id: str,
+        on_log: Callable[[str], None],
+        update_status: Callable[[str, str], None],
+    ) -> None:
+        """Execute a start_engine command in a background thread."""
+        engine_name = payload.get("engine_name", "")
+        runtime_config = payload.get("runtime_config", {})
+        model_path = payload.get("model_path", "")
+
+        try:
+            update_status("running")
+            result = EngineOps.start_engine(
+                engine_name, runtime_config, model_path, on_log=on_log
+            )
+            if result["success"]:
+                on_log(f"Engine {engine_name} started (PID {result['pid']})")
+                update_status("completed")
+                _report(
+                    server_url, token, _agent_report_id, command_id,
+                    {"status": "completed", "pid": result["pid"], "port": result["port"]},
+                    insecure,
+                )
+            else:
+                on_log(f"Failed to start {engine_name}: {result['error']}")
+                update_status("failed", error=result["error"])
+                _report(
+                    server_url, token, _agent_report_id, command_id,
+                    {"status": "failed", "error": result["error"]},
+                    insecure,
+                )
+        except Exception as e:
+            on_log(f"Error starting engine: {e}")
+            update_status("failed", error=str(e))
+            _report(
+                server_url, token, _agent_report_id, command_id,
+                {"status": "failed", "error": str(e)},
+                insecure,
+            )
+        finally:
+            with _lock:
+                log_streamers.pop(command_id, None)
+
+    def _execute_install_engine(
+        payload: dict[str, Any],
+        command_id: str,
+        on_log: Callable[[str], None],
+        update_status: Callable[[str, str], None],
+    ) -> None:
+        """Execute an install_engine command in a background thread."""
+        engine_name = payload.get("engine_name", "")
+
+        try:
+            update_status("running")
+            on_log(f"Installing engine: {engine_name}")
+
+            # Check if already installed.
+            info = EngineOps.find_engine(engine_name)
+            if info["installed"]:
+                on_log(
+                    f"{engine_name} is already installed at {info['binary_path']} "
+                    f"(version {info['version']})"
+                )
+                update_status("completed")
+                _report(
+                    server_url, token, _agent_report_id, command_id,
+                    {"status": "completed", "already_installed": True},
+                    insecure,
+                )
+                return
+
+            on_log(f"{engine_name} not found — manual installation required")
+            update_status("failed", error=f"{engine_name} not found on this system")
+            _report(
+                server_url, token, _agent_report_id, command_id,
+                {"status": "failed", "error": f"{engine_name} not found on this system"},
+                insecure,
+            )
+        except Exception as e:
+            on_log(f"Error: {e}")
+            update_status("failed", error=str(e))
+            _report(
+                server_url, token, _agent_report_id, command_id,
+                {"status": "failed", "error": str(e)},
+                insecure,
+            )
+        finally:
+            with _lock:
+                log_streamers.pop(command_id, None)
+
     def _dispatch_command(
         cmd_type: str,
         payload: dict[str, Any],
@@ -456,6 +548,22 @@ def create_agent_app(
             threading.Thread(
                 target=_execute_cleanup,
                 args=(payload,),
+                daemon=True,
+            ).start()
+
+        elif cmd_type == "start_engine":
+            _, on_log, update_status = _make_callbacks(command_id, test_id)
+            threading.Thread(
+                target=_execute_start_engine,
+                args=(payload, command_id, on_log, update_status),
+                daemon=True,
+            ).start()
+
+        elif cmd_type == "install_engine":
+            _, on_log, update_status = _make_callbacks(command_id, test_id)
+            threading.Thread(
+                target=_execute_install_engine,
+                args=(payload, command_id, on_log, update_status),
                 daemon=True,
             ).start()
 
@@ -510,8 +618,22 @@ def create_agent_app(
         if cmd_type == "check_docker":
             return jsonify({"available": DockerOps.is_available()})
 
+        if cmd_type == "engine_status":
+            engine_name = payload.get("engine_name", "")
+            if engine_name:
+                return jsonify(EngineOps.engine_status(engine_name))
+            return jsonify({"engines": EngineOps.all_engine_status()})
+
+        if cmd_type == "stop_engine":
+            engine_name = payload.get("engine_name", "")
+            result = EngineOps.stop_engine(engine_name)
+            return jsonify(result)
+
         # Async commands
-        if cmd_type in ("run_container", "run_test", "cleanup_storage"):
+        if cmd_type in (
+            "run_container", "run_test", "cleanup_storage",
+            "start_engine", "install_engine",
+        ):
             _dispatch_command(cmd_type, payload, command_id, test_id)
             return jsonify({"accepted": True, "command_id": command_id}), 202
 
@@ -552,6 +674,13 @@ def create_agent_app(
         if model_storage:
             result["storage"] = model_storage.get_storage_usage()
         return jsonify(result)
+
+    @app.route("/api/engines")
+    def engine_list():
+        """List all engines with their status."""
+        if not _check_auth():
+            return jsonify({"error": "Unauthorized"}), 401
+        return jsonify({"engines": EngineOps.all_engine_status()})
 
     # ---------------------------------------------------------------
     # Heartbeat command handler
