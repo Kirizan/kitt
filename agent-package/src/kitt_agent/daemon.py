@@ -224,6 +224,7 @@ def create_agent_app(
         suite = payload.get("suite_name", "quick")
         model_path = payload.get("model_path", "")
         benchmark = payload.get("benchmark_name", "throughput")
+        engine_mode = payload.get("engine_mode", "")
 
         update_status("running")
         on_log(f"Agent starting benchmark: {benchmark}")
@@ -314,6 +315,8 @@ def create_agent_app(
                     "--auto-pull",
                 ]
             )
+            if engine_mode:
+                args.extend(["--mode", engine_mode])
             on_log(f"Running KITT benchmark in container ({kitt_image})")
         else:
             # Fallback: local kitt CLI
@@ -332,6 +335,8 @@ def create_agent_app(
                     "-o",
                     str(output_dir),
                 ]
+                if engine_mode:
+                    args.extend(["--mode", engine_mode])
                 on_log(f"Running KITT benchmark locally ({kitt_bin})")
             else:
                 msg = (

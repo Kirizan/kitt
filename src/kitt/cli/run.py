@@ -67,7 +67,15 @@ logger = logging.getLogger(__name__)
     is_flag=True,
     help="Automatically pull/build engine image if not available",
 )
-def run(model, engine, suite, output, skip_warmup, runs, config, store_karr, auto_pull):
+@click.option(
+    "--mode",
+    type=click.Choice(["docker", "native"]),
+    default=None,
+    help="Engine execution mode (docker or native). Uses engine default if not set.",
+)
+def run(
+    model, engine, suite, output, skip_warmup, runs, config, store_karr, auto_pull, mode
+):
     """Run benchmarks against a model using a specified engine."""
     from kitt.benchmarks.registry import BenchmarkRegistry
     from kitt.config.loader import load_suite_config
@@ -153,6 +161,9 @@ def run(model, engine, suite, output, skip_warmup, runs, config, store_karr, aut
 
         with open(config) as f:
             engine_config = yaml.safe_load(f) or {}
+
+    if mode:
+        engine_config["mode"] = mode
 
     try:
         engine_instance.initialize(model, engine_config)
