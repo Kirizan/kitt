@@ -140,6 +140,7 @@ def create_app(
     # --- Initialize services ---
     from kitt.web.services.agent_manager import AgentManager
     from kitt.web.services.campaign_service import CampaignService
+    from kitt.web.services.engine_service import EngineService
     from kitt.web.services.local_model_service import LocalModelService
     from kitt.web.services.model_service import ModelService
     from kitt.web.services.result_service import ResultService
@@ -166,6 +167,7 @@ def create_app(
         "result_service": ResultService(store),
         "agent_manager": AgentManager(db_conn, db_write_lock),
         "campaign_service": CampaignService(db_conn, db_write_lock),
+        "engine_service": EngineService(db_conn, db_write_lock),
         "model_service": ModelService(devon_url=devon_url, devon_api_key=devon_api_key),
         "settings_service": settings_service,
         "local_model_service": LocalModelService(model_dir),

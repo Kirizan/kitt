@@ -11,3 +11,5 @@ class QuickTestRequest(BaseModel):
     engine_name: str
     benchmark_name: str = "throughput"
     suite_name: str = "quick"
+    engine_mode: str = "docker"
+    profile_id: str = ""

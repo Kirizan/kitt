@@ -76,6 +76,8 @@ class EngineConfig(BaseModel):
 
     name: str
     model_path: str = ""
+    mode: str = ""  # "docker" or "native"; empty = engine default
+    profile_id: str = ""  # Optional engine profile ID
     parameters: dict[str, Any] = Field(default_factory=dict)
 
 

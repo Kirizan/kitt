@@ -163,6 +163,41 @@ MIGRATIONS: list[Migration] = [
         CREATE INDEX idx_campaign_logs_campaign ON campaign_logs(campaign_id);
         """,
     ),
+    (
+        11,
+        "Add engine_profiles and agent_engines tables, engine_mode to quick_tests",
+        """
+        CREATE TABLE IF NOT EXISTS engine_profiles (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL UNIQUE,
+            engine TEXT NOT NULL,
+            mode TEXT NOT NULL DEFAULT 'docker',
+            description TEXT DEFAULT '',
+            build_config TEXT DEFAULT '{}',
+            runtime_config TEXT DEFAULT '{}',
+            created_at TEXT NOT NULL DEFAULT (datetime('now')),
+            updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+
+        CREATE TABLE IF NOT EXISTS agent_engines (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            agent_id TEXT NOT NULL REFERENCES agents(id) ON DELETE CASCADE,
+            engine TEXT NOT NULL,
+            mode TEXT NOT NULL,
+            version TEXT DEFAULT '',
+            binary_path TEXT DEFAULT '',
+            status TEXT DEFAULT 'unknown',
+            last_checked TEXT DEFAULT '',
+            UNIQUE(agent_id, engine, mode)
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_engine_profiles_engine ON engine_profiles(engine);
+        CREATE INDEX IF NOT EXISTS idx_agent_engines_agent ON agent_engines(agent_id);
+
+        ALTER TABLE quick_tests ADD COLUMN engine_mode TEXT DEFAULT 'docker';
+        ALTER TABLE quick_tests ADD COLUMN profile_id TEXT DEFAULT '';
+        """,
+    ),
 ]
 
 
