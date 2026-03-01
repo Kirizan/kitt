@@ -56,6 +56,8 @@ def _create_schema(conn: sqlite3.Connection) -> None:
             suite_name TEXT DEFAULT 'quick',
             status TEXT DEFAULT 'queued',
             command_id TEXT,
+            engine_mode TEXT DEFAULT 'docker',
+            profile_id TEXT DEFAULT '',
             error TEXT DEFAULT '',
             created_at TEXT,
             started_at TEXT,
@@ -138,15 +140,22 @@ class TestEngineFormatsEndpoint:
         assert isinstance(data, dict)
         assert "vllm" in data
         assert "llama_cpp" in data
-        assert "safetensors" in data["vllm"]
-        assert "gguf" in data["llama_cpp"]
+        # Each engine returns an object with formats, modes, and default_mode
+        vllm_info = data["vllm"]
+        assert "formats" in vllm_info
+        assert "modes" in vllm_info
+        assert "default_mode" in vllm_info
+        assert "safetensors" in vllm_info["formats"]
+        assert "gguf" in data["llama_cpp"]["formats"]
 
     def test_all_engines_present(self, client):
         resp = client.get("/api/v1/quicktest/engine-formats")
         data = resp.get_json()
         # At minimum these engines should be present
-        for engine in ["vllm", "tgi", "llama_cpp", "ollama"]:
+        for engine in ["vllm", "llama_cpp", "ollama"]:
             assert engine in data
+            assert "formats" in data[engine]
+            assert "modes" in data[engine]
 
 
 class TestLaunchFormatValidation:
@@ -233,8 +242,6 @@ class TestAgentCapabilitiesEndpoint:
         assert agent_caps["name"] == "spark"
         assert agent_caps["cpu_arch"] == "aarch64"
         assert "engines" in agent_caps
-        # TGI should be incompatible on ARM64
-        assert agent_caps["engines"]["tgi"]["compatible"] is False
         # vLLM should be compatible
         assert agent_caps["engines"]["vllm"]["compatible"] is True
 

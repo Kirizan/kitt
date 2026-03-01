@@ -1,4 +1,4 @@
-"""Ollama inference engine implementation — Docker container."""
+"""Ollama inference engine implementation — Docker and native modes."""
 
 import json
 import logging
@@ -9,6 +9,7 @@ from datetime import datetime
 from typing import Any
 
 from .base import GenerationMetrics, GenerationResult, InferenceEngine
+from .lifecycle import EngineMode
 from .registry import register_engine
 
 logger = logging.getLogger(__name__)
@@ -16,10 +17,9 @@ logger = logging.getLogger(__name__)
 
 @register_engine
 class OllamaEngine(InferenceEngine):
-    """Ollama inference engine running in a Docker container.
+    """Ollama inference engine — Docker or native service.
 
     Communicates via the Ollama HTTP API (/api/generate).
-    Model pulling is handled via docker exec.
     """
 
     def __init__(self) -> None:
@@ -74,13 +74,106 @@ class OllamaEngine(InferenceEngine):
             return str(gguf_files[0])
         return str(p)
 
+    @classmethod
+    def supported_modes(cls) -> list[EngineMode]:
+        return [EngineMode.DOCKER, EngineMode.NATIVE]
+
+    @classmethod
+    def default_mode(cls) -> EngineMode:
+        from kitt.hardware.detector import detect_environment_type
+
+        if detect_environment_type() == "dgx_spark":
+            return EngineMode.NATIVE
+        return EngineMode.DOCKER
+
+    @classmethod
+    def _is_native_available(cls) -> bool:
+        from .process_manager import ProcessManager
+
+        return ProcessManager.find_binary("ollama") is not None
+
     def initialize(self, model_path: str, config: dict[str, Any]) -> None:
-        """Start Ollama container, wait for healthy, and load the model.
+        """Start Ollama, wait for healthy, and load the model.
 
         Supports both Ollama registry model names (e.g. 'llama3:8b') and
-        local GGUF files/directories.  For local GGUF files, creates a
-        Modelfile and imports the model via ``ollama create``.
+        local GGUF files/directories.
         """
+        self._mode = EngineMode(config.get("mode", self.default_mode()))
+
+        if self._mode == EngineMode.NATIVE:
+            self._initialize_native(model_path, config)
+        else:
+            self._initialize_docker(model_path, config)
+
+    def _initialize_native(self, model_path: str, config: dict[str, Any]) -> None:
+        """Start or reuse Ollama native service and load the model."""
+        import subprocess
+
+        from .docker_manager import DockerManager
+        from .process_manager import ProcessManager
+
+        port = config.get("port", self.default_port())
+
+        # Check if Ollama is already running (e.g. via systemd)
+        already_running = False
+        try:
+            result = subprocess.run(
+                ["systemctl", "is-active", "ollama"],
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+            already_running = result.stdout.strip() == "active"
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            pass
+
+        if not already_running:
+            binary = ProcessManager.find_binary("ollama")
+            if not binary:
+                raise RuntimeError(
+                    "ollama not found. Install Ollama or add it to your PATH."
+                )
+            env = {"OLLAMA_HOST": f"0.0.0.0:{port}"}
+            env.update(config.get("env", {}))
+            self._process = ProcessManager.start_process(binary, ["serve"], env=env)
+
+        health_url = f"http://localhost:{port}{self.health_endpoint()}"
+        startup_timeout = config.get("startup_timeout", 120.0)
+        DockerManager.wait_for_healthy(health_url, timeout=startup_timeout)
+        self._base_url = f"http://localhost:{port}"
+
+        # Load the model
+        local_gguf = self._is_local_gguf(model_path)
+        if local_gguf:
+            gguf_file = self._resolve_gguf_path(model_path)
+            self._model_name = "kitt-local-model"
+            modelfile_content = f"FROM {gguf_file}\n"
+            logger.info("Importing local GGUF '%s' into Ollama...", gguf_file)
+            create_payload = json.dumps(
+                {
+                    "name": self._model_name,
+                    "modelfile": modelfile_content,
+                }
+            ).encode("utf-8")
+            req = urllib.request.Request(
+                f"{self._base_url}/api/create",
+                data=create_payload,
+                headers={"Content-Type": "application/json"},
+            )
+            urllib.request.urlopen(req, timeout=300)
+        else:
+            self._model_name = model_path
+            logger.info("Pulling model '%s' via Ollama API...", self._model_name)
+            pull_payload = json.dumps({"name": self._model_name}).encode("utf-8")
+            req = urllib.request.Request(
+                f"{self._base_url}/api/pull",
+                data=pull_payload,
+                headers={"Content-Type": "application/json"},
+            )
+            urllib.request.urlopen(req, timeout=600)
+
+    def _initialize_docker(self, model_path: str, config: dict[str, Any]) -> None:
+        """Start Ollama container, wait for healthy, and load the model."""
         from pathlib import Path
 
         from .docker_manager import ContainerConfig, DockerManager
@@ -115,14 +208,15 @@ class OllamaEngine(InferenceEngine):
         self._base_url = f"http://localhost:{port}"
 
         if local_gguf:
-            # Import local GGUF via Modelfile
+            # Import local GGUF via Modelfile — use tee to avoid shell injection
             container_model_path = f"/models/{gguf_basename}"
             self._model_name = "kitt-local-model"
             modelfile_content = f"FROM {container_model_path}\n"
             logger.info("Importing local GGUF '%s' into Ollama...", gguf_basename)
             DockerManager.exec_in_container(
                 self._container_id,
-                ["sh", "-c", f"echo '{modelfile_content}' > /tmp/Modelfile"],
+                ["tee", "/tmp/Modelfile"],
+                stdin_data=modelfile_content,
             )
             DockerManager.exec_in_container(
                 self._container_id,
@@ -209,9 +303,5 @@ class OllamaEngine(InferenceEngine):
         )
 
     def cleanup(self) -> None:
-        """Stop and remove the Ollama container."""
-        from .docker_manager import DockerManager
-
-        if self._container_id:
-            DockerManager.stop_container(self._container_id)
-            self._container_id = None
+        """Stop the Ollama engine."""
+        super().cleanup()

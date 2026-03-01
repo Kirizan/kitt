@@ -93,6 +93,8 @@ def _run_campaign(
         model_name = model_path.rsplit("/", 1)[-1] if "/" in model_path else model_path
         for engine in engines:
             engine_name = engine.get("name", "unknown")
+            engine_mode = engine.get("mode", "docker")
+            profile_id = engine.get("profile_id", "")
             for benchmark_name in benchmarks:
                 # Check for cancellation
                 if _is_cancelled(db_conn, campaign_id):
@@ -124,8 +126,8 @@ def _run_campaign(
                         """INSERT INTO quick_tests
                            (id, agent_id, model_path, engine_name,
                             benchmark_name, suite_name, status,
-                            command_id, created_at)
-                           VALUES (?, ?, ?, ?, ?, ?, 'queued', ?, ?)""",
+                            command_id, engine_mode, profile_id, created_at)
+                           VALUES (?, ?, ?, ?, ?, ?, 'queued', ?, ?, ?, ?)""",
                         (
                             test_id,
                             agent_id,
@@ -134,6 +136,8 @@ def _run_campaign(
                             benchmark_name,
                             suite_name,
                             command_id,
+                            engine_mode,
+                            profile_id,
                             now,
                         ),
                     )

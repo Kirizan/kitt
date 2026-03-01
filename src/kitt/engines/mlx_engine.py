@@ -11,6 +11,7 @@ from .base import (
     GenerationResult,
     InferenceEngine,
 )
+from .lifecycle import EngineMode
 from .registry import register_engine
 
 logger = logging.getLogger(__name__)
@@ -42,6 +43,14 @@ class MLXEngine(InferenceEngine):
         return "mlx"
 
     @classmethod
+    def supported_modes(cls) -> list[EngineMode]:
+        return [EngineMode.NATIVE]
+
+    @classmethod
+    def default_mode(cls) -> EngineMode:
+        return EngineMode.NATIVE
+
+    @classmethod
     def supported_formats(cls) -> list[str]:
         return ["mlx", "safetensors"]
 
@@ -62,14 +71,14 @@ class MLXEngine(InferenceEngine):
         return ""
 
     @classmethod
-    def is_available(cls) -> bool:
+    def is_available(cls, mode: EngineMode | None = None) -> bool:
         """MLX is available if mlx-lm is installed and on macOS."""
         import platform
 
         return MLX_AVAILABLE and platform.system() == "Darwin"
 
     @classmethod
-    def diagnose(cls) -> EngineDiagnostics:
+    def diagnose(cls, mode: EngineMode | None = None) -> EngineDiagnostics:
         import platform
 
         if platform.system() != "Darwin":
@@ -88,6 +97,8 @@ class MLXEngine(InferenceEngine):
 
     def initialize(self, model_path: str, config: dict[str, Any]) -> None:
         """Load model into memory using mlx-lm."""
+        self._mode = EngineMode.NATIVE
+
         if not MLX_AVAILABLE:
             raise RuntimeError(
                 "mlx-lm is not installed. Install with: pip install mlx-lm"

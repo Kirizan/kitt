@@ -47,7 +47,7 @@ class CampaignBuilderApp:
             self.config["models"].append({"name": model, "params": params})
 
         # Engines
-        available = ["vllm", "tgi", "llama_cpp", "ollama"]
+        available = ["vllm", "llama_cpp", "ollama", "exllamav2", "mlx"]
         click.echo(f"\nAvailable engines: {', '.join(available)}")
         while True:
             engine = click.prompt("  Engine name", default="", show_default=False)

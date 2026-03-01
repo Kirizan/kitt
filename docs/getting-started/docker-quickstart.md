@@ -66,7 +66,7 @@ To run the standard suite across multiple engines:
 
 ```bash
 MODEL_PATH=/path/to/models docker compose run kitt run -m /models/llama-7b -e vllm -s standard
-MODEL_PATH=/path/to/models docker compose run kitt run -m /models/llama-7b -e tgi -s standard
+MODEL_PATH=/path/to/models docker compose run kitt run -m /models/llama-7b -e llama_cpp -s standard
 ```
 
 !!! tip

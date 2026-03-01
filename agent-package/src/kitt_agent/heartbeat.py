@@ -133,6 +133,15 @@ class HeartbeatThread(threading.Thread):
             pass
 
         payload["uptime_s"] = time.monotonic() - self._start_time
+
+        # Add engine availability summary.
+        try:
+            from kitt_agent.engine_ops import EngineOps
+
+            payload["engines"] = EngineOps.all_engine_status()
+        except Exception:
+            pass
+
         return payload
 
     def _make_ssl_context(self) -> ssl.SSLContext | None:
@@ -197,9 +206,7 @@ class HeartbeatThread(threading.Thread):
         # Sync canonical agent_id from server response
         canonical_id = resp.get("agent_id")
         if canonical_id and canonical_id != self.agent_id:
-            logger.info(
-                "Syncing agent_id: %s -> %s", self.agent_id, canonical_id
-            )
+            logger.info("Syncing agent_id: %s -> %s", self.agent_id, canonical_id)
             self.agent_id = canonical_id
             if self._on_agent_id_change:
                 self._on_agent_id_change(canonical_id)

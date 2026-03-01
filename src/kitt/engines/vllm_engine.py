@@ -1,11 +1,15 @@
 """vLLM inference engine implementation — Docker + OpenAI-compatible API."""
 
 import logging
+import os
+import subprocess
+import sys
 import time
 from pathlib import Path
 from typing import Any
 
-from .base import GenerationResult, InferenceEngine
+from .base import EngineDiagnostics, GenerationResult, InferenceEngine
+from .lifecycle import EngineMode
 from .registry import register_engine
 
 logger = logging.getLogger(__name__)
@@ -51,8 +55,106 @@ class VLLMEngine(InferenceEngine):
     # and need explicit 'vllm serve' instead of bare --model flags.
     _NGC_PREFIXES = ("nvcr.io/", "kitt/vllm:")
 
+    @classmethod
+    def supported_modes(cls) -> list[EngineMode]:
+        return [EngineMode.DOCKER, EngineMode.NATIVE]
+
+    # Dedicated venv for vLLM with CUDA-matched wheels.
+    _VLLM_VENV_DIR = Path.home() / ".kitt" / "vllm-venv"
+
+    @classmethod
+    def _find_vllm_python(cls) -> str:
+        """Find the Python interpreter that has vLLM installed.
+
+        Checks the dedicated vLLM venv first (CUDA-matched wheels),
+        then falls back to the current interpreter.
+        """
+        venv_python = str(cls._VLLM_VENV_DIR / "bin" / "python")
+        if cls._VLLM_VENV_DIR.exists() and os.path.isfile(venv_python):
+            try:
+                out = subprocess.run(
+                    [venv_python, "-c", "import vllm"],
+                    capture_output=True,
+                    timeout=10,
+                )
+                if out.returncode == 0:
+                    return venv_python
+            except (FileNotFoundError, subprocess.TimeoutExpired):
+                pass
+        return sys.executable
+
+    @classmethod
+    def _is_native_available(cls) -> bool:
+        """Check if vLLM is installed as a Python module."""
+        python = cls._find_vllm_python()
+        if python == sys.executable:
+            import importlib
+
+            try:
+                importlib.import_module("vllm")
+                return True
+            except ImportError:
+                return False
+        # Dedicated venv exists and has vllm (already verified by _find_vllm_python).
+        return True
+
+    @classmethod
+    def _diagnose_native(cls) -> EngineDiagnostics:
+        if cls._is_native_available():
+            return EngineDiagnostics(available=True)
+        return EngineDiagnostics(
+            available=False,
+            error="vllm Python module is not installed",
+            guidance="Install with: pip install vllm (or create ~/.kitt/vllm-venv/)",
+        )
+
     def initialize(self, model_path: str, config: dict[str, Any]) -> None:
-        """Start vLLM container and wait for healthy."""
+        """Start vLLM and wait for healthy."""
+        self._mode = EngineMode(config.get("mode", self.default_mode()))
+
+        if self._mode == EngineMode.NATIVE:
+            self._initialize_native(model_path, config)
+        else:
+            self._initialize_docker(model_path, config)
+
+    def _initialize_native(self, model_path: str, config: dict[str, Any]) -> None:
+        """Start vLLM as a native process."""
+        from .docker_manager import DockerManager
+        from .process_manager import ProcessManager
+
+        port = config.get("port", self.default_port())
+        self._model_name = model_path
+
+        args = [
+            "-m",
+            "vllm.entrypoints.openai.api_server",
+            "--model",
+            model_path,
+            "--port",
+            str(port),
+        ]
+
+        if config.get("tensor_parallel_size", 1) > 1:
+            args += ["--tensor-parallel-size", str(config["tensor_parallel_size"])]
+        if "gpu_memory_utilization" in config:
+            args += ["--gpu-memory-utilization", str(config["gpu_memory_utilization"])]
+
+        # Use the dedicated vLLM venv if available (CUDA-matched wheels),
+        # otherwise fall back to the current interpreter.
+        binary = config.get("python_path") or self._find_vllm_python()
+        self._process = ProcessManager.start_process(
+            binary,
+            args,
+            env=config.get("env", {}),
+        )
+
+        health_url = f"http://localhost:{port}{self.health_endpoint()}"
+        startup_timeout = config.get("startup_timeout", 600.0)
+        DockerManager.wait_for_healthy(health_url, timeout=startup_timeout)
+        self._base_url = f"http://localhost:{port}"
+
+    def _initialize_docker(self, model_path: str, config: dict[str, Any]) -> None:
+        """Start vLLM Docker container and wait for healthy."""
         from .docker_manager import ContainerConfig, DockerManager
 
         model_abs = str(Path(model_path).resolve())
@@ -131,9 +233,5 @@ class VLLMEngine(InferenceEngine):
         return parse_openai_result(response, elapsed_ms, tracker)
 
     def cleanup(self) -> None:
-        """Stop and remove the vLLM container."""
-        from .docker_manager import DockerManager
-
-        if self._container_id:
-            DockerManager.stop_container(self._container_id)
-            self._container_id = None
+        """Stop the vLLM engine."""
+        super().cleanup()

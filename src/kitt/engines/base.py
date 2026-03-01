@@ -1,9 +1,12 @@
 """Abstract base class for inference engines."""
 
+import subprocess
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
+
+from .lifecycle import EngineMode
 
 
 @dataclass
@@ -41,15 +44,20 @@ class EngineDiagnostics:
 class InferenceEngine(ABC):
     """Abstract base class for inference engines.
 
-    All engines run inside Docker containers and communicate via HTTP APIs.
+    Engines can run in Docker containers or as native host processes.
+    The execution mode is determined by ``supported_modes()`` and
+    ``default_mode()``, and can be overridden per-invocation via the
+    ``mode`` key in the config dict passed to ``initialize()``.
     """
 
     _container_id: str | None = None
+    _process: subprocess.Popen | None = None
+    _mode: EngineMode | None = None
 
     @classmethod
     @abstractmethod
     def name(cls) -> str:
-        """Engine identifier (e.g., 'vllm', 'tgi')."""
+        """Engine identifier (e.g., 'vllm', 'llama_cpp')."""
 
     @classmethod
     @abstractmethod
@@ -57,19 +65,35 @@ class InferenceEngine(ABC):
         """Model formats this engine supports (e.g., ['safetensors', 'pytorch'])."""
 
     @classmethod
-    @abstractmethod
+    def supported_modes(cls) -> list[EngineMode]:
+        """Execution modes this engine supports. Default: Docker only."""
+        return [EngineMode.DOCKER]
+
+    @classmethod
+    def default_mode(cls) -> EngineMode:
+        """Default execution mode for this engine."""
+        return EngineMode.DOCKER
+
+    @classmethod
     def default_image(cls) -> str:
-        """Default Docker image for this engine."""
+        """Default Docker image for this engine.
+
+        Returns empty string for native-only engines.
+        """
+        return ""
 
     @classmethod
     @abstractmethod
     def default_port(cls) -> int:
-        """Default host port for this engine's container."""
+        """Default host port for this engine."""
 
     @classmethod
-    @abstractmethod
     def container_port(cls) -> int:
-        """Port the engine listens on inside the container."""
+        """Port the engine listens on inside the container.
+
+        Returns 0 for native-only engines.
+        """
+        return 0
 
     @classmethod
     @abstractmethod
@@ -134,8 +158,17 @@ class InferenceEngine(ABC):
         return validate_model_format(model_path, cls.supported_formats())
 
     @classmethod
-    def is_available(cls) -> bool:
-        """Check if Docker is available and the engine's image is pulled."""
+    def is_available(cls, mode: EngineMode | None = None) -> bool:
+        """Check if the engine is available in the given mode.
+
+        For Docker mode, checks Docker availability and image status.
+        For native mode, checks if the engine binary is found.
+        """
+        check_mode = mode or cls.default_mode()
+
+        if check_mode == EngineMode.NATIVE:
+            return cls._is_native_available()
+
         from .docker_manager import DockerManager
 
         return DockerManager.is_docker_available() and DockerManager.image_exists(
@@ -143,12 +176,30 @@ class InferenceEngine(ABC):
         )
 
     @classmethod
-    def diagnose(cls) -> EngineDiagnostics:
-        """Check Docker availability and image status.
+    def _is_native_available(cls) -> bool:
+        """Check if the engine binary is available for native mode.
 
-        Returns structured diagnostics including the exact error message
-        and actionable fix suggestions.
+        Subclasses should override this to check for their specific binary.
+        Default returns False.
         """
+        return False
+
+    @classmethod
+    def diagnose(cls, mode: EngineMode | None = None) -> EngineDiagnostics:
+        """Check engine availability and return structured diagnostics.
+
+        Dispatches to Docker or native diagnostics based on mode.
+        """
+        check_mode = mode or cls.default_mode()
+
+        if check_mode == EngineMode.NATIVE:
+            return cls._diagnose_native()
+
+        return cls._diagnose_docker()
+
+    @classmethod
+    def _diagnose_docker(cls) -> EngineDiagnostics:
+        """Check Docker availability and image status."""
         from .docker_manager import DockerManager
 
         image = cls.resolved_image()
@@ -178,9 +229,26 @@ class InferenceEngine(ABC):
             )
         return EngineDiagnostics(available=True, image=image)
 
+    @classmethod
+    def _diagnose_native(cls) -> EngineDiagnostics:
+        """Check native binary availability.
+
+        Subclasses should override for engine-specific checks.
+        """
+        if cls._is_native_available():
+            return EngineDiagnostics(available=True)
+        return EngineDiagnostics(
+            available=False,
+            error=f"{cls.name()} binary not found",
+            guidance=f"Install {cls.name()} or add it to your PATH",
+        )
+
     @abstractmethod
     def initialize(self, model_path: str, config: dict[str, Any]) -> None:
-        """Start Docker container and wait for healthy.
+        """Start the engine and wait for healthy.
+
+        The ``config`` dict may include a ``mode`` key to override the
+        default execution mode (``"docker"`` or ``"native"``).
 
         Args:
             model_path: Path to model directory or model identifier.
@@ -197,7 +265,7 @@ class InferenceEngine(ABC):
         max_tokens: int = 2048,
         **engine_specific_params: Any,
     ) -> GenerationResult:
-        """Generate response via HTTP API to container.
+        """Generate response via the engine's HTTP API.
 
         Args:
             prompt: Input prompt.
@@ -212,9 +280,24 @@ class InferenceEngine(ABC):
         """
 
     def cleanup(self) -> None:
+        """Stop the engine (Docker container or native process)."""
+        if self._mode == EngineMode.NATIVE:
+            self._cleanup_native()
+        else:
+            self._cleanup_docker()
+
+    def _cleanup_docker(self) -> None:
         """Stop and remove the Docker container."""
         from .docker_manager import DockerManager
 
         if hasattr(self, "_container_id") and self._container_id:
             DockerManager.stop_container(self._container_id)
             self._container_id = None
+
+    def _cleanup_native(self) -> None:
+        """Stop the native process."""
+        from .process_manager import ProcessManager
+
+        if self._process is not None:
+            ProcessManager.stop_process(self._process)
+            self._process = None

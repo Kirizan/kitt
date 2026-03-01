@@ -66,14 +66,12 @@ class EngineRegistry:
         from .exllamav2_engine import ExLlamaV2Engine
         from .llama_cpp_engine import LlamaCppEngine
         from .ollama_engine import OllamaEngine
-        from .tgi_engine import TGIEngine
         from .vllm_engine import VLLMEngine
 
         for engine_cls in (
             ExLlamaV2Engine,
             LlamaCppEngine,
             OllamaEngine,
-            TGIEngine,
             VLLMEngine,
         ):
             cls.register(engine_cls)

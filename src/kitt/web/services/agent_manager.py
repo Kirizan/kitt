@@ -244,7 +244,8 @@ class AgentManager:
         """Process agent heartbeat.
 
         Checks for pending quick_tests assigned to this agent and returns
-        them as commands for the agent to execute.
+        them as commands for the agent to execute.  Also persists engine
+        status reported by the agent into the ``agent_engines`` table.
 
         Returns:
             Dict with ack and any pending commands.
@@ -257,13 +258,43 @@ class AgentManager:
                    WHERE id = ?""",
                 (hb.status or "idle", now, agent_id),
             )
+
+            # Persist engine status reported by the agent.
+            for eng in hb.engines:
+                engine_name = eng.get("engine", "")
+                if not engine_name:
+                    continue
+                status = "installed" if eng.get("installed") else "not_installed"
+                if eng.get("running"):
+                    status = "running"
+                mode = "native"  # Agent-reported engines are native discoveries
+                self._conn.execute(
+                    """INSERT INTO agent_engines
+                       (agent_id, engine, mode, version, binary_path, status, last_checked)
+                       VALUES (?, ?, ?, ?, ?, ?, ?)
+                       ON CONFLICT(agent_id, engine, mode) DO UPDATE SET
+                           version = excluded.version,
+                           binary_path = excluded.binary_path,
+                           status = excluded.status,
+                           last_checked = excluded.last_checked""",
+                    (
+                        agent_id,
+                        engine_name,
+                        mode,
+                        eng.get("version", ""),
+                        eng.get("binary_path", ""),
+                        status,
+                        now,
+                    ),
+                )
+
             self._commit()
 
             # Check for queued quick_tests assigned to this agent
             commands: list[dict[str, Any]] = []
             rows = self._conn.execute(
                 """SELECT id, command_id, model_path, engine_name, benchmark_name,
-                          suite_name
+                          suite_name, engine_mode, profile_id
                    FROM quick_tests
                    WHERE agent_id = ? AND status = 'queued'
                    ORDER BY created_at
@@ -273,22 +304,40 @@ class AgentManager:
 
             for row in rows:
                 test_id = row["id"]
-                # Determine command type: cleanup rows use engine_name='cleanup'
+                benchmark = row["benchmark_name"]
+                # Determine command type from benchmark_name sentinel values.
                 if row["engine_name"] == "cleanup":
                     cmd_type = "cleanup_storage"
+                elif benchmark in (
+                    "install_engine",
+                    "start_engine",
+                    "stop_engine",
+                ):
+                    cmd_type = benchmark
                 else:
                     cmd_type = "run_test"
+                payload: dict[str, Any] = {
+                    "model_path": row["model_path"],
+                    "engine_name": row["engine_name"],
+                    "benchmark_name": row["benchmark_name"],
+                    "suite_name": row["suite_name"],
+                    "engine_mode": row["engine_mode"],
+                    "profile_id": row["profile_id"],
+                }
+                # For engine commands, profile_id carries JSON runtime_config.
+                if cmd_type in ("start_engine", "install_engine", "stop_engine"):
+                    raw = row["profile_id"] or "{}"
+                    try:
+                        payload["runtime_config"] = json.loads(raw)
+                    except (json.JSONDecodeError, TypeError):
+                        payload["runtime_config"] = {}
+
                 commands.append(
                     {
                         "command_id": row["command_id"],
                         "test_id": test_id,
                         "type": cmd_type,
-                        "payload": {
-                            "model_path": row["model_path"],
-                            "engine_name": row["engine_name"],
-                            "benchmark_name": row["benchmark_name"],
-                            "suite_name": row["suite_name"],
-                        },
+                        "payload": payload,
                     }
                 )
                 # Mark as dispatched
@@ -542,6 +591,51 @@ class AgentManager:
                     suite_name, status, command_id)
                    VALUES (?, ?, ?, 'cleanup', 'cleanup_storage', 'quick', 'queued', ?)""",
                 (command_id, agent_id, model_path or "__cleanup__", command_id),
+            )
+            self._commit()
+        return command_id
+
+    def queue_engine_command(
+        self,
+        agent_id: str,
+        engine_name: str,
+        command: str,
+        runtime_config: dict[str, Any] | None = None,
+        model_path: str = "",
+    ) -> str:
+        """Queue an engine lifecycle command for dispatch via heartbeat.
+
+        Args:
+            agent_id: Target agent.
+            engine_name: Engine to operate on (ollama, llama_cpp, vllm).
+            command: One of install_engine, start_engine, stop_engine.
+            runtime_config: Optional runtime config (for start_engine).
+            model_path: Optional model path (for start_engine).
+
+        Returns:
+            The command ID for the queued command.
+        """
+        command_id = uuid.uuid4().hex[:16]
+        profile_id = ""
+        if runtime_config:
+            import json as _json
+
+            profile_id = _json.dumps(runtime_config)
+        with self._write_lock:
+            self._conn.execute(
+                """INSERT INTO quick_tests
+                   (id, agent_id, model_path, engine_name, benchmark_name,
+                    suite_name, status, command_id, engine_mode, profile_id)
+                   VALUES (?, ?, ?, ?, ?, 'quick', 'queued', ?, 'native', ?)""",
+                (
+                    command_id,
+                    agent_id,
+                    model_path,
+                    engine_name,
+                    command,
+                    command_id,
+                    profile_id,
+                ),
             )
             self._commit()
         return command_id

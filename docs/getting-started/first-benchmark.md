@@ -101,7 +101,7 @@ KITT will:
 5. Write results to `kitt-results/` and store them in KARR
 
 !!! warning
-    Make sure the model format matches the engine. vLLM and TGI accept
+    Make sure the model format matches the engine. vLLM accepts
     safetensors/pytorch; llama.cpp and Ollama require GGUF.
 
 ---

@@ -1,7 +1,7 @@
 """Shared database schema definitions for KITT storage backends."""
 
 # SQLite schema — version-tracked for migrations.
-SCHEMA_VERSION = 10
+SCHEMA_VERSION = 11
 
 SQLITE_SCHEMA = """
 CREATE TABLE IF NOT EXISTS schema_version (
@@ -175,6 +175,8 @@ CREATE TABLE IF NOT EXISTS quick_tests (
     suite_name TEXT DEFAULT 'quick',
     status TEXT NOT NULL DEFAULT 'queued',
     command_id TEXT DEFAULT '',
+    engine_mode TEXT DEFAULT 'docker',
+    profile_id TEXT DEFAULT '',
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     started_at TEXT DEFAULT '',
     completed_at TEXT DEFAULT '',
@@ -231,6 +233,34 @@ CREATE TABLE IF NOT EXISTS campaign_logs (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_campaign_logs_campaign ON campaign_logs(campaign_id);
+
+-- v11: engine_profiles and agent_engines
+CREATE TABLE IF NOT EXISTS engine_profiles (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE,
+    engine TEXT NOT NULL,
+    mode TEXT NOT NULL DEFAULT 'docker',
+    description TEXT DEFAULT '',
+    build_config TEXT DEFAULT '{}',
+    runtime_config TEXT DEFAULT '{}',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS agent_engines (
+    id SERIAL PRIMARY KEY,
+    agent_id TEXT NOT NULL REFERENCES agents(id) ON DELETE CASCADE,
+    engine TEXT NOT NULL,
+    mode TEXT NOT NULL,
+    version TEXT DEFAULT '',
+    binary_path TEXT DEFAULT '',
+    status TEXT DEFAULT 'unknown',
+    last_checked TEXT DEFAULT '',
+    UNIQUE(agent_id, engine, mode)
+);
+
+CREATE INDEX IF NOT EXISTS idx_engine_profiles_engine ON engine_profiles(engine);
+CREATE INDEX IF NOT EXISTS idx_agent_engines_agent ON agent_engines(agent_id);
 
 -- v8: agent_settings
 CREATE TABLE IF NOT EXISTS agent_settings (

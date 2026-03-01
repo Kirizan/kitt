@@ -49,6 +49,10 @@ class ExLlamaV2Engine(InferenceEngine):
 
     def initialize(self, model_path: str, config: dict[str, Any]) -> None:
         """Start ExLlamaV2 container and wait for healthy."""
+        from .lifecycle import EngineMode
+
+        self._mode = EngineMode.DOCKER
+
         from .docker_manager import ContainerConfig, DockerManager
 
         model_abs = str(Path(model_path).resolve())
@@ -125,9 +129,5 @@ class ExLlamaV2Engine(InferenceEngine):
         return parse_openai_result(response, elapsed_ms, tracker)
 
     def cleanup(self) -> None:
-        """Stop and remove the ExLlamaV2 container."""
-        from .docker_manager import DockerManager
-
-        if self._container_id:
-            DockerManager.stop_container(self._container_id)
-            self._container_id = None
+        """Stop the ExLlamaV2 engine."""
+        super().cleanup()

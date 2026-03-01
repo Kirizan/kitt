@@ -14,7 +14,6 @@ configs/
 │   └── performance.yaml
 ├── engines/             # Engine parameter overrides
 │   ├── vllm.yaml
-│   ├── tgi.yaml
 │   ├── llama_cpp.yaml
 │   ├── ollama.yaml
 │   └── profiles/        # Named engine profiles

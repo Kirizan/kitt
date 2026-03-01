@@ -132,6 +132,5 @@ class TestAutoDiscover:
         EngineRegistry.auto_discover()
         all_engines = EngineRegistry.list_all()
         assert "vllm" in all_engines
-        assert "tgi" in all_engines
         assert "llama_cpp" in all_engines
         assert "ollama" in all_engines

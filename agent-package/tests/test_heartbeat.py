@@ -1,12 +1,9 @@
 """Tests for HeartbeatThread — re-registration on 404 and ID sync."""
 
 import json
-import threading
-from http.server import BaseHTTPRequestHandler, HTTPServer
 from unittest.mock import MagicMock, patch
 
 import pytest
-
 from kitt_agent.heartbeat import HeartbeatThread
 
 
@@ -63,9 +60,11 @@ class TestHeartbeatReRegistration:
         def mock_urlopen(req, **kwargs):
             raise HTTPError(req.full_url, 404, "Not Found", {}, None)
 
-        with patch("urllib.request.urlopen", side_effect=mock_urlopen):
-            with pytest.raises(HTTPError):
-                hb._send_heartbeat()
+        with (
+            patch("urllib.request.urlopen", side_effect=mock_urlopen),
+            pytest.raises(HTTPError),
+        ):
+            hb._send_heartbeat()
 
 
 class TestHeartbeatIdSync:
@@ -90,7 +89,7 @@ class TestHeartbeatIdSync:
         mock_resp.__exit__ = lambda s, *a: None
 
         with patch("urllib.request.urlopen", return_value=mock_resp):
-            result = hb._send_heartbeat()
+            hb._send_heartbeat()
 
         assert hb.agent_id == "real-uuid-456"
         on_agent_id_change.assert_called_once_with("real-uuid-456")

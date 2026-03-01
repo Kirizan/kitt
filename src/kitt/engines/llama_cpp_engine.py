@@ -1,4 +1,4 @@
-"""llama.cpp inference engine implementation — Docker + OpenAI-compatible API."""
+"""llama.cpp inference engine implementation — Docker and native modes."""
 
 import logging
 import time
@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from .base import GenerationResult, InferenceEngine
+from .lifecycle import EngineMode
 from .registry import register_engine
 
 logger = logging.getLogger(__name__)
@@ -13,9 +14,9 @@ logger = logging.getLogger(__name__)
 
 @register_engine
 class LlamaCppEngine(InferenceEngine):
-    """llama.cpp inference engine running in a Docker container.
+    """llama.cpp inference engine — Docker or native llama-server.
 
-    Uses the llama.cpp server image which exposes an OpenAI-compatible API.
+    Uses the llama.cpp server which exposes an OpenAI-compatible API.
     """
 
     def __init__(self) -> None:
@@ -68,7 +69,76 @@ class LlamaCppEngine(InferenceEngine):
             return str(gguf_file), str(p)
         return str(p), str(p.parent)
 
+    @classmethod
+    def supported_modes(cls) -> list[EngineMode]:
+        return [EngineMode.DOCKER, EngineMode.NATIVE]
+
+    @classmethod
+    def default_mode(cls) -> EngineMode:
+        from kitt.hardware.detector import detect_environment_type
+
+        if detect_environment_type() == "dgx_spark":
+            return EngineMode.NATIVE
+        return EngineMode.DOCKER
+
+    @classmethod
+    def _is_native_available(cls) -> bool:
+        from .process_manager import ProcessManager
+
+        return ProcessManager.find_binary("llama-server") is not None
+
     def initialize(self, model_path: str, config: dict[str, Any]) -> None:
+        """Start llama.cpp server and wait for healthy."""
+        self._mode = EngineMode(config.get("mode", self.default_mode()))
+
+        if self._mode == EngineMode.NATIVE:
+            self._initialize_native(model_path, config)
+        else:
+            self._initialize_docker(model_path, config)
+
+    def _initialize_native(self, model_path: str, config: dict[str, Any]) -> None:
+        """Start llama-server as a native process."""
+        from .docker_manager import DockerManager
+        from .process_manager import ProcessManager
+
+        gguf_file, _ = self._resolve_gguf_path(model_path)
+        self._model_name = gguf_file
+        port = config.get("port", self.default_port())
+
+        n_gpu_layers = config.get("n_gpu_layers", -1)
+        n_ctx = config.get("n_ctx", 4096)
+
+        args = [
+            "-m",
+            gguf_file,
+            "--n-gpu-layers",
+            str(n_gpu_layers),
+            "-c",
+            str(n_ctx),
+            "--host",
+            "0.0.0.0",
+            "--port",
+            str(port),
+        ]
+
+        binary = ProcessManager.find_binary("llama-server")
+        if not binary:
+            raise RuntimeError(
+                "llama-server not found. Install llama.cpp or add it to your PATH."
+            )
+
+        self._process = ProcessManager.start_process(
+            binary,
+            args,
+            env=config.get("env", {}),
+        )
+
+        health_url = f"http://localhost:{port}{self.health_endpoint()}"
+        startup_timeout = config.get("startup_timeout", 600.0)
+        DockerManager.wait_for_healthy(health_url, timeout=startup_timeout)
+        self._base_url = f"http://localhost:{port}"
+
+    def _initialize_docker(self, model_path: str, config: dict[str, Any]) -> None:
         """Start llama.cpp server container and wait for healthy."""
         from .docker_manager import ContainerConfig, DockerManager
 
@@ -142,9 +212,5 @@ class LlamaCppEngine(InferenceEngine):
         return parse_openai_result(response, elapsed_ms, tracker)
 
     def cleanup(self) -> None:
-        """Stop and remove the llama.cpp container."""
-        from .docker_manager import DockerManager
-
-        if self._container_id:
-            DockerManager.stop_container(self._container_id)
-            self._container_id = None
+        """Stop the llama.cpp engine."""
+        super().cleanup()

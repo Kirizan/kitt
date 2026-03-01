@@ -87,16 +87,6 @@ _BUILD_RECIPES: dict[str, BuildRecipe] = {
     "kitt/vllm:arm64": BuildRecipe(
         dockerfile="docker/vllm/Dockerfile.arm64",
     ),
-    # TGI: Dockerfile exists but image is non-functional on DGX Spark.
-    # TGI requires custom CUDA kernels (dropout_layer_norm, flash_attn,
-    # flashinfer, vllm._custom_ops) that have no aarch64+sm_121 builds.
-    # See docker/tgi/Dockerfile.spark for details.  Uncomment if TGI ever
-    # gains ARM64/Blackwell support.
-    # "kitt/tgi:spark": BuildRecipe(
-    #     dockerfile="docker/tgi/Dockerfile.spark",
-    #     target="runtime",
-    #     experimental=True,
-    # ),
 }
 
 
@@ -133,12 +123,6 @@ _IMAGE_OVERRIDES: dict[str, list[tuple[str | None, tuple[int, int], str]]] = {
     "vllm": [
         (None, (10, 0), "nvcr.io/nvidia/vllm:26.01-py3"),
     ],
-    # TGI: No ARM64 Docker images published. TGI is not viable on DGX Spark
-    # due to hard dependencies on custom CUDA kernels (dropout_layer_norm,
-    # flash_attn, flashinfer) with no aarch64+sm_121 builds available.
-    # Falls back to default image (x86_64-only).
-    # See docker/tgi/Dockerfile.spark for full analysis.
-    "tgi": [],
     # llama.cpp: Official CUDA images are x86_64-only.
     # On ARM64 Blackwell (DGX Spark, GB10), use the KITT-managed arm64 build.
     # On x86_64 Blackwell, fall back to the spark build (sm_121 CUDA support).
@@ -313,10 +297,6 @@ def has_hardware_overrides(engine_name: str) -> bool:
 # Engines not listed here (or with empty sets) work on all platforms.
 # Populated from Phase 1-2 hardware validation on DGX Spark (arm64).
 _PLATFORM_INCOMPATIBLE: dict[str, dict[str, str]] = {
-    "tgi": {
-        "arm64": "No ARM64 Docker images; requires custom CUDA kernels "
-        "(dropout_layer_norm, flash_attn, flashinfer) with no aarch64 builds",
-    },
     "exllamav2": {
         "arm64": "Default Docker image is x86_64-only; no ARM64 build available",
     },
@@ -335,7 +315,7 @@ def get_engine_compatibility(cpu_arch: str) -> dict[str, dict]:
 
             {
                 "vllm": {"compatible": True},
-                "tgi": {"compatible": False, "reason": "No ARM64 Docker images..."},
+                "exllamav2": {"compatible": False, "reason": "No ARM64 images"},
                 ...
             }
     """

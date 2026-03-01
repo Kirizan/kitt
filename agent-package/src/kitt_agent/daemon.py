@@ -79,6 +79,7 @@ def create_agent_app(
     app = Flask(__name__)
 
     from kitt_agent.docker_ops import ContainerSpec, DockerOps
+    from kitt_agent.engine_ops import EngineOps
     from kitt_agent.log_streamer import LogStreamer
 
     log_streamers: dict[str, LogStreamer] = {}
@@ -223,6 +224,7 @@ def create_agent_app(
         suite = payload.get("suite_name", "quick")
         model_path = payload.get("model_path", "")
         benchmark = payload.get("benchmark_name", "throughput")
+        engine_mode = payload.get("engine_mode", "")
 
         update_status("running")
         on_log(f"Agent starting benchmark: {benchmark}")
@@ -298,19 +300,23 @@ def create_agent_app(
             # (Ollama registry names like "qwen2.5:7b" aren't mountable)
             if local_model_path.startswith("/"):
                 args.extend(["-v", f"{local_model_path}:{local_model_path}:ro"])
-            args.extend([
-                kitt_image,
-                "run",
-                "-m",
-                local_model_path,
-                "-e",
-                engine,
-                "-s",
-                suite,
-                "-o",
-                str(output_dir),
-                "--auto-pull",
-            ])
+            args.extend(
+                [
+                    kitt_image,
+                    "run",
+                    "-m",
+                    local_model_path,
+                    "-e",
+                    engine,
+                    "-s",
+                    suite,
+                    "-o",
+                    str(output_dir),
+                    "--auto-pull",
+                ]
+            )
+            if engine_mode:
+                args.extend(["--mode", engine_mode])
             on_log(f"Running KITT benchmark in container ({kitt_image})")
         else:
             # Fallback: local kitt CLI
@@ -329,6 +335,8 @@ def create_agent_app(
                     "-o",
                     str(output_dir),
                 ]
+                if engine_mode:
+                    args.extend(["--mode", engine_mode])
                 on_log(f"Running KITT benchmark locally ({kitt_bin})")
             else:
                 msg = (
@@ -429,6 +437,117 @@ def create_agent_app(
                     if not item.name.startswith("."):
                         model_storage.cleanup_model(str(item))
 
+    def _execute_start_engine(
+        payload: dict[str, Any],
+        command_id: str,
+        on_log: Callable[[str], None],
+        update_status: Callable[[str, str], None],
+    ) -> None:
+        """Execute a start_engine command in a background thread."""
+        engine_name = payload.get("engine_name", "")
+        runtime_config = payload.get("runtime_config", {})
+        model_path = payload.get("model_path", "")
+
+        try:
+            update_status("running")
+            result = EngineOps.start_engine(
+                engine_name, runtime_config, model_path, on_log=on_log
+            )
+            if result["success"]:
+                on_log(f"Engine {engine_name} started (PID {result['pid']})")
+                update_status("completed")
+                _report(
+                    server_url,
+                    token,
+                    _agent_report_id,
+                    command_id,
+                    {
+                        "status": "completed",
+                        "pid": result["pid"],
+                        "port": result["port"],
+                    },
+                    insecure,
+                )
+            else:
+                on_log(f"Failed to start {engine_name}: {result['error']}")
+                update_status("failed", error=result["error"])
+                _report(
+                    server_url,
+                    token,
+                    _agent_report_id,
+                    command_id,
+                    {"status": "failed", "error": result["error"]},
+                    insecure,
+                )
+        except Exception as e:
+            on_log(f"Error starting engine: {e}")
+            update_status("failed", error=str(e))
+            _report(
+                server_url,
+                token,
+                _agent_report_id,
+                command_id,
+                {"status": "failed", "error": str(e)},
+                insecure,
+            )
+        finally:
+            with _lock:
+                log_streamers.pop(command_id, None)
+
+    def _execute_install_engine(
+        payload: dict[str, Any],
+        command_id: str,
+        on_log: Callable[[str], None],
+        update_status: Callable[[str, str], None],
+    ) -> None:
+        """Execute an install_engine command in a background thread."""
+        engine_name = payload.get("engine_name", "")
+
+        try:
+            update_status("running")
+            result = EngineOps.install_engine(engine_name, on_log=on_log)
+
+            if result["success"]:
+                update_status("completed")
+                _report(
+                    server_url,
+                    token,
+                    _agent_report_id,
+                    command_id,
+                    {
+                        "status": "completed",
+                        "version": result.get("version", ""),
+                        "already_installed": result.get("already_installed", False),
+                    },
+                    insecure,
+                )
+            else:
+                error = result.get("error", "Unknown error")
+                on_log(f"Install failed: {error}")
+                update_status("failed", error=error)
+                _report(
+                    server_url,
+                    token,
+                    _agent_report_id,
+                    command_id,
+                    {"status": "failed", "error": error},
+                    insecure,
+                )
+        except Exception as e:
+            on_log(f"Error: {e}")
+            update_status("failed", error=str(e))
+            _report(
+                server_url,
+                token,
+                _agent_report_id,
+                command_id,
+                {"status": "failed", "error": str(e)},
+                insecure,
+            )
+        finally:
+            with _lock:
+                log_streamers.pop(command_id, None)
+
     def _dispatch_command(
         cmd_type: str,
         payload: dict[str, Any],
@@ -459,6 +578,22 @@ def create_agent_app(
                 daemon=True,
             ).start()
 
+        elif cmd_type == "start_engine":
+            _, on_log, update_status = _make_callbacks(command_id, test_id)
+            threading.Thread(
+                target=_execute_start_engine,
+                args=(payload, command_id, on_log, update_status),
+                daemon=True,
+            ).start()
+
+        elif cmd_type == "install_engine":
+            _, on_log, update_status = _make_callbacks(command_id, test_id)
+            threading.Thread(
+                target=_execute_install_engine,
+                args=(payload, command_id, on_log, update_status),
+                daemon=True,
+            ).start()
+
         else:
             logger.warning("Unknown command type: %s", cmd_type)
 
@@ -466,7 +601,7 @@ def create_agent_app(
     # Flask routes
     # ---------------------------------------------------------------
 
-    _VALID_ENGINES = {"vllm", "tgi", "llama_cpp", "ollama"}
+    _VALID_ENGINES = {"vllm", "llama_cpp", "ollama", "exllamav2", "mlx"}
     _VALID_SUITES = {"quick", "standard", "performance"}
 
     def _check_auth():
@@ -510,8 +645,25 @@ def create_agent_app(
         if cmd_type == "check_docker":
             return jsonify({"available": DockerOps.is_available()})
 
+        if cmd_type == "engine_status":
+            engine_name = payload.get("engine_name", "")
+            if engine_name:
+                return jsonify(EngineOps.engine_status(engine_name))
+            return jsonify({"engines": EngineOps.all_engine_status()})
+
+        if cmd_type == "stop_engine":
+            engine_name = payload.get("engine_name", "")
+            result = EngineOps.stop_engine(engine_name)
+            return jsonify(result)
+
         # Async commands
-        if cmd_type in ("run_container", "run_test", "cleanup_storage"):
+        if cmd_type in (
+            "run_container",
+            "run_test",
+            "cleanup_storage",
+            "start_engine",
+            "install_engine",
+        ):
             _dispatch_command(cmd_type, payload, command_id, test_id)
             return jsonify({"accepted": True, "command_id": command_id}), 202
 
@@ -552,6 +704,13 @@ def create_agent_app(
         if model_storage:
             result["storage"] = model_storage.get_storage_usage()
         return jsonify(result)
+
+    @app.route("/api/engines")
+    def engine_list():
+        """List all engines with their status."""
+        if not _check_auth():
+            return jsonify({"error": "Unauthorized"}), 401
+        return jsonify({"engines": EngineOps.all_engine_status()})
 
     # ---------------------------------------------------------------
     # Heartbeat command handler

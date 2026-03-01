@@ -280,6 +280,19 @@
     </div>
     {% endif %}
 
+    <!-- Engines -->
+    <div class="bg-kitt-surface rounded-lg p-5">
+        <h2 class="text-lg font-semibold mb-4">Engines</h2>
+        <div hx-get="/agents/{{ agent.id }}/engines"
+             hx-trigger="load, every 30s"
+             hx-target="#agent-engines-container"
+             hx-swap="innerHTML">
+            <div id="agent-engines-container">
+                <p class="text-kitt-dim text-sm">Loading engine status...</p>
+            </div>
+        </div>
+    </div>
+
     <!-- Fingerprint -->
     {% set fp = hw.get('fingerprint') or agent.fingerprint %}
     {% if fp %}

@@ -1,14 +1,15 @@
 # KITT - Kirizan's Inference Testing Tools
 
-End-to-end testing suite for LLM inference engines. Measures quality consistency and performance across vLLM, TGI, llama.cpp, and Ollama.
+End-to-end testing suite for LLM inference engines. Measures quality consistency and performance across vLLM, llama.cpp, Ollama, and ExLlamaV2.
 
 [**Full Documentation**](https://kirizan.github.io/kitt/) | [**CLI Reference**](https://kirizan.github.io/kitt/reference/cli/)
 
 ## Features
 
-- **Multi-engine support** — benchmark across vLLM, TGI, llama.cpp, and Ollama with a unified interface
+- **Multi-engine support** — benchmark across vLLM, llama.cpp, Ollama, and ExLlamaV2 with a unified interface
 - **ARM64 and multi-arch support** — platform-aware image selection for ARM64 boards (DGX Spark, Jetson Orin) with automatic KITT-managed builds for engines that lack multi-arch images
-- **Docker-only engines** — all engines run in Docker containers, eliminating compatibility issues
+- **Docker and native engine modes** — engines run in Docker containers (default) or as native host processes. DGX Spark defaults to native for Ollama and llama.cpp. Each engine declares which modes it supports
+- **Engine profiles** — named configurations with build flags and runtime args, saveable and selectable when creating benchmarks or campaigns
 - **Quality benchmarks** — MMLU, GSM8K, TruthfulQA, and HellaSwag evaluations
 - **Performance benchmarks** — throughput, latency, memory usage, and warmup analysis
 - **Hardware fingerprinting** — automatic system identification for reproducible results
@@ -16,7 +17,7 @@ End-to-end testing suite for LLM inference engines. Measures quality consistency
 - **Docker deployment stacks** — composable `docker-compose` stacks via `kitt stack`
 - **Devon integration** — embedded [Devon](https://github.com/kirizan/devon) web UI via server-side reverse proxy, with automatic fallback to local Devon
 - **Model format validation** — preflight checks prevent launching containers with incompatible model formats (e.g. safetensors on llama.cpp)
-- **Web dashboard & REST API** — browse results, manage agents, and configure settings with TLS and per-agent token auth
+- **Web dashboard & REST API** — browse results, manage agents, configure engine profiles, and view engine status with TLS and per-agent token auth
 - **Local model browser** — scan and display models from a local directory, with engine and platform compatibility filtering in the quick test form
 - **Remote agents** — deploy thin agents to GPU servers via `curl | bash`; agents copy models from NFS shares, run benchmarks locally, and clean up. Per-agent settings are configurable from the web UI and synced via heartbeat
 - **Test agents** — virtual agents with configurable hardware specs for UI testing without real GPUs. Quick tests and campaigns simulate execution with realistic delays, live log streaming, and fake result generation
@@ -65,7 +66,9 @@ Requires Python 3.10+, [Poetry](https://python-poetry.org/), and [Docker](https:
 ```bash
 kitt fingerprint                  # detect hardware
 kitt engines setup vllm           # pull engine Docker image
-kitt engines list                 # check engine status
+kitt engines list                 # check engine status and supported modes
+kitt engines status               # detect native engine binaries
+kitt engines profiles list        # list saved engine profiles
 kitt run -m /models/llama-7b -e vllm -s standard -o ./results
 kitt run -m /models/model.gguf -e llama_cpp --auto-pull  # auto-pull engine image if missing
 kitt storage init                 # initialize results database
@@ -76,16 +79,19 @@ kitt web                         # launch web dashboard
 
 ### Model format validation
 
-KITT validates model format compatibility before launching containers. Each engine declares the formats it supports:
+KITT validates model format compatibility before launching. Each engine declares the formats it supports:
 
-| Engine | Supported Formats |
-|--------|------------------|
-| vLLM | safetensors, pytorch |
-| TGI | safetensors, pytorch |
-| llama.cpp | gguf |
-| Ollama | gguf |
+| Engine | Supported Formats | Modes | Default Mode |
+|--------|------------------|-------|-------------|
+| vLLM | safetensors, pytorch | docker, native | docker |
+| llama.cpp | gguf | docker, native | docker |
+| Ollama | gguf | docker, native | docker |
+| ExLlamaV2 | gptq, exl2, gguf | docker | docker |
+| MLX | mlx, safetensors | native | native |
 
-If you attempt to run a safetensors model with llama.cpp (or a GGUF model with vLLM), KITT exits with a clear error before any container starts. The web UI quick test form also filters models by engine compatibility.
+On DGX Spark, Ollama and llama.cpp default to native mode automatically.
+
+If you attempt to run a safetensors model with llama.cpp (or a GGUF model with vLLM), KITT exits with a clear error before any engine starts. The web UI quick test form also filters models by engine compatibility.
 
 ### Engine-platform compatibility
 
@@ -94,7 +100,6 @@ When launching a quick test from the web UI, KITT checks whether each engine is 
 | Engine | ARM64 (aarch64) | x86_64 |
 |--------|:---------------:|:------:|
 | vLLM | Yes | Yes |
-| TGI | No | Yes |
 | llama.cpp | Yes | Yes |
 | Ollama | Yes | Yes |
 | ExLlamaV2 | No | Yes |
@@ -168,6 +173,28 @@ kitt run -m /models/llama-7b -e vllm --auto-pull
 ```
 
 When running tests via a remote agent, `--auto-pull` is passed automatically.
+
+## Engine Profiles
+
+Engine profiles store named configurations with build flags and runtime args. Create profiles via the web UI (**Engines → New Profile**) or manage them from the CLI.
+
+```bash
+kitt engines profiles list                # list all profiles
+kitt engines profiles list --engine vllm  # filter by engine
+kitt engines profiles show my-profile     # show profile details
+```
+
+Profiles are selectable in the quick test form and campaign wizard. This lets you test different engine configurations (quantization settings, context sizes, GPU layer counts) without reconfiguring each time.
+
+### Native engine detection
+
+Check which engines have native binaries installed on the current system:
+
+```bash
+kitt engines status
+```
+
+This shows each engine's native support, binary location, and installation status.
 
 ## Remote Host Management
 
@@ -284,11 +311,12 @@ The agent is a lightweight daemon (`kitt-agent`) that:
 
 - Registers with the KITT server and sends periodic heartbeats
 - Authenticates with its unique per-agent token
-- Receives commands via heartbeat dispatch (run benchmark, stop container, cleanup storage)
+- Receives commands via heartbeat dispatch (run benchmark, stop container, cleanup storage, start/stop/install engines)
+- Manages native engine lifecycle — discovers binaries, starts/stops processes, reports engine status via heartbeat
 - Resolves models from NFS shares, copies to local storage, runs benchmarks, and cleans up
 - Runs benchmarks inside a locally-built KITT Docker container (falls back to local CLI)
 - Streams container logs back via SSE
-- Reports full hardware fingerprint during registration (GPU, CPU, CPU architecture, RAM, storage, CUDA, driver, environment type, compute capability)
+- Reports full hardware fingerprint and engine status during registration (GPU, CPU, CPU architecture, RAM, storage, CUDA, driver, environment type, compute capability)
 - Handles unified memory architectures (e.g. DGX Spark GB10) where dedicated VRAM is shared with system RAM
 - Self-updates from the server via `kitt-agent update`
 - Does **not** install the full KITT Python package — benchmarks run inside a Docker container built from the KITT source
@@ -303,7 +331,7 @@ Navigate to **Campaigns → Create Campaign** in the web dashboard. The step-by-
 
 1. **Basics** — campaign name and description
 2. **Agent** — select the target agent (determines engine compatibility)
-3. **Engines** — pick one or more engines, with format badges and platform warnings based on the selected agent
+3. **Engines** — pick one or more engines, with format badges, mode selection (docker/native), and optional profile per engine
 4. **Models** — searchable multi-select checklist filtered by the selected engines' supported formats
 5. **Settings** — suite selection, Devon-managed model toggle, and post-run cleanup option
 6. **Review** — compatibility matrix showing which model/engine combinations will run

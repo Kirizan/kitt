@@ -163,7 +163,49 @@ MIGRATIONS: list[Migration] = [
         CREATE INDEX idx_campaign_logs_campaign ON campaign_logs(campaign_id);
         """,
     ),
+    (
+        11,
+        "Add engine_profiles and agent_engines tables, engine_mode to quick_tests",
+        """
+        CREATE TABLE IF NOT EXISTS engine_profiles (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL UNIQUE,
+            engine TEXT NOT NULL,
+            mode TEXT NOT NULL DEFAULT 'docker',
+            description TEXT DEFAULT '',
+            build_config TEXT DEFAULT '{}',
+            runtime_config TEXT DEFAULT '{}',
+            created_at TEXT NOT NULL DEFAULT (datetime('now')),
+            updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+
+        CREATE TABLE IF NOT EXISTS agent_engines (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            agent_id TEXT NOT NULL REFERENCES agents(id) ON DELETE CASCADE,
+            engine TEXT NOT NULL,
+            mode TEXT NOT NULL,
+            version TEXT DEFAULT '',
+            binary_path TEXT DEFAULT '',
+            status TEXT DEFAULT 'unknown',
+            last_checked TEXT DEFAULT '',
+            UNIQUE(agent_id, engine, mode)
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_engine_profiles_engine ON engine_profiles(engine);
+        CREATE INDEX IF NOT EXISTS idx_agent_engines_agent ON agent_engines(agent_id);
+        """,
+    ),
 ]
+
+
+def _add_column_if_missing(conn: Any, table: str, column: str, col_def: str) -> None:
+    """Add a column to a table if it doesn't already exist (SQLite compat)."""
+    cursor = conn.execute(f"PRAGMA table_info({table})")
+    columns = {row[1] if isinstance(row, tuple) else row["name"] for row in cursor}
+    if column not in columns:
+        conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {col_def}")
+        conn.commit()
+        logger.info("Added column %s.%s", table, column)
 
 
 def _migrate_token_hashes(conn: Any) -> None:
@@ -252,6 +294,14 @@ def run_migrations_sqlite(conn: Any, current_version: int) -> int:
             # Insert default agent settings for all existing agents
             if version == 8:
                 _insert_default_agent_settings(conn)
+            # Idempotent column additions for v11 (SQLite has no ADD COLUMN IF NOT EXISTS)
+            if version == 11:
+                _add_column_if_missing(
+                    conn, "quick_tests", "engine_mode", "TEXT DEFAULT 'docker'"
+                )
+                _add_column_if_missing(
+                    conn, "quick_tests", "profile_id", "TEXT DEFAULT ''"
+                )
 
     if applied:
         logger.info("Applied %d migration(s)", applied)

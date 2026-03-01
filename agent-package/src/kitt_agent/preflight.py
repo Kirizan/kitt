@@ -83,12 +83,14 @@ def check_docker_gpu() -> CheckResult:
         ]
         if docker_platform:
             cmd.extend(["--platform", docker_platform])
-        cmd.extend([
-            "--gpus",
-            "all",
-            "nvidia/cuda:12.0.0-base-ubuntu22.04",
-            "nvidia-smi",
-        ])
+        cmd.extend(
+            [
+                "--gpus",
+                "all",
+                "nvidia/cuda:12.0.0-base-ubuntu22.04",
+                "nvidia-smi",
+            ]
+        )
 
         result = subprocess.run(
             cmd,
