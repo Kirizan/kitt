@@ -2103,8 +2103,10 @@ and accessible.</p>
 <hr />
 <h2 id="build-and-deployment-notes">Build and Deployment Notes<a class="headerlink" href="#build-and-deployment-notes" title="Permanent link">&para;</a></h2>
 <p>On DGX Spark, the GH200 has ARM (Grace) CPU cores. Make sure any Docker images
-you use are built for <code>linux/arm64</code>. The standard KITT engine images (vLLM, TGI,
-llama.cpp, Ollama) publish multi-architecture images that include ARM support.</p>
+you use are built for <code>linux/arm64</code>. The standard KITT engine images (vLLM,
+llama.cpp, Ollama) publish multi-architecture images that include ARM support.
+On the DGX Spark, native mode is the default for Ollama and llama.cpp,
+avoiding Docker overhead entirely.</p>
 <p>When generating deployment stacks with <code>kitt stack generate</code>, the generated
 <code>docker-compose.yaml</code> does not pin a platform architecture, so Docker will
 automatically pull the correct image for the host.</p>

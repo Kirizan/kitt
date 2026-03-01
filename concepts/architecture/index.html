@@ -2557,12 +2557,6 @@
 <td>8000</td>
 </tr>
 <tr>
-<td>TGI</td>
-<td><code>ghcr.io/huggingface/text-generation-inference:latest</code></td>
-<td>HF <code>/generate</code></td>
-<td>8080</td>
-</tr>
-<tr>
 <td>llama.cpp</td>
 <td><code>ghcr.io/ggerganov/llama.cpp:server</code></td>
 <td>OpenAI <code>/v1/completions</code></td>
@@ -2573,6 +2567,18 @@
 <td><code>ollama/ollama:latest</code></td>
 <td>Ollama <code>/api/generate</code></td>
 <td>11434</td>
+</tr>
+<tr>
+<td>ExLlamaV2</td>
+<td><code>kitt/exllamav2:latest</code></td>
+<td>OpenAI <code>/v1/completions</code></td>
+<td>8000</td>
+</tr>
+<tr>
+<td>MLX</td>
+<td><em>(native only)</em></td>
+<td>OpenAI <code>/v1/completions</code></td>
+<td>8000</td>
 </tr>
 </tbody>
 </table>
@@ -2671,7 +2677,7 @@
 <h2 id="project-structure">Project Structure<a class="headerlink" href="#project-structure" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>src/kitt/
 <a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>├── cli/           # Click commands (run, engines, test, results, compare, web, fingerprint, stack, agent, monitoring)
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>├── engines/       # Inference engine plugins (base ABC, registry, vllm, tgi, llama_cpp, ollama)
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>├── engines/       # Inference engine plugins (base ABC, registry, vllm, llama_cpp, ollama, exllamav2, mlx)
 <a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>├── benchmarks/    # Benchmark plugins (base ABC, registry, performance/*, quality/*)
 <a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>├── config/        # Pydantic models + YAML loader
 <a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>├── hardware/      # System fingerprinting (GPU, CPU, RAM, storage, CUDA)

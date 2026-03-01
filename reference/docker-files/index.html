@@ -2197,10 +2197,6 @@ This avoids cross-architecture issues when the server (amd64) and agents
 <td><code>docker/llama_cpp/Dockerfile.spark</code></td>
 <td>llama.cpp build for DGX Spark</td>
 </tr>
-<tr>
-<td><code>docker/tgi/Dockerfile.spark</code></td>
-<td>TGI build for DGX Spark</td>
-</tr>
 </tbody>
 </table>
 <h2 id="docker-composeyaml-monitoring">docker-compose.yaml (Monitoring)<a class="headerlink" href="#docker-composeyaml-monitoring" title="Permanent link">&para;</a></h2>
@@ -2262,16 +2258,16 @@ engines at <code>localhost:&lt;port&gt;</code>:</p>
 <td>8000</td>
 </tr>
 <tr>
-<td>TGI</td>
-<td>8080</td>
-</tr>
-<tr>
 <td>llama.cpp</td>
 <td>8081</td>
 </tr>
 <tr>
 <td>Ollama</td>
 <td>11434</td>
+</tr>
+<tr>
+<td>ExLlamaV2</td>
+<td>8000</td>
 </tr>
 </tbody>
 </table>

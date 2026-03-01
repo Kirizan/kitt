@@ -2083,7 +2083,7 @@
 <h1 id="kitt-documentation">KITT Documentation<a class="headerlink" href="#kitt-documentation" title="Permanent link">&para;</a></h1>
 <p><strong>End-to-end testing suite for LLM inference engines.</strong></p>
 <p>KITT (Kirizan's Inference Testing Tools) measures quality consistency and
-performance across LLM inference engines -- vLLM, TGI, llama.cpp, and Ollama --
+performance across LLM inference engines -- vLLM, llama.cpp, Ollama, and more --
 so you can make informed deployment decisions backed by reproducible data.</p>
 <p>Every engine runs in a Docker container. You supply a model path, pick an engine,
 and KITT handles the rest: container lifecycle, benchmark execution, metric
@@ -2092,11 +2092,12 @@ collection, and result storage.</p>
 <h2 id="feature-highlights">Feature Highlights<a class="headerlink" href="#feature-highlights" title="Permanent link">&para;</a></h2>
 <dl>
 <dt><strong>Multi-Engine Support</strong></dt>
-<dd>Test across vLLM, TGI, llama.cpp, and Ollama with a single command. Compare
+<dd>Test across vLLM, llama.cpp, Ollama, ExLlamaV2, and MLX with a single command. Compare
 results side by side across engines.</dd>
-<dt><strong>Docker-Only Engines</strong></dt>
-<dd>Every engine runs in a container -- no host installs required. KITT manages
-the full container lifecycle automatically.</dd>
+<dt><strong>Docker and Native Engines</strong></dt>
+<dd>Engines run in Docker containers or as native host processes. KITT manages
+the full lifecycle automatically. On DGX Spark, native mode is the default
+for Ollama and llama.cpp.</dd>
 <dt><strong>Quality Benchmarks</strong></dt>
 <dd>Evaluate model accuracy with MMLU, GSM8K, TruthfulQA, and HellaSwag.
 Checkpoint recovery keeps long runs safe.</dd>

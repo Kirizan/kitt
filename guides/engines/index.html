@@ -2076,8 +2076,9 @@
 
 
 <h1 id="engines">Engines<a class="headerlink" href="#engines" title="Permanent link">&para;</a></h1>
-<p>KITT supports four inference engines. Every engine runs inside a Docker
-container -- no host-level installs are needed beyond Docker itself.</p>
+<p>KITT supports multiple inference engines. Engines can run inside Docker
+containers or as native host processes, depending on the engine and
+environment.</p>
 <h2 id="supported-engines">Supported Engines<a class="headerlink" href="#supported-engines" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -2088,6 +2089,7 @@ container -- no host-level installs are needed beyond Docker itself.</p>
 <th>API Format</th>
 <th>Default Port</th>
 <th>Model Formats</th>
+<th>Modes</th>
 </tr>
 </thead>
 <tbody>
@@ -2098,14 +2100,7 @@ container -- no host-level installs are needed beyond Docker itself.</p>
 <td>OpenAI <code>/v1/completions</code></td>
 <td>8000</td>
 <td>safetensors, pytorch</td>
-</tr>
-<tr>
-<td>TGI</td>
-<td><code>tgi</code></td>
-<td><code>ghcr.io/huggingface/text-generation-inference:latest</code></td>
-<td>HuggingFace <code>/generate</code></td>
-<td>8080</td>
-<td>safetensors, pytorch</td>
+<td>docker, native</td>
 </tr>
 <tr>
 <td>llama.cpp</td>
@@ -2114,6 +2109,7 @@ container -- no host-level installs are needed beyond Docker itself.</p>
 <td>OpenAI <code>/v1/completions</code></td>
 <td>8081</td>
 <td>gguf</td>
+<td>docker, native</td>
 </tr>
 <tr>
 <td>Ollama</td>
@@ -2122,6 +2118,25 @@ container -- no host-level installs are needed beyond Docker itself.</p>
 <td>Ollama <code>/api/generate</code></td>
 <td>11434</td>
 <td>gguf</td>
+<td>docker, native</td>
+</tr>
+<tr>
+<td>ExLlamaV2</td>
+<td><code>exllamav2</code></td>
+<td><code>kitt/exllamav2:latest</code></td>
+<td>OpenAI <code>/v1/completions</code></td>
+<td>8000</td>
+<td>exl2, gptq</td>
+<td>docker</td>
+</tr>
+<tr>
+<td>MLX</td>
+<td><code>mlx</code></td>
+<td><em>(native only)</em></td>
+<td>OpenAI <code>/v1/completions</code></td>
+<td>8000</td>
+<td>safetensors, mlx</td>
+<td>native</td>
 </tr>
 </tbody>
 </table>
@@ -2147,11 +2162,11 @@ Docker installation guide.</p>
 <a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>kitt<span class="w"> </span>engines<span class="w"> </span>setup<span class="w"> </span>ollama
 </code></pre></div>
 <p>Use <code>--dry-run</code> to see the <code>docker pull</code> command without executing it:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>kitt<span class="w"> </span>engines<span class="w"> </span>setup<span class="w"> </span>--dry-run<span class="w"> </span>tgi
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>kitt<span class="w"> </span>engines<span class="w"> </span>setup<span class="w"> </span>--dry-run<span class="w"> </span>llama_cpp
 </code></pre></div>
 <h2 id="model-format-compatibility">Model Format Compatibility<a class="headerlink" href="#model-format-compatibility" title="Permanent link">&para;</a></h2>
 <p>Engines are divided into two groups by the model formats they accept:</p>
-<p><strong>safetensors / pytorch</strong> -- vLLM and TGI load models in their native
+<p><strong>safetensors / pytorch</strong> -- vLLM loads models in their native
 HuggingFace format. Point the <code>--model</code> flag at a directory containing
 <code>model.safetensors</code> or <code>pytorch_model.bin</code> files (or a HuggingFace repo ID
 for engines that support it).</p>
