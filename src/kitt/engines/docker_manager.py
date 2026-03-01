@@ -269,17 +269,31 @@ class DockerManager:
 
     @staticmethod
     def exec_in_container(
-        container_id: str, command: list[str]
+        container_id: str,
+        command: list[str],
+        stdin_data: str | None = None,
     ) -> subprocess.CompletedProcess:
         """Execute a command inside a running container.
 
-        Used for operations like Ollama model pulling.
+        Args:
+            container_id: Container to exec into.
+            command: Command and arguments.
+            stdin_data: Optional string to pipe to the command's stdin.
 
         Raises:
             RuntimeError: If the exec fails.
         """
-        cmd = ["docker", "exec", container_id] + command
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
+        cmd = ["docker", "exec"]
+        if stdin_data is not None:
+            cmd.append("-i")
+        cmd += [container_id] + command
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=600,
+            input=stdin_data,
+        )
 
         if result.returncode != 0:
             raise RuntimeError(f"docker exec failed: {result.stderr.strip()}")

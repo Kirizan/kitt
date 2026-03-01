@@ -9,10 +9,9 @@ from __future__ import annotations
 import logging
 import os
 import shutil
-import signal
 import subprocess as sp
+import threading
 import time
-from pathlib import Path
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -41,6 +40,7 @@ class EngineOps:
 
     # Active engine processes tracked by engine name.
     _processes: dict[str, sp.Popen[str]] = {}
+    _lock = threading.Lock()
 
     @staticmethod
     def find_engine(name: str) -> dict[str, Any]:
@@ -97,20 +97,20 @@ class EngineOps:
         info["port"] = _ENGINE_PORTS.get(name, 0)
 
         # Check for tracked process.
-        proc = EngineOps._processes.get(name)
+        with EngineOps._lock:
+            proc = EngineOps._processes.get(name)
         if proc and proc.poll() is None:
             info["running"] = True
             info["pid"] = proc.pid
             return info
 
         # Check if Ollama systemd service is running.
-        if name == "ollama":
-            if _is_systemd_active("ollama"):
-                info["running"] = True
-                pid = _get_systemd_pid("ollama")
-                if pid:
-                    info["pid"] = pid
-                return info
+        if name == "ollama" and _is_systemd_active("ollama"):
+            info["running"] = True
+            pid = _get_systemd_pid("ollama")
+            if pid:
+                info["pid"] = pid
+            return info
 
         return info
 
@@ -167,15 +167,20 @@ class EngineOps:
             # Verify the process started.
             time.sleep(0.5)
             if proc.poll() is not None:
-                stderr = proc.stderr.read() if proc.stderr else ""
+                output = ""
+                if proc.stderr:
+                    output = proc.stderr.read()
+                elif proc.stdout:
+                    output = proc.stdout.read()
                 return {
                     "success": False,
                     "pid": 0,
                     "port": port,
-                    "error": f"Process exited immediately: {stderr}",
+                    "error": f"Process exited immediately: {output}",
                 }
 
-            EngineOps._processes[name] = proc
+            with EngineOps._lock:
+                EngineOps._processes[name] = proc
             log(f"{name} started (PID {proc.pid}, port {port})")
             return {"success": True, "pid": proc.pid, "port": port, "error": ""}
 
@@ -188,7 +193,8 @@ class EngineOps:
 
         Returns a dict with: success, error
         """
-        proc = EngineOps._processes.pop(name, None)
+        with EngineOps._lock:
+            proc = EngineOps._processes.pop(name, None)
         if proc and proc.poll() is None:
             try:
                 proc.terminate()
@@ -296,7 +302,11 @@ def _start_ollama(
     env["OLLAMA_HOST"] = f"0.0.0.0:{port}"
 
     # Forward runtime config as environment variables.
-    for key in ("OLLAMA_NUM_PARALLEL", "OLLAMA_MAX_LOADED_MODELS", "OLLAMA_GPU_OVERHEAD"):
+    for key in (
+        "OLLAMA_NUM_PARALLEL",
+        "OLLAMA_MAX_LOADED_MODELS",
+        "OLLAMA_GPU_OVERHEAD",
+    ):
         if key.lower() in runtime_config:
             env[key] = str(runtime_config[key.lower()])
         elif key in runtime_config:

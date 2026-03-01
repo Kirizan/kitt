@@ -299,19 +299,21 @@ def create_agent_app(
             # (Ollama registry names like "qwen2.5:7b" aren't mountable)
             if local_model_path.startswith("/"):
                 args.extend(["-v", f"{local_model_path}:{local_model_path}:ro"])
-            args.extend([
-                kitt_image,
-                "run",
-                "-m",
-                local_model_path,
-                "-e",
-                engine,
-                "-s",
-                suite,
-                "-o",
-                str(output_dir),
-                "--auto-pull",
-            ])
+            args.extend(
+                [
+                    kitt_image,
+                    "run",
+                    "-m",
+                    local_model_path,
+                    "-e",
+                    engine,
+                    "-s",
+                    suite,
+                    "-o",
+                    str(output_dir),
+                    "--auto-pull",
+                ]
+            )
             on_log(f"Running KITT benchmark in container ({kitt_image})")
         else:
             # Fallback: local kitt CLI
@@ -450,15 +452,25 @@ def create_agent_app(
                 on_log(f"Engine {engine_name} started (PID {result['pid']})")
                 update_status("completed")
                 _report(
-                    server_url, token, _agent_report_id, command_id,
-                    {"status": "completed", "pid": result["pid"], "port": result["port"]},
+                    server_url,
+                    token,
+                    _agent_report_id,
+                    command_id,
+                    {
+                        "status": "completed",
+                        "pid": result["pid"],
+                        "port": result["port"],
+                    },
                     insecure,
                 )
             else:
                 on_log(f"Failed to start {engine_name}: {result['error']}")
                 update_status("failed", error=result["error"])
                 _report(
-                    server_url, token, _agent_report_id, command_id,
+                    server_url,
+                    token,
+                    _agent_report_id,
+                    command_id,
                     {"status": "failed", "error": result["error"]},
                     insecure,
                 )
@@ -466,7 +478,10 @@ def create_agent_app(
             on_log(f"Error starting engine: {e}")
             update_status("failed", error=str(e))
             _report(
-                server_url, token, _agent_report_id, command_id,
+                server_url,
+                token,
+                _agent_report_id,
+                command_id,
                 {"status": "failed", "error": str(e)},
                 insecure,
             )
@@ -496,7 +511,10 @@ def create_agent_app(
                 )
                 update_status("completed")
                 _report(
-                    server_url, token, _agent_report_id, command_id,
+                    server_url,
+                    token,
+                    _agent_report_id,
+                    command_id,
                     {"status": "completed", "already_installed": True},
                     insecure,
                 )
@@ -505,15 +523,24 @@ def create_agent_app(
             on_log(f"{engine_name} not found — manual installation required")
             update_status("failed", error=f"{engine_name} not found on this system")
             _report(
-                server_url, token, _agent_report_id, command_id,
-                {"status": "failed", "error": f"{engine_name} not found on this system"},
+                server_url,
+                token,
+                _agent_report_id,
+                command_id,
+                {
+                    "status": "failed",
+                    "error": f"{engine_name} not found on this system",
+                },
                 insecure,
             )
         except Exception as e:
             on_log(f"Error: {e}")
             update_status("failed", error=str(e))
             _report(
-                server_url, token, _agent_report_id, command_id,
+                server_url,
+                token,
+                _agent_report_id,
+                command_id,
                 {"status": "failed", "error": str(e)},
                 insecure,
             )
@@ -631,8 +658,11 @@ def create_agent_app(
 
         # Async commands
         if cmd_type in (
-            "run_container", "run_test", "cleanup_storage",
-            "start_engine", "install_engine",
+            "run_container",
+            "run_test",
+            "cleanup_storage",
+            "start_engine",
+            "install_engine",
         ):
             _dispatch_command(cmd_type, payload, command_id, test_id)
             return jsonify({"accepted": True, "command_id": command_id}), 202

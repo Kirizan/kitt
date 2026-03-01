@@ -208,14 +208,15 @@ class OllamaEngine(InferenceEngine):
         self._base_url = f"http://localhost:{port}"
 
         if local_gguf:
-            # Import local GGUF via Modelfile
+            # Import local GGUF via Modelfile — use tee to avoid shell injection
             container_model_path = f"/models/{gguf_basename}"
             self._model_name = "kitt-local-model"
             modelfile_content = f"FROM {container_model_path}\n"
             logger.info("Importing local GGUF '%s' into Ollama...", gguf_basename)
             DockerManager.exec_in_container(
                 self._container_id,
-                ["sh", "-c", f"echo '{modelfile_content}' > /tmp/Modelfile"],
+                ["tee", "/tmp/Modelfile"],
+                stdin_data=modelfile_content,
             )
             DockerManager.exec_in_container(
                 self._container_id,

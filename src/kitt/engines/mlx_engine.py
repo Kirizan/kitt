@@ -71,14 +71,14 @@ class MLXEngine(InferenceEngine):
         return ""
 
     @classmethod
-    def is_available(cls) -> bool:
+    def is_available(cls, mode: EngineMode | None = None) -> bool:
         """MLX is available if mlx-lm is installed and on macOS."""
         import platform
 
         return MLX_AVAILABLE and platform.system() == "Darwin"
 
     @classmethod
-    def diagnose(cls) -> EngineDiagnostics:
+    def diagnose(cls, mode: EngineMode | None = None) -> EngineDiagnostics:
         import platform
 
         if platform.system() != "Darwin":

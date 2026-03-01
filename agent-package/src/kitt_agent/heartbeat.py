@@ -206,9 +206,7 @@ class HeartbeatThread(threading.Thread):
         # Sync canonical agent_id from server response
         canonical_id = resp.get("agent_id")
         if canonical_id and canonical_id != self.agent_id:
-            logger.info(
-                "Syncing agent_id: %s -> %s", self.agent_id, canonical_id
-            )
+            logger.info("Syncing agent_id: %s -> %s", self.agent_id, canonical_id)
             self.agent_id = canonical_id
             if self._on_agent_id_change:
                 self._on_agent_id_change(canonical_id)

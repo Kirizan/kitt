@@ -1,5 +1,7 @@
 """Engine profile models for the web UI."""
 
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 
@@ -8,7 +10,7 @@ class EngineProfileCreate(BaseModel):
 
     name: str
     engine: str
-    mode: str = "docker"
+    mode: Literal["docker", "native"] = "docker"
     description: str = ""
     build_config: dict = Field(default_factory=dict)
     runtime_config: dict = Field(default_factory=dict)

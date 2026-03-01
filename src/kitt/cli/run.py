@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
     "--engine",
     "-e",
     required=True,
-    help="Inference engine to use (vllm, tgi, llama_cpp, ollama)",
+    help="Inference engine to use (vllm, llama_cpp, ollama, exllamav2, mlx)",
 )
 @click.option(
     "--suite",

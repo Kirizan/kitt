@@ -149,7 +149,7 @@ def remote_engines():
 def remote_engines_setup(engine_name, host, dry_run):
     """Pull or build an engine image on a remote host.
 
-    ENGINE_NAME: Engine to set up (vllm, tgi, llama_cpp, ollama)
+    ENGINE_NAME: Engine to set up (vllm, llama_cpp, ollama, exllamav2)
     """
     from kitt.remote.host_config import HostManager
     from kitt.remote.setup import RemoteSetup

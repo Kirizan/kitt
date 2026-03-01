@@ -115,7 +115,10 @@ class ProcessManager:
         except subprocess.TimeoutExpired:
             logger.warning("SIGTERM timeout, sending SIGKILL to PID %d", proc.pid)
             proc.kill()
-            proc.wait(timeout=5)
+            try:
+                proc.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                logger.warning("Process PID %d did not exit after SIGKILL", proc.pid)
 
     @staticmethod
     def is_process_running(proc: subprocess.Popen) -> bool:

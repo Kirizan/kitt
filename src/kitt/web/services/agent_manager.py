@@ -319,6 +319,8 @@ class AgentManager:
                             "engine_name": row["engine_name"],
                             "benchmark_name": row["benchmark_name"],
                             "suite_name": row["suite_name"],
+                            "engine_mode": row["engine_mode"],
+                            "profile_id": row["profile_id"],
                         },
                     }
                 )

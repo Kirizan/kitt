@@ -5,7 +5,7 @@ import time
 from pathlib import Path
 from typing import Any
 
-from .base import GenerationResult, InferenceEngine
+from .base import EngineDiagnostics, GenerationResult, InferenceEngine
 from .lifecycle import EngineMode
 from .registry import register_engine
 
@@ -55,6 +55,27 @@ class VLLMEngine(InferenceEngine):
     @classmethod
     def supported_modes(cls) -> list[EngineMode]:
         return [EngineMode.DOCKER, EngineMode.NATIVE]
+
+    @classmethod
+    def _is_native_available(cls) -> bool:
+        """Check if vLLM is installed as a Python module."""
+        import importlib
+
+        try:
+            importlib.import_module("vllm")
+            return True
+        except ImportError:
+            return False
+
+    @classmethod
+    def _diagnose_native(cls) -> EngineDiagnostics:
+        if cls._is_native_available():
+            return EngineDiagnostics(available=True)
+        return EngineDiagnostics(
+            available=False,
+            error="vllm Python module is not installed",
+            guidance="Install with: pip install vllm",
+        )
 
     def initialize(self, model_path: str, config: dict[str, Any]) -> None:
         """Start vLLM and wait for healthy."""
