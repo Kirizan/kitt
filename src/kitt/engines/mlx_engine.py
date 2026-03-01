@@ -11,6 +11,7 @@ from .base import (
     GenerationResult,
     InferenceEngine,
 )
+from .lifecycle import EngineMode
 from .registry import register_engine
 
 logger = logging.getLogger(__name__)
@@ -40,6 +41,14 @@ class MLXEngine(InferenceEngine):
     @classmethod
     def name(cls) -> str:
         return "mlx"
+
+    @classmethod
+    def supported_modes(cls) -> list[EngineMode]:
+        return [EngineMode.NATIVE]
+
+    @classmethod
+    def default_mode(cls) -> EngineMode:
+        return EngineMode.NATIVE
 
     @classmethod
     def supported_formats(cls) -> list[str]:
@@ -88,6 +97,8 @@ class MLXEngine(InferenceEngine):
 
     def initialize(self, model_path: str, config: dict[str, Any]) -> None:
         """Load model into memory using mlx-lm."""
+        self._mode = EngineMode.NATIVE
+
         if not MLX_AVAILABLE:
             raise RuntimeError(
                 "mlx-lm is not installed. Install with: pip install mlx-lm"

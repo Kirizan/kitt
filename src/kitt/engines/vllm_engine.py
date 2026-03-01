@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from .base import GenerationResult, InferenceEngine
+from .lifecycle import EngineMode
 from .registry import register_engine
 
 logger = logging.getLogger(__name__)
@@ -51,8 +52,50 @@ class VLLMEngine(InferenceEngine):
     # and need explicit 'vllm serve' instead of bare --model flags.
     _NGC_PREFIXES = ("nvcr.io/", "kitt/vllm:")
 
+    @classmethod
+    def supported_modes(cls) -> list[EngineMode]:
+        return [EngineMode.DOCKER, EngineMode.NATIVE]
+
     def initialize(self, model_path: str, config: dict[str, Any]) -> None:
-        """Start vLLM container and wait for healthy."""
+        """Start vLLM and wait for healthy."""
+        self._mode = EngineMode(config.get("mode", self.default_mode()))
+
+        if self._mode == EngineMode.NATIVE:
+            self._initialize_native(model_path, config)
+        else:
+            self._initialize_docker(model_path, config)
+
+    def _initialize_native(self, model_path: str, config: dict[str, Any]) -> None:
+        """Start vLLM as a native process."""
+        from .docker_manager import DockerManager
+        from .process_manager import ProcessManager
+
+        port = config.get("port", self.default_port())
+        self._model_name = model_path
+
+        args = [
+            "-m", "vllm.entrypoints.openai.api_server",
+            "--model", model_path,
+            "--port", str(port),
+        ]
+
+        if config.get("tensor_parallel_size", 1) > 1:
+            args += ["--tensor-parallel-size", str(config["tensor_parallel_size"])]
+        if "gpu_memory_utilization" in config:
+            args += ["--gpu-memory-utilization", str(config["gpu_memory_utilization"])]
+
+        binary = ProcessManager.find_binary("python3") or "python3"
+        self._process = ProcessManager.start_process(
+            binary, args, env=config.get("env", {}),
+        )
+
+        health_url = f"http://localhost:{port}{self.health_endpoint()}"
+        startup_timeout = config.get("startup_timeout", 600.0)
+        DockerManager.wait_for_healthy(health_url, timeout=startup_timeout)
+        self._base_url = f"http://localhost:{port}"
+
+    def _initialize_docker(self, model_path: str, config: dict[str, Any]) -> None:
+        """Start vLLM Docker container and wait for healthy."""
         from .docker_manager import ContainerConfig, DockerManager
 
         model_abs = str(Path(model_path).resolve())
@@ -131,9 +174,5 @@ class VLLMEngine(InferenceEngine):
         return parse_openai_result(response, elapsed_ms, tracker)
 
     def cleanup(self) -> None:
-        """Stop and remove the vLLM container."""
-        from .docker_manager import DockerManager
-
-        if self._container_id:
-            DockerManager.stop_container(self._container_id)
-            self._container_id = None
+        """Stop the vLLM engine."""
+        super().cleanup()
