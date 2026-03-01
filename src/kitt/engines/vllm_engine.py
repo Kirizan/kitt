@@ -1,6 +1,8 @@
 """vLLM inference engine implementation — Docker + OpenAI-compatible API."""
 
 import logging
+import os
+import subprocess
 import sys
 import time
 from pathlib import Path
@@ -57,16 +59,44 @@ class VLLMEngine(InferenceEngine):
     def supported_modes(cls) -> list[EngineMode]:
         return [EngineMode.DOCKER, EngineMode.NATIVE]
 
+    # Dedicated venv for vLLM with CUDA-matched wheels.
+    _VLLM_VENV_DIR = Path.home() / ".kitt" / "vllm-venv"
+
+    @classmethod
+    def _find_vllm_python(cls) -> str:
+        """Find the Python interpreter that has vLLM installed.
+
+        Checks the dedicated vLLM venv first (CUDA-matched wheels),
+        then falls back to the current interpreter.
+        """
+        venv_python = str(cls._VLLM_VENV_DIR / "bin" / "python")
+        if cls._VLLM_VENV_DIR.exists() and os.path.isfile(venv_python):
+            try:
+                out = subprocess.run(
+                    [venv_python, "-c", "import vllm"],
+                    capture_output=True,
+                    timeout=10,
+                )
+                if out.returncode == 0:
+                    return venv_python
+            except (FileNotFoundError, subprocess.TimeoutExpired):
+                pass
+        return sys.executable
+
     @classmethod
     def _is_native_available(cls) -> bool:
         """Check if vLLM is installed as a Python module."""
-        import importlib
+        python = cls._find_vllm_python()
+        if python == sys.executable:
+            import importlib
 
-        try:
-            importlib.import_module("vllm")
-            return True
-        except ImportError:
-            return False
+            try:
+                importlib.import_module("vllm")
+                return True
+            except ImportError:
+                return False
+        # Dedicated venv exists and has vllm (already verified by _find_vllm_python).
+        return True
 
     @classmethod
     def _diagnose_native(cls) -> EngineDiagnostics:
@@ -75,7 +105,7 @@ class VLLMEngine(InferenceEngine):
         return EngineDiagnostics(
             available=False,
             error="vllm Python module is not installed",
-            guidance="Install with: pip install vllm",
+            guidance="Install with: pip install vllm (or create ~/.kitt/vllm-venv/)",
         )
 
     def initialize(self, model_path: str, config: dict[str, Any]) -> None:
@@ -109,9 +139,9 @@ class VLLMEngine(InferenceEngine):
         if "gpu_memory_utilization" in config:
             args += ["--gpu-memory-utilization", str(config["gpu_memory_utilization"])]
 
-        # Use the current Python interpreter so vllm is importable
-        # even when running inside a virtualenv (e.g. agent venv).
-        binary = sys.executable
+        # Use the dedicated vLLM venv if available (CUDA-matched wheels),
+        # otherwise fall back to the current interpreter.
+        binary = config.get("python_path") or self._find_vllm_python()
         self._process = ProcessManager.start_process(
             binary,
             args,

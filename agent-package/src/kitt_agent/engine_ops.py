@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 import os
+from pathlib import Path
 import shutil
 import subprocess as sp
 import sys
@@ -16,6 +17,9 @@ import time
 from typing import Any
 
 logger = logging.getLogger(__name__)
+
+# Dedicated venv for vLLM with CUDA-matched wheels.
+_VLLM_VENV_DIR = Path.home() / ".kitt" / "vllm-venv"
 
 # Engine binary names to search for during discovery.
 _ENGINE_BINARIES: dict[str, list[str]] = {
@@ -59,8 +63,9 @@ class EngineOps:
 
         if name == "vllm":
             # vLLM is a Python module, not a standalone binary.
-            # Use sys.executable so we find vllm in the agent venv.
-            python = sys.executable
+            # Check the dedicated vLLM venv first (has CUDA-matched wheels),
+            # then fall back to the current interpreter (agent venv).
+            python = _find_vllm_python()
             try:
                 out = sp.run(
                     [python, "-c", "import vllm; print(vllm.__version__)"],
@@ -357,14 +362,92 @@ def _install_llama_cpp(log: Any) -> dict[str, Any]:
 
 
 def _install_vllm(log: Any) -> dict[str, Any]:
-    """Install vLLM via pip into the current Python environment."""
-    log("Installing vLLM via pip...")
-    result = sp.run(
-        [sys.executable, "-m", "pip", "install", "vllm"],
-        capture_output=True,
-        text=True,
-        timeout=600,
-    )
+    """Install vLLM into a dedicated venv with CUDA-matched wheels.
+
+    Standard pip installs pull CPU-only PyTorch on platforms like DGX Spark
+    (CUDA 13 + ARM64).  A dedicated venv lets us pin the correct torch+cu130
+    wheels without disturbing the agent venv.
+    """
+    venv_python = str(_VLLM_VENV_DIR / "bin" / "python")
+
+    # Create the dedicated venv if it doesn't exist.
+    if not _VLLM_VENV_DIR.exists():
+        log(f"Creating dedicated vLLM venv at {_VLLM_VENV_DIR}...")
+        result = sp.run(
+            [sys.executable, "-m", "venv", str(_VLLM_VENV_DIR)],
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+        if result.returncode != 0:
+            return {"success": False, "version": "", "error": result.stderr.strip()}
+        # Upgrade pip.
+        sp.run(
+            [venv_python, "-m", "pip", "install", "--upgrade", "pip"],
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+
+    # Detect CUDA version for index selection.
+    cuda_ver = _detect_cuda_major()
+    if cuda_ver and cuda_ver >= 13:
+        log(f"Detected CUDA {cuda_ver} — installing PyTorch cu130 wheels...")
+        result = sp.run(
+            [
+                venv_python, "-m", "pip", "install",
+                "torch", "torchvision", "torchaudio",
+                "--index-url", "https://download.pytorch.org/whl/cu130",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=600,
+        )
+        if result.returncode != 0:
+            log(f"PyTorch cu130 install warning: {result.stderr.strip()[-200:]}")
+
+        log("Installing vLLM cu130 nightly...")
+        result = sp.run(
+            [
+                venv_python, "-m", "pip", "install",
+                "--force-reinstall", "--no-deps",
+                "vllm",
+                "-i", "https://wheels.vllm.ai/nightly/cu130",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=600,
+        )
+        if result.returncode != 0:
+            log(f"vLLM cu130 nightly failed: {result.stderr.strip()[-200:]}")
+            # Fall back to standard install with deps.
+            log("Falling back to standard vLLM install...")
+            result = sp.run(
+                [venv_python, "-m", "pip", "install", "vllm"],
+                capture_output=True,
+                text=True,
+                timeout=600,
+            )
+
+        # Install remaining vLLM deps that --no-deps skipped.
+        sp.run(
+            [
+                venv_python, "-m", "pip", "install",
+                "vllm", "--extra-index-url", "https://wheels.vllm.ai/nightly/cu130",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=600,
+        )
+    else:
+        log("Installing vLLM via pip...")
+        result = sp.run(
+            [venv_python, "-m", "pip", "install", "vllm"],
+            capture_output=True,
+            text=True,
+            timeout=600,
+        )
+
     if result.returncode != 0:
         error = result.stderr.strip() or result.stdout.strip()
         log(f"vLLM install failed: {error}")
@@ -385,6 +468,50 @@ def _install_vllm(log: Any) -> dict[str, Any]:
 # -------------------------------------------------------------------
 # Internal helpers
 # -------------------------------------------------------------------
+
+
+def _find_vllm_python() -> str:
+    """Return the Python interpreter that has vLLM installed.
+
+    Search order:
+    1. Dedicated vLLM venv (~/.kitt/vllm-venv/bin/python) — preferred
+       because it can carry CUDA-matched wheels independent of the
+       agent venv.
+    2. Current interpreter (sys.executable) — the agent venv.
+    """
+    venv_python = str(_VLLM_VENV_DIR / "bin" / "python")
+    if _VLLM_VENV_DIR.exists() and os.path.isfile(venv_python):
+        try:
+            out = sp.run(
+                [venv_python, "-c", "import vllm"],
+                capture_output=True,
+                timeout=10,
+            )
+            if out.returncode == 0:
+                return venv_python
+        except (FileNotFoundError, sp.TimeoutExpired):
+            pass
+    return sys.executable
+
+
+def _detect_cuda_major() -> int | None:
+    """Detect the major CUDA toolkit version from nvcc."""
+    nvcc = shutil.which("nvcc") or "/usr/local/cuda/bin/nvcc"
+    try:
+        out = sp.run(
+            [nvcc, "--version"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        for line in out.stdout.split("\n"):
+            if "release" in line.lower():
+                # e.g. "Cuda compilation tools, release 13.0, V13.0.96"
+                parts = line.split("release")[-1].strip().split(",")[0].strip()
+                return int(parts.split(".")[0])
+    except (FileNotFoundError, sp.TimeoutExpired, ValueError, IndexError):
+        pass
+    return None
 
 
 def _get_version(binary_name: str, binary_path: str) -> str:
@@ -526,8 +653,9 @@ def _start_vllm(
     log: Any,
 ) -> sp.Popen[str]:
     """Start a vLLM OpenAI-compatible server."""
+    python = _find_vllm_python()
     args = [
-        sys.executable,
+        python,
         "-m",
         "vllm.entrypoints.openai.api_server",
         "--port",
