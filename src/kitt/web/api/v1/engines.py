@@ -87,6 +87,82 @@ def delete_profile(profile_id):
 
 
 # ------------------------------------------------------------------
+# Agent engine commands
+# ------------------------------------------------------------------
+
+
+def _agent_mgr():
+    return get_services()["agent_manager"]
+
+
+@bp.route("/agents/<agent_id>/install", methods=["POST"])
+@require_auth
+def install_engine(agent_id):
+    """Queue an engine install command on an agent."""
+    data = request.get_json(silent=True)
+    if not data:
+        return jsonify({"error": "Invalid JSON body"}), 400
+
+    engine_name = data.get("engine_name", "").strip()
+    if not engine_name:
+        return jsonify({"error": "engine_name is required"}), 400
+
+    mgr = _agent_mgr()
+    agent = mgr.get_agent(agent_id)
+    if not agent:
+        return jsonify({"error": "Agent not found"}), 404
+
+    command_id = mgr.queue_engine_command(agent_id, engine_name, "install_engine")
+    return jsonify({"command_id": command_id, "status": "queued"}), 202
+
+
+@bp.route("/agents/<agent_id>/start", methods=["POST"])
+@require_auth
+def start_engine(agent_id):
+    """Queue an engine start command on an agent."""
+    data = request.get_json(silent=True)
+    if not data:
+        return jsonify({"error": "Invalid JSON body"}), 400
+
+    engine_name = data.get("engine_name", "").strip()
+    if not engine_name:
+        return jsonify({"error": "engine_name is required"}), 400
+
+    mgr = _agent_mgr()
+    agent = mgr.get_agent(agent_id)
+    if not agent:
+        return jsonify({"error": "Agent not found"}), 404
+
+    runtime_config = data.get("runtime_config", {})
+    model_path = data.get("model_path", "")
+    command_id = mgr.queue_engine_command(
+        agent_id, engine_name, "start_engine", runtime_config, model_path
+    )
+    return jsonify({"command_id": command_id, "status": "queued"}), 202
+
+
+@bp.route("/agents/<agent_id>/stop", methods=["POST"])
+@require_auth
+def stop_engine_endpoint(agent_id):
+    """Queue an engine stop command on an agent."""
+    data = request.get_json(silent=True)
+    if not data:
+        return jsonify({"error": "Invalid JSON body"}), 400
+
+    engine_name = data.get("engine_name", "").strip()
+    if not engine_name:
+        return jsonify({"error": "engine_name is required"}), 400
+
+    mgr = _agent_mgr()
+    agent = mgr.get_agent(agent_id)
+    if not agent:
+        return jsonify({"error": "Agent not found"}), 404
+
+    command_id = mgr.queue_engine_command(agent_id, engine_name, "stop_engine")
+    return jsonify({"command_id": command_id, "status": "queued"}), 202
+
+
+# ------------------------------------------------------------------
 # Engine status
 # ------------------------------------------------------------------
 

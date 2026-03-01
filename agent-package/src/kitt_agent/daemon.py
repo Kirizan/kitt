@@ -500,39 +500,34 @@ def create_agent_app(
 
         try:
             update_status("running")
-            on_log(f"Installing engine: {engine_name}")
+            result = EngineOps.install_engine(engine_name, on_log=on_log)
 
-            # Check if already installed.
-            info = EngineOps.find_engine(engine_name)
-            if info["installed"]:
-                on_log(
-                    f"{engine_name} is already installed at {info['binary_path']} "
-                    f"(version {info['version']})"
-                )
+            if result["success"]:
                 update_status("completed")
                 _report(
                     server_url,
                     token,
                     _agent_report_id,
                     command_id,
-                    {"status": "completed", "already_installed": True},
+                    {
+                        "status": "completed",
+                        "version": result.get("version", ""),
+                        "already_installed": result.get("already_installed", False),
+                    },
                     insecure,
                 )
-                return
-
-            on_log(f"{engine_name} not found — manual installation required")
-            update_status("failed", error=f"{engine_name} not found on this system")
-            _report(
-                server_url,
-                token,
-                _agent_report_id,
-                command_id,
-                {
-                    "status": "failed",
-                    "error": f"{engine_name} not found on this system",
-                },
-                insecure,
-            )
+            else:
+                error = result.get("error", "Unknown error")
+                on_log(f"Install failed: {error}")
+                update_status("failed", error=error)
+                _report(
+                    server_url,
+                    token,
+                    _agent_report_id,
+                    command_id,
+                    {"status": "failed", "error": error},
+                    insecure,
+                )
         except Exception as e:
             on_log(f"Error: {e}")
             update_status("failed", error=str(e))

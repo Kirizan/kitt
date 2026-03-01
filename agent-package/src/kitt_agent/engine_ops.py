@@ -222,12 +222,144 @@ class EngineOps:
         return {"success": False, "error": f"{name} is not running"}
 
     @staticmethod
+    def install_engine(
+        name: str,
+        on_log: Any = None,
+    ) -> dict[str, Any]:
+        """Install a native engine on the host.
+
+        Returns a dict with: success, version, error
+        """
+        log = on_log or logger.info
+
+        # Check if already installed.
+        info = EngineOps.find_engine(name)
+        if info["installed"]:
+            log(f"{name} already installed (version {info['version']})")
+            return {
+                "success": True,
+                "version": info["version"],
+                "already_installed": True,
+                "error": "",
+            }
+
+        try:
+            if name == "ollama":
+                return _install_ollama(log)
+            elif name == "llama_cpp":
+                return _install_llama_cpp(log)
+            elif name == "vllm":
+                return _install_vllm(log)
+            else:
+                return {
+                    "success": False,
+                    "version": "",
+                    "error": f"No installer for engine: {name}",
+                }
+        except Exception as e:
+            log(f"Installation failed: {e}")
+            return {"success": False, "version": "", "error": str(e)}
+
+    @staticmethod
     def all_engine_status() -> list[dict[str, Any]]:
         """Get status of all known engines. Used for heartbeat payload."""
         results = []
         for name in _ENGINE_BINARIES:
             results.append(EngineOps.engine_status(name))
         return results
+
+
+# -------------------------------------------------------------------
+# Engine installers
+# -------------------------------------------------------------------
+
+
+def _install_ollama(log: Any) -> dict[str, Any]:
+    """Install Ollama via the official install script."""
+    log("Installing Ollama via https://ollama.com/install.sh ...")
+    result = sp.run(
+        ["bash", "-c", "curl -fsSL https://ollama.com/install.sh | sh"],
+        capture_output=True,
+        text=True,
+        timeout=300,
+    )
+    if result.returncode != 0:
+        error = result.stderr.strip() or result.stdout.strip()
+        log(f"Ollama install failed: {error}")
+        return {"success": False, "version": "", "error": error}
+
+    # Verify installation.
+    info = EngineOps.find_engine("ollama")
+    if info["installed"]:
+        log(f"Ollama installed successfully (version {info['version']})")
+        return {"success": True, "version": info["version"], "error": ""}
+
+    return {
+        "success": False,
+        "version": "",
+        "error": "Install script succeeded but ollama binary not found",
+    }
+
+
+def _install_llama_cpp(log: Any) -> dict[str, Any]:
+    """Install llama.cpp llama-server from pre-built release or source."""
+    log("Attempting to install llama-server via pip (llama-cpp-python[server])...")
+    result = sp.run(
+        ["pip3", "install", "llama-cpp-python[server]"],
+        capture_output=True,
+        text=True,
+        timeout=600,
+    )
+    if result.returncode == 0:
+        info = EngineOps.find_engine("llama_cpp")
+        if info["installed"]:
+            log(f"llama-server installed (version {info['version']})")
+            return {"success": True, "version": info["version"], "error": ""}
+
+    log("pip install failed or llama-server not in PATH — trying snap...")
+    result = sp.run(
+        ["snap", "install", "llama-cpp", "--classic"],
+        capture_output=True,
+        text=True,
+        timeout=300,
+    )
+    if result.returncode == 0:
+        info = EngineOps.find_engine("llama_cpp")
+        if info["installed"]:
+            log(f"llama-server installed via snap (version {info['version']})")
+            return {"success": True, "version": info["version"], "error": ""}
+
+    return {
+        "success": False,
+        "version": "",
+        "error": "Could not install llama-server via pip or snap",
+    }
+
+
+def _install_vllm(log: Any) -> dict[str, Any]:
+    """Install vLLM via pip."""
+    log("Installing vLLM via pip...")
+    result = sp.run(
+        ["pip3", "install", "vllm"],
+        capture_output=True,
+        text=True,
+        timeout=600,
+    )
+    if result.returncode != 0:
+        error = result.stderr.strip() or result.stdout.strip()
+        log(f"vLLM install failed: {error}")
+        return {"success": False, "version": "", "error": error}
+
+    info = EngineOps.find_engine("vllm")
+    if info["installed"]:
+        log(f"vLLM installed (version {info['version']})")
+        return {"success": True, "version": info["version"], "error": ""}
+
+    return {
+        "success": False,
+        "version": "",
+        "error": "pip install succeeded but vllm module not importable",
+    }
 
 
 # -------------------------------------------------------------------
