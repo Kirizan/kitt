@@ -1,5 +1,7 @@
 """Engine profile CRUD and agent engine status queries."""
 
+from __future__ import annotations
+
 import json
 import logging
 import threading
