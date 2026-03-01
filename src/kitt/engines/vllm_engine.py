@@ -1,6 +1,7 @@
 """vLLM inference engine implementation — Docker + OpenAI-compatible API."""
 
 import logging
+import sys
 import time
 from pathlib import Path
 from typing import Any
@@ -108,7 +109,9 @@ class VLLMEngine(InferenceEngine):
         if "gpu_memory_utilization" in config:
             args += ["--gpu-memory-utilization", str(config["gpu_memory_utilization"])]
 
-        binary = ProcessManager.find_binary("python3") or "python3"
+        # Use the current Python interpreter so vllm is importable
+        # even when running inside a virtualenv (e.g. agent venv).
+        binary = sys.executable
         self._process = ProcessManager.start_process(
             binary,
             args,
