@@ -48,7 +48,9 @@ class EngineService:
             )
             self._conn.commit()
 
-        return self.get_profile(profile_id)
+        result = self.get_profile(profile_id)
+        assert result is not None  # Just inserted — must exist
+        return result
 
     def get_profile(self, profile_id: str) -> dict | None:
         """Get a single profile by ID."""
