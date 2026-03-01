@@ -9,6 +9,7 @@ from __future__ import annotations
 import logging
 import os
 from pathlib import Path
+import shlex
 import shutil
 import subprocess as sp
 import sys
@@ -321,8 +322,8 @@ def _install_llama_cpp(log: Any) -> dict[str, Any]:
             " && git clone --depth 1 https://github.com/ggml-org/llama.cpp.git"
             " && cd llama.cpp"
             f" && cmake -B build -DGGML_CUDA=ON"
-            f" -DCMAKE_CUDA_ARCHITECTURES={cuda_arch}"
-            f" -DCMAKE_CUDA_COMPILER={nvcc}"
+            f" -DCMAKE_CUDA_ARCHITECTURES={shlex.quote(cuda_arch)}"
+            f" -DCMAKE_CUDA_COMPILER={shlex.quote(nvcc)}"
             " && cmake --build build --config Release -j$(nproc) --target llama-server"
             " && sudo cp build/bin/llama-server /usr/local/bin/"
             " && rm -rf /tmp/llama.cpp"

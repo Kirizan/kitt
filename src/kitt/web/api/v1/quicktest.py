@@ -96,7 +96,7 @@ def list_tests():
     agent_name_filter = request.args.get("agent_name", "")
     page = request.args.get("page", 1, type=int)
     per_page = request.args.get("per_page", 20, type=int)
-    per_page = min(per_page, 100)
+    per_page = max(min(per_page, 100), 1)
     page = max(page, 1)
 
     conditions: list[str] = []

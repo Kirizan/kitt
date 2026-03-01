@@ -76,7 +76,7 @@ class ProcessManager:
                 cmd,
                 env=proc_env,
                 cwd=cwd,
-                stdout=subprocess.PIPE,
+                stdout=subprocess.DEVNULL,
                 stderr=subprocess.PIPE,
             )
         except FileNotFoundError as exc:

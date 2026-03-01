@@ -305,32 +305,35 @@ def profiles():
 def list_profiles(engine):
     """List all saved engine profiles."""
 
-    svc = _get_engine_service()
+    svc, conn = _get_engine_service()
     if svc is None:
         return
 
-    items = svc.list_profiles(engine=engine)
+    try:
+        items = svc.list_profiles(engine=engine)
 
-    if not items:
-        console.print("[dim]No profiles found.[/dim]")
-        return
+        if not items:
+            console.print("[dim]No profiles found.[/dim]")
+            return
 
-    table = Table(title="Engine Profiles")
-    table.add_column("Name", style="cyan")
-    table.add_column("Engine")
-    table.add_column("Mode")
-    table.add_column("Description")
+        table = Table(title="Engine Profiles")
+        table.add_column("Name", style="cyan")
+        table.add_column("Engine")
+        table.add_column("Mode")
+        table.add_column("Description")
 
-    for p in items:
-        mode_style = "green" if p["mode"] == "native" else "blue"
-        table.add_row(
-            p["name"],
-            p["engine"],
-            f"[{mode_style}]{p['mode']}[/{mode_style}]",
-            p.get("description", ""),
-        )
+        for p in items:
+            mode_style = "green" if p["mode"] == "native" else "blue"
+            table.add_row(
+                p["name"],
+                p["engine"],
+                f"[{mode_style}]{p['mode']}[/{mode_style}]",
+                p.get("description", ""),
+            )
 
-    console.print(table)
+        console.print(table)
+    finally:
+        conn.close()
 
 
 @profiles.command("show")
@@ -339,41 +342,50 @@ def show_profile(name):
     """Show details of a specific engine profile."""
     import json
 
-    svc = _get_engine_service()
+    svc, conn = _get_engine_service()
     if svc is None:
         return
 
-    profile = svc.get_profile_by_name(name)
-    if profile is None:
-        console.print(f"[red]Profile '{name}' not found.[/red]")
-        raise SystemExit(1)
+    try:
+        profile = svc.get_profile_by_name(name)
+        if profile is None:
+            console.print(f"[red]Profile '{name}' not found.[/red]")
+            raise SystemExit(1)
 
-    console.print(f"[bold]Profile: {profile['name']}[/bold]")
-    console.print(f"  ID: {profile['id']}")
-    console.print(f"  Engine: {profile['engine']}")
+        console.print(f"[bold]Profile: {profile['name']}[/bold]")
+        console.print(f"  ID: {profile['id']}")
+        console.print(f"  Engine: {profile['engine']}")
 
-    mode_style = "green" if profile["mode"] == "native" else "blue"
-    console.print(f"  Mode: [{mode_style}]{profile['mode']}[/{mode_style}]")
+        mode_style = "green" if profile["mode"] == "native" else "blue"
+        console.print(f"  Mode: [{mode_style}]{profile['mode']}[/{mode_style}]")
 
-    if profile.get("description"):
-        console.print(f"  Description: {profile['description']}")
+        if profile.get("description"):
+            console.print(f"  Description: {profile['description']}")
 
-    build_cfg = profile.get("build_config", {})
-    if build_cfg:
-        console.print("\n  [bold]Build Config:[/bold]")
-        console.print(f"    {json.dumps(build_cfg, indent=2)}")
+        build_cfg = profile.get("build_config", {})
+        if build_cfg:
+            console.print("\n  [bold]Build Config:[/bold]")
+            console.print(f"    {json.dumps(build_cfg, indent=2)}")
 
-    runtime_cfg = profile.get("runtime_config", {})
-    if runtime_cfg:
-        console.print("\n  [bold]Runtime Config:[/bold]")
-        console.print(f"    {json.dumps(runtime_cfg, indent=2)}")
+        runtime_cfg = profile.get("runtime_config", {})
+        if runtime_cfg:
+            console.print("\n  [bold]Runtime Config:[/bold]")
+            console.print(f"    {json.dumps(runtime_cfg, indent=2)}")
 
-    console.print(f"\n  Created: {profile.get('created_at', '-')}")
-    console.print(f"  Updated: {profile.get('updated_at', '-')}")
+        console.print(f"\n  Created: {profile.get('created_at', '-')}")
+        console.print(f"  Updated: {profile.get('updated_at', '-')}")
+    finally:
+        conn.close()
 
 
 def _get_engine_service():
-    """Get an EngineService instance backed by the default database."""
+    """Get an EngineService instance and its database connection.
+
+    Returns:
+        Tuple of (EngineService, sqlite3.Connection), or (None, None) if
+        the database doesn't exist.  Callers must close the connection
+        when done.
+    """
     import sqlite3
     import threading
     from pathlib import Path
@@ -386,8 +398,8 @@ def _get_engine_service():
             f"[red]Database not found at {db_path}.[/red]\n"
             "Run the web server first to initialize the database."
         )
-        return None
+        return None, None
 
     conn = sqlite3.connect(str(db_path))
     conn.row_factory = sqlite3.Row
-    return EngineService(conn, threading.Lock())
+    return EngineService(conn, threading.Lock()), conn

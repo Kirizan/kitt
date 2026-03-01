@@ -193,12 +193,19 @@ MIGRATIONS: list[Migration] = [
 
         CREATE INDEX IF NOT EXISTS idx_engine_profiles_engine ON engine_profiles(engine);
         CREATE INDEX IF NOT EXISTS idx_agent_engines_agent ON agent_engines(agent_id);
-
-        ALTER TABLE quick_tests ADD COLUMN engine_mode TEXT DEFAULT 'docker';
-        ALTER TABLE quick_tests ADD COLUMN profile_id TEXT DEFAULT '';
         """,
     ),
 ]
+
+
+def _add_column_if_missing(conn: Any, table: str, column: str, col_def: str) -> None:
+    """Add a column to a table if it doesn't already exist (SQLite compat)."""
+    cursor = conn.execute(f"PRAGMA table_info({table})")
+    columns = {row[1] if isinstance(row, tuple) else row["name"] for row in cursor}
+    if column not in columns:
+        conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {col_def}")
+        conn.commit()
+        logger.info("Added column %s.%s", table, column)
 
 
 def _migrate_token_hashes(conn: Any) -> None:
@@ -287,6 +294,10 @@ def run_migrations_sqlite(conn: Any, current_version: int) -> int:
             # Insert default agent settings for all existing agents
             if version == 8:
                 _insert_default_agent_settings(conn)
+            # Idempotent column additions for v11 (SQLite has no ADD COLUMN IF NOT EXISTS)
+            if version == 11:
+                _add_column_if_missing(conn, "quick_tests", "engine_mode", "TEXT DEFAULT 'docker'")
+                _add_column_if_missing(conn, "quick_tests", "profile_id", "TEXT DEFAULT ''")
 
     if applied:
         logger.info("Applied %d migration(s)", applied)
