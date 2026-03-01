@@ -296,8 +296,12 @@ def run_migrations_sqlite(conn: Any, current_version: int) -> int:
                 _insert_default_agent_settings(conn)
             # Idempotent column additions for v11 (SQLite has no ADD COLUMN IF NOT EXISTS)
             if version == 11:
-                _add_column_if_missing(conn, "quick_tests", "engine_mode", "TEXT DEFAULT 'docker'")
-                _add_column_if_missing(conn, "quick_tests", "profile_id", "TEXT DEFAULT ''")
+                _add_column_if_missing(
+                    conn, "quick_tests", "engine_mode", "TEXT DEFAULT 'docker'"
+                )
+                _add_column_if_missing(
+                    conn, "quick_tests", "profile_id", "TEXT DEFAULT ''"
+                )
 
     if applied:
         logger.info("Applied %d migration(s)", applied)
